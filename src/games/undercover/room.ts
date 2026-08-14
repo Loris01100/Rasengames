@@ -195,7 +195,9 @@ export class UndercoverRoom {
     const player: Player = { id, token, name, connected: true, alive: true };
     room.players[id] = player;
     room.playerOrder.push(id);
-    if (!room.hostId) room.hostId = id;
+    // asHost lets the player who triggered a switchGame reclaim host in the
+    // new room even if another player's join message happens to land first.
+    if (!room.hostId || msg.asHost === true) room.hostId = id;
     session.playerId = id;
 
     room.settings = defaultSettings(room.playerOrder.length, room.settings.category);
@@ -412,7 +414,9 @@ export class UndercoverRoom {
     }
     for (const s of this.sessions) {
       try {
-        s.ws.send(JSON.stringify({ type: "switchGame", slug, code: room.code }));
+        s.ws.send(
+          JSON.stringify({ type: "switchGame", slug, code: room.code, asHost: s === session })
+        );
       } catch {
         // socket already gone
       }

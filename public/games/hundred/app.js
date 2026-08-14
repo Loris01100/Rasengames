@@ -104,12 +104,12 @@
     return `hundred:${code}:${suffix}`;
   }
 
-  function connect(code, name, token) {
+  function connect(code, name, token, asHost) {
     roomCode = code.toUpperCase();
     ws = new WebSocket(wsUrl(roomCode));
 
     ws.addEventListener("open", () => {
-      send({ type: "join", name, token: token || undefined });
+      send({ type: "join", name, token: token || undefined, asHost: !!asHost });
     });
 
     ws.addEventListener("message", (event) => {
@@ -165,7 +165,8 @@
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}`;
+      const asHostParam = msg.asHost ? "&asHost=1" : "";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -423,8 +424,8 @@
 
     const isHost = state.hostId === myPlayerId;
     el.arrangeInstructions.textContent = isHost
-      ? "Écoutez le groupe débattre à voix haute, puis glissez les cartes pour les ranger du plus petit (gauche) au plus grand (droite)."
-      : "Les personnages des autres sont cachés : décrivez le vôtre à voix haute et débattez pour trouver le bon ordre. Seul l'hôte peut déplacer les cartes.";
+      ? "Les chiffres sont cachés jusqu'à la révélation. Débattez, puis glisse les cartes pour les ranger du plus petit (gauche) au plus grand (droite)."
+      : "Les chiffres sont cachés jusqu'à la révélation. Débattez pour trouver le bon ordre — seul l'hôte peut déplacer les cartes.";
     el.revealBtn.classList.toggle("hidden", !isHost);
     el.revealHint.classList.toggle("hidden", isHost);
 
@@ -544,23 +545,26 @@
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("room");
     const autojoinName = params.get("autojoin");
+    const asHost = params.get("asHost") === "1";
     const lastName = localStorage.getItem("hundred:lastName");
     if (lastName) el.nameInput.value = lastName;
 
-    if (codeFromUrl && autojoinName) {
-      el.codeInput.value = codeFromUrl.toUpperCase();
-      el.nameInput.value = autojoinName;
-      connect(codeFromUrl, autojoinName);
-      return;
-    }
-
     if (codeFromUrl) {
       el.codeInput.value = codeFromUrl.toUpperCase();
+      // Prefer an existing token for this exact room+game: revisiting a game
+      // we already joined (e.g. switching back and forth) must reconnect as
+      // the same player instead of creating a duplicate one.
       const token = localStorage.getItem(storageKey(codeFromUrl.toUpperCase(), "token"));
       const savedName = localStorage.getItem(storageKey(codeFromUrl.toUpperCase(), "name"));
       if (token && savedName) {
         el.nameInput.value = savedName;
         connect(codeFromUrl, savedName, token);
+        return;
+      }
+
+      if (autojoinName) {
+        el.nameInput.value = autojoinName;
+        connect(codeFromUrl, autojoinName, undefined, asHost);
       }
     }
   })();

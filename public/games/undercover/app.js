@@ -45,6 +45,10 @@
     voteProgress: $("vote-progress"),
     voteList: $("vote-list"),
 
+    voteResultPanel: $("vote-result-panel"),
+    voteResultList: $("vote-result-list"),
+    voteResultSummary: $("vote-result-summary"),
+
     whiteguessPanel: $("whiteguess-panel"),
     whiteguessInfo: $("whiteguess-info"),
     whiteguessForm: $("whiteguess-form"),
@@ -109,12 +113,12 @@
     return `undercover:${code}:${suffix}`;
   }
 
-  function connect(code, name, token) {
+  function connect(code, name, token, asHost) {
     roomCode = code.toUpperCase();
     ws = new WebSocket(wsUrl(roomCode));
 
     ws.addEventListener("open", () => {
-      send({ type: "join", name, token: token || undefined });
+      send({ type: "join", name, token: token || undefined, asHost: !!asHost });
     });
 
     ws.addEventListener("message", (event) => {
@@ -170,7 +174,8 @@
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}`;
+      const asHostParam = msg.asHost ? "&asHost=1" : "";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -287,6 +292,7 @@
     renderPlayersMini(state);
     renderClues(state);
     renderVote(state);
+    renderVoteResult(state);
     renderWhiteGuess(state);
     renderHistory(state);
     renderEnd(state);
@@ -370,6 +376,37 @@
       }
       el.voteList.appendChild(btn);
     }
+  }
+
+  function renderVoteResult(state) {
+    const result = state.lastVoteResult;
+    const active = !!result && state.phase !== "vote";
+    el.voteResultPanel.classList.toggle("hidden", !active);
+    if (!active) return;
+
+    const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? "?";
+    el.voteResultList.innerHTML = "";
+    const entries = Object.entries(result.tally).sort((a, b) => b[1] - a[1]);
+    for (const [id, count] of entries) {
+      const row = document.createElement("div");
+      row.className = "player-row";
+
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = nameOf(id);
+      row.appendChild(name);
+
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = `${count} vote${count > 1 ? "s" : ""}`;
+      row.appendChild(tag);
+
+      el.voteResultList.appendChild(row);
+    }
+
+    el.voteResultSummary.textContent = result.tie
+      ? "Égalité : personne n'est éliminé, nouvelle manche."
+      : `${nameOf(result.eliminatedId)} a été éliminé(e).`;
   }
 
   function renderWhiteGuess(state) {
@@ -525,23 +562,26 @@
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("room");
     const autojoinName = params.get("autojoin");
+    const asHost = params.get("asHost") === "1";
     const lastName = localStorage.getItem("undercover:lastName");
     if (lastName) el.nameInput.value = lastName;
 
-    if (codeFromUrl && autojoinName) {
-      el.codeInput.value = codeFromUrl.toUpperCase();
-      el.nameInput.value = autojoinName;
-      connect(codeFromUrl, autojoinName);
-      return;
-    }
-
     if (codeFromUrl) {
       el.codeInput.value = codeFromUrl.toUpperCase();
+      // Prefer an existing token for this exact room+game: revisiting a game
+      // we already joined (e.g. switching back and forth) must reconnect as
+      // the same player instead of creating a duplicate one.
       const token = localStorage.getItem(storageKey(codeFromUrl.toUpperCase(), "token"));
       const savedName = localStorage.getItem(storageKey(codeFromUrl.toUpperCase(), "name"));
       if (token && savedName) {
         el.nameInput.value = savedName;
         connect(codeFromUrl, savedName, token);
+        return;
+      }
+
+      if (autojoinName) {
+        el.nameInput.value = autojoinName;
+        connect(codeFromUrl, autojoinName, undefined, asHost);
       }
     }
   })();

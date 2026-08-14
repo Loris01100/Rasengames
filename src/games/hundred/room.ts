@@ -189,7 +189,9 @@ export class HundredRoom {
     };
     room.players[id] = player;
     room.playerOrder.push(id);
-    if (!room.hostId) room.hostId = id;
+    // asHost lets the player who triggered a switchGame reclaim host in the
+    // new room even if another player's join message happens to land first.
+    if (!room.hostId || msg.asHost === true) room.hostId = id;
     session.playerId = id;
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
@@ -339,7 +341,9 @@ export class HundredRoom {
     }
     for (const s of this.sessions) {
       try {
-        s.ws.send(JSON.stringify({ type: "switchGame", slug, code: room.code }));
+        s.ws.send(
+          JSON.stringify({ type: "switchGame", slug, code: room.code, asHost: s === session })
+        );
       } catch {
         // socket already gone
       }
@@ -363,7 +367,12 @@ export class HundredRoom {
     const revealAll = room.phase === "ended";
     const revealedInOrder =
       room.phase === "reveal" ? new Set(room.order.slice(0, room.revealedCount)) : null;
-    const isRevealedFor = (id: string) =>
+    // Proposals stay secret only while people are still submitting them —
+    // once everyone's in, seeing the actual characters is the whole point of
+    // the debate. Numbers are the one thing that stays hidden until the
+    // one-by-one reveal.
+    const proposalVisibleFor = (id: string) => id === forPlayerId || room.phase !== "propose";
+    const numberVisibleFor = (id: string) =>
       revealAll || id === forPlayerId || (revealedInOrder?.has(id) ?? false);
 
     const players = room.playerOrder
@@ -375,9 +384,9 @@ export class HundredRoom {
         connected: p.connected,
         isHost: p.id === room.hostId,
         hasProposed: p.proposal !== null,
-        proposal: isRevealedFor(p.id) ? p.proposal : null,
-        proposalImage: isRevealedFor(p.id) ? p.proposalImage : null,
-        number: isRevealedFor(p.id) ? p.number : undefined,
+        proposal: proposalVisibleFor(p.id) ? p.proposal : null,
+        proposalImage: proposalVisibleFor(p.id) ? p.proposalImage : null,
+        number: numberVisibleFor(p.id) ? p.number : undefined,
       }));
 
     const you = room.players[forPlayerId] ?? null;
