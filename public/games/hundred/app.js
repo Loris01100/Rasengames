@@ -29,6 +29,9 @@
   const el = {
     toast: $("toast"),
     roomBadge: $("room-badge"),
+    switchGame: $("switch-game"),
+    switchGameSelect: $("switch-game-select"),
+    switchGameBtn: $("switch-game-btn"),
 
     screenJoin: $("screen-join"),
     nameInput: $("name-input"),
@@ -160,6 +163,9 @@
     } else if (msg.type === "state") {
       latestState = msg.state;
       render(latestState);
+    } else if (msg.type === "switchGame") {
+      const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}`;
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -195,7 +201,24 @@
   }
   populateThemeSelect();
 
+  // Other games the group can switch to without disbanding — see the
+  // "switchGame" message handling below.
+  const OTHER_GAMES = [{ slug: "undercover", label: "Undercover" }];
+
+  function populateSwitchGameSelect() {
+    el.switchGameSelect.innerHTML = "";
+    for (const g of OTHER_GAMES) {
+      const opt = document.createElement("option");
+      opt.value = g.slug;
+      opt.textContent = g.label;
+      el.switchGameSelect.appendChild(opt);
+    }
+  }
+  populateSwitchGameSelect();
+
   function render(state) {
+    el.switchGame.classList.toggle("hidden", state.hostId !== myPlayerId);
+
     if (state.phase === "lobby") {
       showScreen(el.screenLobby);
       renderLobby(state);
@@ -316,6 +339,15 @@
     name.className = "card-name";
     name.textContent = p ? p.name + (playerId === myPlayerId ? " (toi)" : "") : "?";
     card.appendChild(name);
+
+    if (p?.proposalImage) {
+      const img = document.createElement("img");
+      img.className = "card-image";
+      img.src = p.proposalImage;
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      card.appendChild(img);
+    }
 
     const proposal = document.createElement("div");
     proposal.className = "card-proposal";
@@ -498,13 +530,29 @@
   el.revealNextBtn.addEventListener("click", () => send({ type: "revealNext" }));
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
+  el.switchGameBtn.addEventListener("click", () => {
+    const slug = el.switchGameSelect.value;
+    const label = OTHER_GAMES.find((g) => g.slug === slug)?.label ?? slug;
+    if (!slug) return;
+    if (!confirm(`Changer de jeu pour "${label}" ? Tout le monde du salon sera redirigé.`)) return;
+    send({ type: "switchGame", slug });
+  });
+
   // ---- boot ----
 
   (function boot() {
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("room");
+    const autojoinName = params.get("autojoin");
     const lastName = localStorage.getItem("hundred:lastName");
     if (lastName) el.nameInput.value = lastName;
+
+    if (codeFromUrl && autojoinName) {
+      el.codeInput.value = codeFromUrl.toUpperCase();
+      el.nameInput.value = autojoinName;
+      connect(codeFromUrl, autojoinName);
+      return;
+    }
 
     if (codeFromUrl) {
       el.codeInput.value = codeFromUrl.toUpperCase();

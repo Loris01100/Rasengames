@@ -4,6 +4,9 @@
   const el = {
     toast: $("toast"),
     roomBadge: $("room-badge"),
+    switchGame: $("switch-game"),
+    switchGameSelect: $("switch-game-select"),
+    switchGameBtn: $("switch-game-btn"),
 
     screenJoin: $("screen-join"),
     nameInput: $("name-input"),
@@ -23,6 +26,7 @@
     waitingHost: $("waiting-host"),
 
     screenGame: $("screen-game"),
+    wordImage: $("word-image"),
     wordDisplay: $("word-display"),
     toggleWord: $("toggle-word"),
     roleHint: $("role-hint"),
@@ -52,6 +56,7 @@
 
     endPanel: $("end-panel"),
     endTitle: $("end-title"),
+    endWordsImages: $("end-words-images"),
     endWords: $("end-words"),
     endReveal: $("end-reveal"),
     restartBtn: $("restart-btn"),
@@ -64,6 +69,21 @@
     technique: "Techniques / Jutsu",
     anime: "Titres d'anime",
   };
+
+  // Other games the group can switch to without disbanding — see the
+  // "switchGame" message handling below.
+  const OTHER_GAMES = [{ slug: "hundred", label: "1 à 100" }];
+
+  function populateSwitchGameSelect() {
+    el.switchGameSelect.innerHTML = "";
+    for (const g of OTHER_GAMES) {
+      const opt = document.createElement("option");
+      opt.value = g.slug;
+      opt.textContent = g.label;
+      el.switchGameSelect.appendChild(opt);
+    }
+  }
+  populateSwitchGameSelect();
 
   let ws = null;
   let myPlayerId = null;
@@ -148,6 +168,9 @@
     } else if (msg.type === "state") {
       latestState = msg.state;
       render(latestState);
+    } else if (msg.type === "switchGame") {
+      const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}`;
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -157,6 +180,7 @@
 
   function render(state) {
     el.screenJoin.classList.add("hidden");
+    el.switchGame.classList.toggle("hidden", state.hostId !== myPlayerId);
 
     if (state.phase === "lobby") {
       el.screenLobby.classList.remove("hidden");
@@ -274,6 +298,14 @@
     const text = you.word ? you.word : you.role === "mrwhite" ? "Tu es Mr. White (pas de mot !)" : "—";
     el.wordDisplay.textContent = wordHidden ? "•••••" : text;
     el.wordDisplay.classList.toggle("hidden-word", wordHidden);
+
+    if (you.wordImage && !wordHidden) {
+      el.wordImage.src = you.wordImage;
+      el.wordImage.classList.remove("hidden");
+    } else {
+      el.wordImage.classList.add("hidden");
+    }
+
     el.roleHint.textContent = you.role === "mrwhite"
       ? "Bluffe : tu n'as pas de mot, essaie de deviner celui des civils si tu es démasqué."
       : you.role === "undercover"
@@ -378,6 +410,26 @@
     el.endTitle.textContent = titles[state.winner] || "Partie terminée";
     el.endWords.textContent = `Mot des civils : ${state.civilianWord} — Mot des undercover : ${state.undercoverWord}`;
 
+    el.endWordsImages.innerHTML = "";
+    const wordCards = [
+      { label: "Civils", word: state.civilianWord, image: state.civilianImage },
+      { label: "Undercover", word: state.undercoverWord, image: state.undercoverImage },
+    ];
+    for (const w of wordCards) {
+      if (!w.image) continue;
+      const fig = document.createElement("figure");
+      fig.className = "end-word-figure";
+      const img = document.createElement("img");
+      img.src = w.image;
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      fig.appendChild(img);
+      const caption = document.createElement("figcaption");
+      caption.textContent = `${w.label} : ${w.word}`;
+      fig.appendChild(caption);
+      el.endWordsImages.appendChild(fig);
+    }
+
     el.endReveal.innerHTML = "";
     for (const p of state.players) {
       el.endReveal.appendChild(playerRow(p, { showRole: true }));
@@ -459,13 +511,29 @@
 
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
+  el.switchGameBtn.addEventListener("click", () => {
+    const slug = el.switchGameSelect.value;
+    const label = OTHER_GAMES.find((g) => g.slug === slug)?.label ?? slug;
+    if (!slug) return;
+    if (!confirm(`Changer de jeu pour "${label}" ? Tout le monde du salon sera redirigé.`)) return;
+    send({ type: "switchGame", slug });
+  });
+
   // ---- boot ----
 
   (function boot() {
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("room");
+    const autojoinName = params.get("autojoin");
     const lastName = localStorage.getItem("undercover:lastName");
     if (lastName) el.nameInput.value = lastName;
+
+    if (codeFromUrl && autojoinName) {
+      el.codeInput.value = codeFromUrl.toUpperCase();
+      el.nameInput.value = autojoinName;
+      connect(codeFromUrl, autojoinName);
+      return;
+    }
 
     if (codeFromUrl) {
       el.codeInput.value = codeFromUrl.toUpperCase();

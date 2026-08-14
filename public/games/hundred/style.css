@@ -71,6 +71,16 @@
   margin-bottom: 4px;
 }
 
+.card-token .card-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  pointer-events: none;
+}
+
 .card-token .card-proposal {
   font-weight: 700;
   font-size: 0.95rem;

@@ -51,6 +51,8 @@ export interface RoomState {
   eliminatedHistory: Elimination[];
   civilianWord: string | null;
   undercoverWord: string | null;
+  civilianImage: string | null;
+  undercoverImage: string | null;
   pendingGuesserId: string | null;
   winner: Role | "civilians" | null;
   settings: Settings;
@@ -72,6 +74,8 @@ export function createEmptyRoom(code: string): RoomState {
     eliminatedHistory: [],
     civilianWord: null,
     undercoverWord: null,
+    civilianImage: null,
+    undercoverImage: null,
     pendingGuesserId: null,
     winner: null,
     settings: { undercoverCount: 1, mrWhiteCount: 0, category: "random" },

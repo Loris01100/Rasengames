@@ -11,6 +11,10 @@
   <header class="site-header">
     <a class="logo" href="/">Rasen<span>Games</span></a>
     <span id="room-badge" class="badge hidden"></span>
+    <div id="switch-game" class="switch-game hidden">
+      <select id="switch-game-select"></select>
+      <button id="switch-game-btn" class="btn secondary small">Changer de jeu</button>
+    </div>
   </header>
 
   <main class="container">
@@ -74,6 +78,7 @@
             <span class="muted">Ton mot</span>
             <button id="toggle-word" class="btn secondary small">Cacher</button>
           </div>
+          <img id="word-image" class="word-image hidden" alt="" referrerpolicy="no-referrer" />
           <div id="word-display" class="word-display">—</div>
           <div id="role-hint" class="muted small"></div>
         </div>
@@ -117,6 +122,7 @@
 
       <div class="card hidden" id="end-panel">
         <h2 id="end-title"></h2>
+        <div id="end-words-images" class="end-words-images"></div>
         <p id="end-words" class="muted"></p>
         <div id="end-reveal" class="players-list"></div>
         <button id="restart-btn" class="btn hidden">Rejouer</button>

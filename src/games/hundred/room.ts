@@ -2,11 +2,14 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
 import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
+import { fetchCharacterImage } from "../../lib/images";
+import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
 const MAX_PROPOSAL_LENGTH = 40;
 const MAX_THEME_LENGTH = 60;
 const MIN_PLAYERS_TO_START = 3;
+const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 
 interface Session {
   ws: WebSocket;
@@ -132,6 +135,9 @@ export class HundredRoom {
       case "restart":
         await this.onRestart(session, room);
         break;
+      case "switchGame":
+        this.onSwitchGame(session, room, msg);
+        break;
       default:
         this.sendError(session.ws, `Type de message inconnu: ${String(msg.type)}`);
     }
@@ -172,7 +178,15 @@ export class HundredRoom {
 
     const id = crypto.randomUUID();
     const token = crypto.randomUUID();
-    const player: Player = { id, token, name, connected: true, number: null, proposal: null };
+    const player: Player = {
+      id,
+      token,
+      name,
+      connected: true,
+      number: null,
+      proposal: null,
+      proposalImage: null,
+    };
     room.players[id] = player;
     room.playerOrder.push(id);
     if (!room.hostId) room.hostId = id;
@@ -225,6 +239,7 @@ export class HundredRoom {
       return;
     }
     player.proposal = text;
+    player.proposalImage = null;
 
     if (allProposed(room)) {
       const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
@@ -234,6 +249,15 @@ export class HundredRoom {
 
     await this.saveRoom();
     this.broadcast();
+
+    const image = await fetchCharacterImage(text);
+    // The player may have re-proposed (or the room restarted) while this
+    // lookup was in flight; only apply it if it's still the current proposal.
+    if (player.proposal === text) {
+      player.proposalImage = image;
+      await this.saveRoom();
+      this.broadcast();
+    }
   }
 
   private async onMove(session: Session, room: RoomState, msg: Record<string, unknown>) {
@@ -288,6 +312,7 @@ export class HundredRoom {
     for (const player of Object.values(room.players)) {
       player.number = null;
       player.proposal = null;
+      player.proposalImage = null;
     }
     room.phase = "lobby";
     room.theme = null;
@@ -297,6 +322,28 @@ export class HundredRoom {
 
     await this.saveRoom();
     this.broadcast();
+  }
+
+  // Purely a redirect signal to every connected client — the group keeps its
+  // room code and just points its WebSocket at another game's room instead,
+  // so switching games doesn't require leaving and re-sharing a new code.
+  private onSwitchGame(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (session.playerId !== room.hostId) {
+      this.sendError(session.ws, "Seul l'hôte peut changer de jeu.");
+      return;
+    }
+    const slug = String(msg.slug ?? "");
+    if (!VALID_GAME_SLUGS.has(slug)) {
+      this.sendError(session.ws, "Jeu invalide.");
+      return;
+    }
+    for (const s of this.sessions) {
+      try {
+        s.ws.send(JSON.stringify({ type: "switchGame", slug, code: room.code }));
+      } catch {
+        // socket already gone
+      }
+    }
   }
 
   private broadcast() {
@@ -329,6 +376,7 @@ export class HundredRoom {
         isHost: p.id === room.hostId,
         hasProposed: p.proposal !== null,
         proposal: isRevealedFor(p.id) ? p.proposal : null,
+        proposalImage: isRevealedFor(p.id) ? p.proposalImage : null,
         number: isRevealedFor(p.id) ? p.number : undefined,
       }));
 
@@ -341,7 +389,12 @@ export class HundredRoom {
       hostId: room.hostId,
       theme: room.theme,
       players,
-      you: you && { id: you.id, number: you.number, proposal: you.proposal },
+      you: you && {
+        id: you.id,
+        number: you.number,
+        proposal: you.proposal,
+        proposalImage: you.proposalImage,
+      },
       order: room.order,
       revealedCount: room.revealedCount,
       proposalsSubmitted: connectedIds.filter((id) => room.players[id]?.proposal !== null).length,

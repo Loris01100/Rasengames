@@ -37,10 +37,48 @@
   align-items: center;
 }
 
+.word-image {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+}
+
 .word-display {
   font-size: 1.8rem;
   font-weight: 800;
   margin: 10px 0 4px;
+}
+
+.end-words-images {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.end-word-figure {
+  margin: 0;
+  text-align: center;
+}
+
+.end-word-figure img {
+  width: 110px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.end-word-figure figcaption {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .word-display.hidden-word {
