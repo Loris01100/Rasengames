@@ -1,0 +1,110 @@
+#screen-play,
+#screen-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.category-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 10px 0 16px;
+}
+
+.category-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.category-checkbox input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.play-letter {
+  font-size: 4rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 6px 0 16px;
+}
+
+#stop-btn {
+  margin-bottom: 10px;
+}
+
+.answers-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.answer-row label {
+  margin-bottom: 6px;
+}
+
+#end-title {
+  margin-top: 0;
+}
+
+.results-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.results-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 420px;
+}
+
+.results-table th,
+.results-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.results-table thead th {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.results-table .category-name {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.results-table .answer-text {
+  font-weight: 600;
+}
+
+.results-table .answer-points {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.results-table td.score-unique {
+  background: rgba(62, 207, 142, 0.1);
+}
+
+.results-table td.score-duplicate {
+  background: rgba(230, 184, 60, 0.1);
+}
+
+.results-table td.score-invalid {
+  opacity: 0.5;
+}
+
+.results-table .total-cell {
+  font-weight: 800;
+  font-size: 1.05rem;
+}

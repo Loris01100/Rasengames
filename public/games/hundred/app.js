@@ -204,7 +204,10 @@
 
   // Other games the group can switch to without disbanding — see the
   // "switchGame" message handling below.
-  const OTHER_GAMES = [{ slug: "undercover", label: "Undercover" }];
+  const OTHER_GAMES = [
+    { slug: "undercover", label: "Undercover" },
+    { slug: "bac", label: "Petit Bac" },
+  ];
 
   function populateSwitchGameSelect() {
     el.switchGameSelect.innerHTML = "";

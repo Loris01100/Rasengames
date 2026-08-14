@@ -1,9 +1,10 @@
 import type { Env } from "./env";
 import { UndercoverRoom } from "./games/undercover/room";
 import { HundredRoom } from "./games/hundred/room";
+import { BacRoom } from "./games/bac/room";
 import { createRoomCode } from "./lib/rooms";
 
-export { UndercoverRoom, HundredRoom };
+export { UndercoverRoom, HundredRoom, BacRoom };
 
 interface GameRoute {
   slug: string;
@@ -13,6 +14,7 @@ interface GameRoute {
 const GAMES: GameRoute[] = [
   { slug: "undercover", namespace: (env) => env.UNDERCOVER_ROOM },
   { slug: "hundred", namespace: (env) => env.HUNDRED_ROOM },
+  { slug: "bac", namespace: (env) => env.BAC_ROOM },
 ];
 
 export default {
