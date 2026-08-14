@@ -1,4 +1,4 @@
-export type Phase = "lobby" | "propose" | "arrange" | "ended";
+export type Phase = "lobby" | "propose" | "arrange" | "reveal" | "ended";
 
 export interface Player {
   id: string;
@@ -23,6 +23,7 @@ export interface RoomState {
   playerOrder: string[];
   theme: string | null;
   order: string[];
+  revealedCount: number;
   score: Score | null;
 }
 
@@ -35,6 +36,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     theme: null,
     order: [],
+    revealedCount: 0,
     score: null,
   };
 }

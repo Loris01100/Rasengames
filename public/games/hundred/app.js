@@ -1,6 +1,31 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
+  // Kept in sync with src/games/hundred/themes.ts — duplicated client-side so
+  // the host can preview the full list in a dropdown instead of typing blind.
+  const THEMES = [
+    "Puissance de combat",
+    "Intelligence",
+    "Popularité",
+    "Charisme",
+    "Drôlerie",
+    "Loyauté",
+    "Détermination",
+    "Vitesse",
+    "Instinct de sacrifice",
+    "Chance",
+    "Ambition",
+    "Résistance à la douleur",
+    "Niveau de cringe",
+    "Capacité à survivre dans un shonen",
+    "Talent pour les punchlines",
+    "Sens de la mode",
+    "Capacité à mourir bêtement",
+    "Alignement moral (gentil → méchant)",
+    "Tragique (histoire triste)",
+    "Capacité à retourner sa veste",
+  ];
+
   const el = {
     toast: $("toast"),
     roomBadge: $("room-badge"),
@@ -15,7 +40,7 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
-    themeInput: $("theme-input"),
+    themeSelect: $("theme-select"),
     startBtn: $("start-btn"),
     startHint: $("start-hint"),
     waitingHost: $("waiting-host"),
@@ -32,9 +57,17 @@
 
     screenArrange: $("screen-arrange"),
     arrangeTheme: $("arrange-theme"),
+    arrangeInstructions: $("arrange-instructions"),
     line: $("line"),
     revealBtn: $("reveal-btn"),
     revealHint: $("reveal-hint"),
+
+    screenReveal: $("screen-reveal"),
+    revealTheme: $("reveal-theme"),
+    lineReveal: $("line-reveal"),
+    revealNextBtn: $("reveal-next-btn"),
+    revealNextHint: $("reveal-next-hint"),
+    revealProgress: $("reveal-progress"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
@@ -134,11 +167,33 @@
 
   // ---- rendering ----
 
-  const SCREENS = [el.screenJoin, el.screenLobby, el.screenPropose, el.screenArrange, el.screenEnded];
+  const SCREENS = [
+    el.screenJoin,
+    el.screenLobby,
+    el.screenPropose,
+    el.screenArrange,
+    el.screenReveal,
+    el.screenEnded,
+  ];
 
   function showScreen(screen) {
     for (const s of SCREENS) s.classList.toggle("hidden", s !== screen);
   }
+
+  function populateThemeSelect() {
+    el.themeSelect.innerHTML = "";
+    const randomOpt = document.createElement("option");
+    randomOpt.value = "";
+    randomOpt.textContent = "🎲 Thème aléatoire";
+    el.themeSelect.appendChild(randomOpt);
+    for (const theme of THEMES) {
+      const opt = document.createElement("option");
+      opt.value = theme;
+      opt.textContent = theme;
+      el.themeSelect.appendChild(opt);
+    }
+  }
+  populateThemeSelect();
 
   function render(state) {
     if (state.phase === "lobby") {
@@ -150,6 +205,9 @@
     } else if (state.phase === "arrange") {
       showScreen(el.screenArrange);
       renderArrange(state);
+    } else if (state.phase === "reveal") {
+      showScreen(el.screenReveal);
+      renderReveal(state);
     } else if (state.phase === "ended") {
       showScreen(el.screenEnded);
       renderEnded(state);
@@ -235,7 +293,12 @@
 
       const status = document.createElement("span");
       status.className = "tag";
-      status.textContent = p.proposal ? p.proposal : "réfléchit...";
+      status.textContent =
+        p.id === myPlayerId
+          ? p.proposal ?? "réfléchit..."
+          : p.hasProposed
+            ? "✓ prêt"
+            : "réfléchit...";
       row.appendChild(status);
 
       el.proposalsList.appendChild(row);
@@ -310,8 +373,10 @@
   document.addEventListener("pointercancel", endLineDrag);
 
   function attachDrag(card, playerId) {
+    card.classList.add("grabbable");
     card.addEventListener("pointerdown", (e) => {
       if (!latestState || latestState.phase !== "arrange") return;
+      if (latestState.hostId !== myPlayerId) return;
       e.preventDefault();
       card.classList.add("dragging");
       dragState = { playerId, cardEl: card };
@@ -325,6 +390,9 @@
     el.arrangeTheme.textContent = state.theme;
 
     const isHost = state.hostId === myPlayerId;
+    el.arrangeInstructions.textContent = isHost
+      ? "Écoutez le groupe débattre à voix haute, puis glissez les cartes pour les ranger du plus petit (gauche) au plus grand (droite)."
+      : "Les personnages des autres sont cachés : décrivez le vôtre à voix haute et débattez pour trouver le bon ordre. Seul l'hôte peut déplacer les cartes.";
     el.revealBtn.classList.toggle("hidden", !isHost);
     el.revealHint.classList.toggle("hidden", isHost);
 
@@ -333,9 +401,34 @@
     el.line.innerHTML = "";
     for (const playerId of state.order) {
       const card = makeCard(state, playerId);
-      attachDrag(card, playerId);
+      if (isHost) attachDrag(card, playerId);
       el.line.appendChild(card);
     }
+  }
+
+  function renderReveal(state) {
+    el.roomBadge.textContent = state.code;
+    el.roomBadge.classList.remove("hidden");
+    el.revealTheme.textContent = state.theme;
+
+    el.lineReveal.innerHTML = "";
+    const cards = state.order.map((playerId) => makeCard(state, playerId));
+    for (const card of cards) el.lineReveal.appendChild(card);
+
+    for (let i = 1; i < state.revealedCount; i++) {
+      const prev = state.players.find((p) => p.id === state.order[i - 1]);
+      const cur = state.players.find((p) => p.id === state.order[i]);
+      if (prev?.number != null && cur?.number != null) {
+        cards[i].classList.add(prev.number < cur.number ? "correct" : "incorrect");
+      }
+    }
+
+    el.revealProgress.textContent = `${state.revealedCount}/${state.order.length} cartes révélées`;
+
+    const isHost = state.hostId === myPlayerId;
+    const allRevealed = state.revealedCount >= state.order.length;
+    el.revealNextBtn.classList.toggle("hidden", !isHost || allRevealed);
+    el.revealNextHint.classList.toggle("hidden", isHost || allRevealed);
   }
 
   function renderEnded(state) {
@@ -388,7 +481,7 @@
   });
 
   el.startBtn.addEventListener("click", () => {
-    send({ type: "start", theme: el.themeInput.value.trim() });
+    send({ type: "start", theme: el.themeSelect.value });
   });
 
   el.proposalSubmit.addEventListener("click", submitProposal);
@@ -402,6 +495,7 @@
   }
 
   el.revealBtn.addEventListener("click", () => send({ type: "reveal" }));
+  el.revealNextBtn.addEventListener("click", () => send({ type: "revealNext" }));
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
   // ---- boot ----

@@ -43,8 +43,8 @@
 
       <div id="host-settings" class="hidden">
         <h3>Réglages</h3>
-        <label for="theme-input">Thème</label>
-        <input id="theme-input" type="text" maxlength="60" placeholder="Laisse vide pour un thème aléatoire" autocomplete="off" />
+        <label for="theme-select">Thème</label>
+        <select id="theme-select"></select>
         <button id="start-btn" class="btn">Démarrer la partie</button>
         <p id="start-hint" class="muted small"></p>
       </div>
@@ -69,6 +69,7 @@
 
       <div class="card">
         <h3>Propositions</h3>
+        <p class="muted small">Les propositions des autres restent secrètes : décrivez votre personnage à voix haute pour que le groupe puisse débattre.</p>
         <div id="proposals-list" class="players-list"></div>
       </div>
     </section>
@@ -78,7 +79,7 @@
       <div class="card">
         <div class="muted small">Thème</div>
         <h2 id="arrange-theme"></h2>
-        <p class="muted small">Glissez les cartes pour les ranger du plus petit (gauche) au plus grand (droite). Tout le monde peut déplacer n'importe quelle carte.</p>
+        <p id="arrange-instructions" class="muted small"></p>
       </div>
 
       <div class="card">
@@ -87,8 +88,28 @@
           <span>100</span>
         </div>
         <div id="line" class="line"></div>
-        <button id="reveal-btn" class="btn hidden">Révéler</button>
-        <p id="reveal-hint" class="muted small hidden">En attente que l'hôte révèle les chiffres...</p>
+        <button id="reveal-btn" class="btn hidden">Verrouiller l'ordre et révéler</button>
+        <p id="reveal-hint" class="muted small hidden">En attente que l'hôte verrouille l'ordre...</p>
+      </div>
+    </section>
+
+    <!-- Reveal phase -->
+    <section id="screen-reveal" class="hidden">
+      <div class="card">
+        <div class="muted small">Thème</div>
+        <h2 id="reveal-theme"></h2>
+        <p class="muted small">Les cartes se révèlent une par une, de gauche à droite.</p>
+      </div>
+
+      <div class="card">
+        <div class="line-labels">
+          <span>1</span>
+          <span>100</span>
+        </div>
+        <div id="line-reveal" class="line"></div>
+        <button id="reveal-next-btn" class="btn hidden">Révéler la carte suivante</button>
+        <p id="reveal-next-hint" class="muted small hidden">En attente que l'hôte révèle la carte suivante...</p>
+        <p id="reveal-progress" class="muted small"></p>
       </div>
     </section>
 

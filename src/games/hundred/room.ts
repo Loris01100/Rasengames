@@ -126,6 +126,9 @@ export class HundredRoom {
       case "reveal":
         await this.onReveal(session, room);
         break;
+      case "revealNext":
+        await this.onRevealNext(session, room);
+        break;
       case "restart":
         await this.onRestart(session, room);
         break;
@@ -235,6 +238,10 @@ export class HundredRoom {
 
   private async onMove(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "arrange") return;
+    if (session.playerId !== room.hostId) {
+      this.sendError(session.ws, "Seul l'hôte peut déplacer les cartes.");
+      return;
+    }
     const mover = room.players[session.playerId];
     if (!mover || !mover.connected) return;
 
@@ -255,8 +262,21 @@ export class HundredRoom {
   private async onReveal(session: Session, room: RoomState) {
     if (session.playerId !== room.hostId || room.phase !== "arrange") return;
 
-    room.score = computeScore(room);
-    room.phase = "ended";
+    room.revealedCount = 0;
+    room.phase = "reveal";
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private async onRevealNext(session: Session, room: RoomState) {
+    if (session.playerId !== room.hostId || room.phase !== "reveal") return;
+
+    room.revealedCount = Math.min(room.revealedCount + 1, room.order.length);
+    if (room.revealedCount >= room.order.length) {
+      room.score = computeScore(room);
+      room.phase = "ended";
+    }
 
     await this.saveRoom();
     this.broadcast();
@@ -272,6 +292,7 @@ export class HundredRoom {
     room.phase = "lobby";
     room.theme = null;
     room.order = [];
+    room.revealedCount = 0;
     room.score = null;
 
     await this.saveRoom();
@@ -293,6 +314,11 @@ export class HundredRoom {
 
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
+    const revealedInOrder =
+      room.phase === "reveal" ? new Set(room.order.slice(0, room.revealedCount)) : null;
+    const isRevealedFor = (id: string) =>
+      revealAll || id === forPlayerId || (revealedInOrder?.has(id) ?? false);
+
     const players = room.playerOrder
       .map((id) => room.players[id])
       .filter((p): p is Player => !!p)
@@ -301,8 +327,9 @@ export class HundredRoom {
         name: p.name,
         connected: p.connected,
         isHost: p.id === room.hostId,
-        proposal: p.proposal,
-        number: revealAll || p.id === forPlayerId ? p.number : undefined,
+        hasProposed: p.proposal !== null,
+        proposal: isRevealedFor(p.id) ? p.proposal : null,
+        number: isRevealedFor(p.id) ? p.number : undefined,
       }));
 
     const you = room.players[forPlayerId] ?? null;
@@ -316,6 +343,7 @@ export class HundredRoom {
       players,
       you: you && { id: you.id, number: you.number, proposal: you.proposal },
       order: room.order,
+      revealedCount: room.revealedCount,
       proposalsSubmitted: connectedIds.filter((id) => room.players[id]?.proposal !== null).length,
       proposalsNeeded: connectedIds.length,
       score: room.score,

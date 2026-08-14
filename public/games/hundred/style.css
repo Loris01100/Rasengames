@@ -37,7 +37,6 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
-  cursor: grab;
   touch-action: none;
   user-select: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -47,11 +46,23 @@
   border-color: var(--accent);
 }
 
+.card-token.grabbable {
+  cursor: grab;
+}
+
 .card-token.dragging {
   opacity: 0.6;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   cursor: grabbing;
   z-index: 5;
+}
+
+.card-token.correct {
+  border-color: var(--success);
+}
+
+.card-token.incorrect {
+  border-color: var(--danger);
 }
 
 .card-token .card-name {
