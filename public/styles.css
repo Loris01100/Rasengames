@@ -61,6 +61,11 @@ a {
   color: var(--accent);
 }
 
+.site-footer {
+  text-align: center;
+  padding: 24px 20px 40px;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
