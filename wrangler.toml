@@ -1,0 +1,23 @@
+name = "rasengames"
+main = "src/index.ts"
+compatibility_date = "2025-08-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# Static files are served first; requests that don't match a file (e.g. /ws/*)
+# fall through to the Worker's fetch handler below.
+
+[[durable_objects.bindings]]
+name = "UNDERCOVER_ROOM"
+class_name = "UndercoverRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UndercoverRoom"]
+
+# Custom domain: once reesch.com is active on this Cloudflare account,
+# uncomment and deploy again (or attach the route from the dashboard).
+# routes = [
+#   { pattern = "rasengames.reesch.com", custom_domain = true }
+# ]

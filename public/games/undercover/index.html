@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Undercover · RasenGames</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/undercover/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Join / create screen -->
+    <section id="screen-join" class="card narrow">
+      <h1>Undercover</h1>
+      <p class="muted">Trouvez les infiltrés avant qu'ils ne prennent le dessus. 3 joueurs minimum.</p>
+
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
+
+      <div class="join-actions">
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lobby -->
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Partage ce code avec tes amis pour qu'ils rejoignent.</p>
+
+      <div id="players-list" class="players-list"></div>
+
+      <div id="host-settings" class="hidden">
+        <h3>Réglages</h3>
+        <div class="settings-row">
+          <label for="undercover-count">Undercover</label>
+          <input id="undercover-count" type="number" min="0" max="6" />
+        </div>
+        <div class="settings-row">
+          <label for="mrwhite-count">Mr. White</label>
+          <input id="mrwhite-count" type="number" min="0" max="3" />
+        </div>
+        <button id="start-btn" class="btn">Démarrer la partie</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
+    </section>
+
+    <!-- In-game -->
+    <section id="screen-game" class="hidden">
+      <div class="game-top">
+        <div class="card role-card" id="role-card">
+          <div class="role-card-header">
+            <span class="muted">Ton mot</span>
+            <button id="toggle-word" class="btn secondary small">Cacher</button>
+          </div>
+          <div id="word-display" class="word-display">—</div>
+          <div id="role-hint" class="muted small"></div>
+        </div>
+
+        <div class="card">
+          <div class="muted small">Manche <span id="round-number">1</span></div>
+          <div id="phase-label" class="phase-label"></div>
+          <div id="players-mini" class="players-mini"></div>
+        </div>
+      </div>
+
+      <div class="card" id="clue-panel">
+        <h3>Indices</h3>
+        <ol id="clue-list" class="clue-list"></ol>
+        <div id="clue-form" class="hidden clue-form">
+          <input id="clue-input" type="text" maxlength="60" placeholder="Ton indice (un mot)" autocomplete="off" />
+          <button id="clue-submit" class="btn">Envoyer</button>
+        </div>
+        <p id="clue-turn-hint" class="muted small"></p>
+      </div>
+
+      <div class="card hidden" id="vote-panel">
+        <h3>Vote</h3>
+        <p class="muted small" id="vote-progress"></p>
+        <div id="vote-list" class="vote-list"></div>
+      </div>
+
+      <div class="card hidden" id="whiteguess-panel">
+        <h3>Mr. White tente sa chance</h3>
+        <p id="whiteguess-info" class="muted"></p>
+        <div id="whiteguess-form" class="hidden clue-form">
+          <input id="whiteguess-input" type="text" maxlength="30" placeholder="Le mot des civils ?" autocomplete="off" />
+          <button id="whiteguess-submit" class="btn">Deviner</button>
+        </div>
+      </div>
+
+      <div class="card hidden" id="history-panel">
+        <h3>Éliminations</h3>
+        <ul id="history-list" class="history-list"></ul>
+      </div>
+
+      <div class="card hidden" id="end-panel">
+        <h2 id="end-title"></h2>
+        <p id="end-words" class="muted"></p>
+        <div id="end-reveal" class="players-list"></div>
+        <button id="restart-btn" class="btn hidden">Rejouer</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/games/undercover/app.js"></script>
+</body>
+</html>
