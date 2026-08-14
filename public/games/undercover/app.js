@@ -15,6 +15,7 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
+    categorySelect: $("category-select"),
     undercoverCount: $("undercover-count"),
     mrwhiteCount: $("mrwhite-count"),
     startBtn: $("start-btn"),
@@ -26,6 +27,7 @@
     toggleWord: $("toggle-word"),
     roleHint: $("role-hint"),
     roundNumber: $("round-number"),
+    categoryLabel: $("category-label"),
     phaseLabel: $("phase-label"),
     playersMini: $("players-mini"),
 
@@ -54,6 +56,13 @@
     endReveal: $("end-reveal"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
+  };
+
+  const CATEGORY_LABELS = {
+    random: "Aléatoire",
+    character: "Personnages",
+    technique: "Techniques / Jutsu",
+    anime: "Titres d'anime",
   };
 
   let ws = null;
@@ -222,6 +231,9 @@
       if (document.activeElement !== el.mrwhiteCount) {
         el.mrwhiteCount.value = state.settings.mrWhiteCount;
       }
+      if (document.activeElement !== el.categorySelect) {
+        el.categorySelect.value = state.settings.category;
+      }
       const canStart = connectedCount >= 3;
       el.startBtn.disabled = !canStart;
       el.startHint.textContent = canStart
@@ -245,6 +257,7 @@
       ended: "🏁 Partie terminée",
     };
     el.phaseLabel.textContent = phaseLabels[state.phase] || "";
+    el.categoryLabel.textContent = CATEGORY_LABELS[state.settings?.category] || "";
 
     renderRoleCard(state);
     renderPlayersMini(state);
@@ -417,6 +430,7 @@
       settings: {
         undercoverCount: Number(el.undercoverCount.value) || 0,
         mrWhiteCount: Number(el.mrwhiteCount.value) || 0,
+        category: el.categorySelect.value,
       },
     });
   });

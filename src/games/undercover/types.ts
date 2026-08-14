@@ -1,3 +1,5 @@
+import type { WordCategory } from "./words";
+
 export type Role = "civilian" | "undercover" | "mrwhite";
 
 export type Phase = "lobby" | "clue" | "vote" | "whiteguess" | "ended";
@@ -31,6 +33,7 @@ export interface VoteResult {
 export interface Settings {
   undercoverCount: number;
   mrWhiteCount: number;
+  category: WordCategory;
 }
 
 export interface RoomState {
@@ -71,6 +74,6 @@ export function createEmptyRoom(code: string): RoomState {
     undercoverWord: null,
     pendingGuesserId: null,
     winner: null,
-    settings: { undercoverCount: 1, mrWhiteCount: 0 },
+    settings: { undercoverCount: 1, mrWhiteCount: 0, category: "random" },
   };
 }

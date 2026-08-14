@@ -1,19 +1,11 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import {
-  assignRoles,
-  startNewRound,
-  tallyVotes,
-  checkWinCondition,
-  defaultSettings,
-  validateSettings,
-  normalizeWord,
-} from "./logic";
-import { CATEGORY_LABELS, type WordCategory } from "./words";
-
-const VALID_CATEGORIES = new Set(Object.keys(CATEGORY_LABELS));
+import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
+import { pickRandomTheme } from "./themes";
 
 const MAX_NAME_LENGTH = 20;
+const MAX_PROPOSAL_LENGTH = 40;
+const MAX_THEME_LENGTH = 60;
 const MIN_PLAYERS_TO_START = 3;
 
 interface Session {
@@ -21,7 +13,7 @@ interface Session {
   playerId: string;
 }
 
-export class UndercoverRoom {
+export class HundredRoom {
   private state: DurableObjectState;
   private sessions: Session[] = [];
   private room: RoomState | null = null;
@@ -125,14 +117,14 @@ export class UndercoverRoom {
       case "start":
         await this.onStart(session, room, msg);
         break;
-      case "clue":
-        await this.onClue(session, room, msg);
+      case "propose":
+        await this.onPropose(session, room, msg);
         break;
-      case "vote":
-        await this.onVote(session, room, msg);
+      case "move":
+        await this.onMove(session, room, msg);
         break;
-      case "whiteGuess":
-        await this.onWhiteGuess(session, room, msg);
+      case "reveal":
+        await this.onReveal(session, room);
         break;
       case "restart":
         await this.onRestart(session, room);
@@ -177,13 +169,11 @@ export class UndercoverRoom {
 
     const id = crypto.randomUUID();
     const token = crypto.randomUUID();
-    const player: Player = { id, token, name, connected: true, alive: true };
+    const player: Player = { id, token, name, connected: true, number: null, proposal: null };
     room.players[id] = player;
     room.playerOrder.push(id);
     if (!room.hostId) room.hostId = id;
     session.playerId = id;
-
-    room.settings = defaultSettings(room.playerOrder.length, room.settings.category);
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
     await this.saveRoom();
@@ -203,27 +193,6 @@ export class UndercoverRoom {
       return;
     }
 
-    const rawSettings = msg.settings as
-      | { undercoverCount?: unknown; mrWhiteCount?: unknown; category?: unknown }
-      | undefined;
-    if (rawSettings) {
-      const category =
-        typeof rawSettings.category === "string" && VALID_CATEGORIES.has(rawSettings.category)
-          ? (rawSettings.category as WordCategory)
-          : room.settings.category;
-      const settings = {
-        undercoverCount: Math.max(0, Number(rawSettings.undercoverCount) || 0),
-        mrWhiteCount: Math.max(0, Number(rawSettings.mrWhiteCount) || 0),
-        category,
-      };
-      const error = validateSettings(connectedCount, settings);
-      if (error) {
-        this.sendError(session.ws, error);
-        return;
-      }
-      room.settings = settings;
-    }
-
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
         delete room.players[id];
@@ -231,112 +200,63 @@ export class UndercoverRoom {
       }
     }
 
-    assignRoles(room);
-    startNewRound(room);
+    const customTheme = String(msg.theme ?? "").trim().slice(0, MAX_THEME_LENGTH);
+    room.theme = customTheme || pickRandomTheme();
+    room.order = [];
+    room.score = null;
+    assignNumbers(room);
+    room.phase = "propose";
 
     await this.saveRoom();
     this.broadcast();
   }
 
-  private async onClue(session: Session, room: RoomState, msg: Record<string, unknown>) {
-    if (room.phase !== "clue") return;
-    const currentPlayerId = room.turnOrder[room.currentTurnIndex];
-    if (session.playerId !== currentPlayerId) {
-      this.sendError(session.ws, "Ce n'est pas ton tour.");
-      return;
-    }
-    const text = String(msg.text ?? "").trim().slice(0, 60);
+  private async onPropose(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (room.phase !== "propose") return;
+    const player = room.players[session.playerId];
+    if (!player || !player.connected) return;
+
+    const text = String(msg.text ?? "").trim().slice(0, MAX_PROPOSAL_LENGTH);
     if (!text) {
-      this.sendError(session.ws, "Indice vide.");
+      this.sendError(session.ws, "Proposition vide.");
       return;
     }
+    player.proposal = text;
 
-    room.clues.push({ playerId: session.playerId, text });
-    room.currentTurnIndex += 1;
-
-    if (room.currentTurnIndex >= room.turnOrder.length) {
-      room.phase = "vote";
-      room.votes = {};
+    if (allProposed(room)) {
+      const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
+      room.order = shuffle(connectedIds);
+      room.phase = "arrange";
     }
 
     await this.saveRoom();
     this.broadcast();
   }
 
-  private async onVote(session: Session, room: RoomState, msg: Record<string, unknown>) {
-    if (room.phase !== "vote") return;
-    const voter = room.players[session.playerId];
-    if (!voter || !voter.alive) return;
+  private async onMove(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (room.phase !== "arrange") return;
+    const mover = room.players[session.playerId];
+    if (!mover || !mover.connected) return;
 
-    const targetId = String(msg.targetId ?? "");
-    const target = room.players[targetId];
-    if (!target || !target.alive) {
-      this.sendError(session.ws, "Cible de vote invalide.");
-      return;
-    }
+    const targetId = String(msg.playerId ?? "");
+    if (!room.order.includes(targetId)) return;
 
-    room.votes[session.playerId] = targetId;
+    let toIndex = Math.trunc(Number(msg.toIndex));
+    if (!Number.isFinite(toIndex)) return;
 
-    const aliveIds = room.playerOrder.filter((id) => room.players[id]?.alive);
-    const allVoted = aliveIds.every((id) => room.votes[id]);
-    if (allVoted) {
-      this.resolveVote(room);
-    }
+    room.order = room.order.filter((id) => id !== targetId);
+    toIndex = Math.max(0, Math.min(toIndex, room.order.length));
+    room.order.splice(toIndex, 0, targetId);
 
     await this.saveRoom();
     this.broadcast();
   }
 
-  private resolveVote(room: RoomState) {
-    const result = tallyVotes(room);
+  private async onReveal(session: Session, room: RoomState) {
+    if (session.playerId !== room.hostId || room.phase !== "arrange") return;
 
-    if (result.tie || !result.eliminatedId) {
-      startNewRound(room);
-      room.lastVoteResult = result;
-      return;
-    }
-
-    const eliminated = room.players[result.eliminatedId];
-    eliminated.alive = false;
-    room.eliminatedHistory.push({ playerId: eliminated.id, role: eliminated.role! });
-
-    if (eliminated.role === "mrwhite") {
-      room.phase = "whiteguess";
-      room.pendingGuesserId = eliminated.id;
-      room.lastVoteResult = result;
-      return;
-    }
-
-    const winner = checkWinCondition(room);
-    if (winner) {
-      room.winner = winner;
-      room.phase = "ended";
-      room.lastVoteResult = result;
-      return;
-    }
-
-    startNewRound(room);
-    room.lastVoteResult = result;
-  }
-
-  private async onWhiteGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
-    if (room.phase !== "whiteguess" || session.playerId !== room.pendingGuesserId) return;
-
-    const guess = String(msg.word ?? "");
-    room.pendingGuesserId = null;
-
-    if (room.civilianWord && normalizeWord(guess) === normalizeWord(room.civilianWord)) {
-      room.winner = "mrwhite";
-      room.phase = "ended";
-    } else {
-      const winner = checkWinCondition(room);
-      if (winner) {
-        room.winner = winner;
-        room.phase = "ended";
-      } else {
-        startNewRound(room);
-      }
-    }
+    room.score = computeScore(room);
+    room.phase = "ended";
 
     await this.saveRoom();
     this.broadcast();
@@ -346,22 +266,13 @@ export class UndercoverRoom {
     if (session.playerId !== room.hostId || room.phase !== "ended") return;
 
     for (const player of Object.values(room.players)) {
-      player.alive = true;
-      player.role = undefined;
-      player.word = undefined;
+      player.number = null;
+      player.proposal = null;
     }
     room.phase = "lobby";
-    room.round = 0;
-    room.turnOrder = [];
-    room.currentTurnIndex = 0;
-    room.clues = [];
-    room.votes = {};
-    room.lastVoteResult = null;
-    room.eliminatedHistory = [];
-    room.civilianWord = null;
-    room.undercoverWord = null;
-    room.pendingGuesserId = null;
-    room.winner = null;
+    room.theme = null;
+    room.order = [];
+    room.score = null;
 
     await this.saveRoom();
     this.broadcast();
@@ -389,36 +300,25 @@ export class UndercoverRoom {
         id: p.id,
         name: p.name,
         connected: p.connected,
-        alive: p.alive,
         isHost: p.id === room.hostId,
-        role: revealAll || p.id === forPlayerId ? p.role : undefined,
+        proposal: p.proposal,
+        number: revealAll || p.id === forPlayerId ? p.number : undefined,
       }));
 
     const you = room.players[forPlayerId] ?? null;
+    const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
 
     return {
       code: room.code,
       phase: room.phase,
-      round: room.round,
       hostId: room.hostId,
+      theme: room.theme,
       players,
-      you: you && { id: you.id, role: you.role, word: you.word, alive: you.alive },
-      turnOrder: room.turnOrder,
-      currentTurnPlayerId: room.turnOrder[room.currentTurnIndex] ?? null,
-      clues: room.clues,
-      votesCast: Object.keys(room.votes).length,
-      votesNeeded: room.playerOrder.filter((id) => room.players[id]?.alive).length,
-      myVote: room.votes[forPlayerId] ?? null,
-      lastVoteResult: room.lastVoteResult,
-      eliminatedHistory: room.eliminatedHistory.map((e) => ({
-        ...e,
-        name: room.players[e.playerId]?.name ?? "?",
-      })),
-      pendingGuesserId: room.pendingGuesserId,
-      winner: room.winner,
-      civilianWord: revealAll ? room.civilianWord : undefined,
-      undercoverWord: revealAll ? room.undercoverWord : undefined,
-      settings: room.settings,
+      you: you && { id: you.id, number: you.number, proposal: you.proposal },
+      order: room.order,
+      proposalsSubmitted: connectedIds.filter((id) => room.players[id]?.proposal !== null).length,
+      proposalsNeeded: connectedIds.length,
+      score: room.score,
     };
   }
 }

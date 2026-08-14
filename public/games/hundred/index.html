@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>1 à 100 · RasenGames</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/hundred/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Join / create screen -->
+    <section id="screen-join" class="card narrow">
+      <h1>1 à 100</h1>
+      <p class="muted">Chacun reçoit un chiffre secret et propose un personnage qui l'incarne. Débattez pour vous ranger dans le bon ordre. 3 joueurs minimum.</p>
+
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
+
+      <div class="join-actions">
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lobby -->
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Partage ce code avec tes amis pour qu'ils rejoignent.</p>
+
+      <div id="players-list" class="players-list"></div>
+
+      <div id="host-settings" class="hidden">
+        <h3>Réglages</h3>
+        <label for="theme-input">Thème</label>
+        <input id="theme-input" type="text" maxlength="60" placeholder="Laisse vide pour un thème aléatoire" autocomplete="off" />
+        <button id="start-btn" class="btn">Démarrer la partie</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
+    </section>
+
+    <!-- Propose phase -->
+    <section id="screen-propose" class="hidden">
+      <div class="card">
+        <div class="muted small">Thème</div>
+        <h2 id="propose-theme"></h2>
+        <div class="muted small">Ton chiffre secret</div>
+        <div id="my-number" class="my-number">—</div>
+
+        <div id="propose-form" class="inline-form">
+          <input id="proposal-input" type="text" maxlength="40" placeholder="Un personnage qui correspond à ton chiffre" autocomplete="off" />
+          <button id="proposal-submit" class="btn">Envoyer</button>
+        </div>
+        <p id="proposal-done-hint" class="muted small hidden">Proposition envoyée, en attente des autres...</p>
+        <p class="muted small" id="propose-progress"></p>
+      </div>
+
+      <div class="card">
+        <h3>Propositions</h3>
+        <div id="proposals-list" class="players-list"></div>
+      </div>
+    </section>
+
+    <!-- Arrange phase -->
+    <section id="screen-arrange" class="hidden">
+      <div class="card">
+        <div class="muted small">Thème</div>
+        <h2 id="arrange-theme"></h2>
+        <p class="muted small">Glissez les cartes pour les ranger du plus petit (gauche) au plus grand (droite). Tout le monde peut déplacer n'importe quelle carte.</p>
+      </div>
+
+      <div class="card">
+        <div class="line-labels">
+          <span>1</span>
+          <span>100</span>
+        </div>
+        <div id="line" class="line"></div>
+        <button id="reveal-btn" class="btn hidden">Révéler</button>
+        <p id="reveal-hint" class="muted small hidden">En attente que l'hôte révèle les chiffres...</p>
+      </div>
+    </section>
+
+    <!-- Ended -->
+    <section id="screen-ended" class="hidden">
+      <div class="card">
+        <h2 id="end-title"></h2>
+        <p id="end-score" class="muted"></p>
+      </div>
+
+      <div class="card">
+        <div class="line-labels">
+          <span>1</span>
+          <span>100</span>
+        </div>
+        <div id="line-final" class="line"></div>
+        <button id="restart-btn" class="btn hidden">Rejouer</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/games/hundred/app.js"></script>
+</body>
+</html>

@@ -12,9 +12,17 @@ binding = "ASSETS"
 name = "UNDERCOVER_ROOM"
 class_name = "UndercoverRoom"
 
+[[durable_objects.bindings]]
+name = "HUNDRED_ROOM"
+class_name = "HundredRoom"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["UndercoverRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["HundredRoom"]
 
 # Custom domain: once reesch.com is active on this Cloudflare account,
 # uncomment and deploy again (or attach the route from the dashboard).

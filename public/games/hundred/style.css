@@ -1,0 +1,83 @@
+#screen-propose,
+#screen-arrange,
+#screen-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.my-number {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 6px 0 16px;
+}
+
+.line-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 0 4px 6px;
+}
+
+.line {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 8px 4px 20px;
+  min-height: 92px;
+  border-bottom: 2px dashed var(--border);
+}
+
+.card-token {
+  flex-shrink: 0;
+  width: 130px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-token.you {
+  border-color: var(--accent);
+}
+
+.card-token.dragging {
+  opacity: 0.6;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  cursor: grabbing;
+  z-index: 5;
+}
+
+.card-token .card-name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.card-token .card-proposal {
+  font-weight: 700;
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.card-token .card-number {
+  margin-top: 6px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+#reveal-btn,
+#restart-btn {
+  margin-top: 16px;
+}
+
+#end-score {
+  font-size: 1.05rem;
+}

@@ -10,11 +10,11 @@ export function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-export function defaultSettings(playerCount: number): Settings {
-  if (playerCount <= 4) return { undercoverCount: 1, mrWhiteCount: 0 };
-  if (playerCount <= 6) return { undercoverCount: 1, mrWhiteCount: 1 };
-  if (playerCount <= 8) return { undercoverCount: 2, mrWhiteCount: 1 };
-  return { undercoverCount: 3, mrWhiteCount: 1 };
+export function defaultSettings(playerCount: number, category: Settings["category"] = "random"): Settings {
+  if (playerCount <= 4) return { undercoverCount: 1, mrWhiteCount: 0, category };
+  if (playerCount <= 6) return { undercoverCount: 1, mrWhiteCount: 1, category };
+  if (playerCount <= 8) return { undercoverCount: 2, mrWhiteCount: 1, category };
+  return { undercoverCount: 3, mrWhiteCount: 1, category };
 }
 
 export function validateSettings(playerCount: number, settings: Settings): string | null {
@@ -32,7 +32,7 @@ export function assignRoles(room: RoomState): void {
     .map((id) => room.players[id])
     .filter((p): p is Player => !!p && p.connected !== false);
 
-  const pair = pickRandomPair();
+  const pair = pickRandomPair(room.settings.category);
   const [civilianWord, undercoverWord] = Math.random() < 0.5 ? [pair.a, pair.b] : [pair.b, pair.a];
   room.civilianWord = civilianWord;
   room.undercoverWord = undercoverWord;

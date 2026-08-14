@@ -44,6 +44,15 @@
       <div id="host-settings" class="hidden">
         <h3>Réglages</h3>
         <div class="settings-row">
+          <label for="category-select">Catégorie</label>
+          <select id="category-select">
+            <option value="random">Aléatoire (tout mélangé)</option>
+            <option value="character">Personnages</option>
+            <option value="technique">Techniques / Jutsu</option>
+            <option value="anime">Titres d'anime</option>
+          </select>
+        </div>
+        <div class="settings-row">
           <label for="undercover-count">Undercover</label>
           <input id="undercover-count" type="number" min="0" max="6" />
         </div>
@@ -70,7 +79,7 @@
         </div>
 
         <div class="card">
-          <div class="muted small">Manche <span id="round-number">1</span></div>
+          <div class="muted small">Manche <span id="round-number">1</span> · <span id="category-label"></span></div>
           <div id="phase-label" class="phase-label"></div>
           <div id="players-mini" class="players-mini"></div>
         </div>
@@ -79,7 +88,7 @@
       <div class="card" id="clue-panel">
         <h3>Indices</h3>
         <ol id="clue-list" class="clue-list"></ol>
-        <div id="clue-form" class="hidden clue-form">
+        <div id="clue-form" class="hidden inline-form">
           <input id="clue-input" type="text" maxlength="60" placeholder="Ton indice (un mot)" autocomplete="off" />
           <button id="clue-submit" class="btn">Envoyer</button>
         </div>
@@ -95,7 +104,7 @@
       <div class="card hidden" id="whiteguess-panel">
         <h3>Mr. White tente sa chance</h3>
         <p id="whiteguess-info" class="muted"></p>
-        <div id="whiteguess-form" class="hidden clue-form">
+        <div id="whiteguess-form" class="hidden inline-form">
           <input id="whiteguess-input" type="text" maxlength="30" placeholder="Le mot des civils ?" autocomplete="off" />
           <button id="whiteguess-submit" class="btn">Deviner</button>
         </div>
