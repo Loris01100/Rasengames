@@ -79,6 +79,8 @@
   const OTHER_GAMES = [
     { slug: "hundred", label: "1 à 100" },
     { slug: "bac", label: "Petit Bac" },
+    { slug: "whoami", label: "Qui suis-je" },
+    { slug: "detective", label: "Détective Anime" },
   ];
 
   function populateSwitchGameSelect() {

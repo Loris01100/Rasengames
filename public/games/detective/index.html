@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Détective Anime · RasenGames</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/detective/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+    <div id="switch-game" class="switch-game hidden">
+      <select id="switch-game-select"></select>
+      <button id="switch-game-btn" class="btn secondary small">Changer de jeu</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Join / create screen -->
+    <section id="screen-join" class="card narrow">
+      <h1>Détective Anime</h1>
+      <p class="muted">Duel à 2. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle de l'autre, et tente de la deviner en premier.</p>
+
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
+
+      <div class="join-actions">
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lobby -->
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Partage ce code avec ton adversaire (2 joueurs max).</p>
+
+      <div id="players-list" class="players-list"></div>
+
+      <div id="host-settings" class="hidden">
+        <button id="start-btn" class="btn">Démarrer la partie</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
+    </section>
+
+    <!-- Setup: pick a secret category -->
+    <section id="screen-setup" class="hidden">
+      <div class="card narrow">
+        <h2>Ta catégorie secrète</h2>
+        <p class="muted small">Ex: "a les cheveux roses", "a souffert", "porte des lunettes"... Ton adversaire devra deviner laquelle tu as choisie.</p>
+        <div id="category-form" class="inline-form">
+          <input id="category-input" type="text" maxlength="60" placeholder="Ta catégorie" autocomplete="off" />
+          <button id="category-submit" class="btn">Prêt</button>
+        </div>
+        <p id="category-done-hint" class="muted small hidden">Catégorie enregistrée, en attente de l'adversaire...</p>
+      </div>
+    </section>
+
+    <!-- Play -->
+    <section id="screen-play" class="hidden">
+      <div class="card">
+        <div class="muted small">Ta catégorie secrète</div>
+        <h3 id="my-category"></h3>
+      </div>
+
+      <div id="incoming-panel" class="card hidden">
+        <h3 id="incoming-title"></h3>
+        <p id="incoming-text" class="incoming-text"></p>
+        <div class="incoming-actions">
+          <button id="incoming-yes" class="btn">Oui</button>
+          <button id="incoming-no" class="btn secondary">Non</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Proposer un personnage</h3>
+        <p class="muted small">Teste si ce perso correspond à la catégorie secrète de ton adversaire.</p>
+        <div id="propose-form" class="inline-form">
+          <input id="propose-input" type="text" maxlength="40" placeholder="Nom du personnage" autocomplete="off" />
+          <button id="propose-submit" class="btn">Proposer</button>
+        </div>
+        <p id="propose-wait-hint" class="muted small hidden">En attente de la réponse de ton adversaire...</p>
+      </div>
+
+      <div class="card">
+        <h3>Deviner sa catégorie</h3>
+        <div id="guess-form" class="inline-form">
+          <input id="guess-input" type="text" maxlength="60" placeholder="Sa catégorie est..." autocomplete="off" />
+          <button id="guess-submit" class="btn secondary">Deviner</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Historique</h3>
+        <ul id="log-list" class="detective-log"></ul>
+      </div>
+    </section>
+
+    <!-- Ended -->
+    <section id="screen-ended" class="hidden">
+      <div class="card">
+        <h2 id="end-title"></h2>
+        <p id="end-categories" class="muted"></p>
+        <button id="restart-btn" class="btn hidden">Rejouer</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
+      </div>
+
+      <div class="card">
+        <h3>Historique</h3>
+        <ul id="end-log-list" class="detective-log"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script src="/games/detective/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+#screen-setup,
+#screen-play,
+#screen-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#my-category {
+  margin: 4px 0 0;
+  color: var(--accent);
+}
+
+#incoming-panel {
+  border-color: var(--accent);
+}
+
+.incoming-text {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 8px 0 16px;
+}
+
+.incoming-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.detective-log {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detective-log li {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+#restart-btn {
+  margin-top: 12px;
+}

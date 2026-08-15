@@ -207,6 +207,8 @@
   const OTHER_GAMES = [
     { slug: "undercover", label: "Undercover" },
     { slug: "bac", label: "Petit Bac" },
+    { slug: "whoami", label: "Qui suis-je" },
+    { slug: "detective", label: "Détective Anime" },
   ];
 
   function populateSwitchGameSelect() {

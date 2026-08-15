@@ -2,9 +2,11 @@ import type { Env } from "./env";
 import { UndercoverRoom } from "./games/undercover/room";
 import { HundredRoom } from "./games/hundred/room";
 import { BacRoom } from "./games/bac/room";
+import { WhoamiRoom } from "./games/whoami/room";
+import { DetectiveRoom } from "./games/detective/room";
 import { createRoomCode } from "./lib/rooms";
 
-export { UndercoverRoom, HundredRoom, BacRoom };
+export { UndercoverRoom, HundredRoom, BacRoom, WhoamiRoom, DetectiveRoom };
 
 interface GameRoute {
   slug: string;
@@ -15,6 +17,8 @@ const GAMES: GameRoute[] = [
   { slug: "undercover", namespace: (env) => env.UNDERCOVER_ROOM },
   { slug: "hundred", namespace: (env) => env.HUNDRED_ROOM },
   { slug: "bac", namespace: (env) => env.BAC_ROOM },
+  { slug: "whoami", namespace: (env) => env.WHOAMI_ROOM },
+  { slug: "detective", namespace: (env) => env.DETECTIVE_ROOM },
 ];
 
 export default {

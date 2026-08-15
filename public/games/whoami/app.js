@@ -1,26 +1,10 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
-  // Kept in sync with src/games/bac/categories.ts.
-  const CATEGORIES = [
-    { id: "anime", label: "Anime / Manga" },
-    { id: "hero", label: "Personnage principal" },
-    { id: "sidekick", label: "Personnage secondaire" },
-    { id: "villain", label: "Antagoniste" },
-    { id: "technique", label: "Technique / Pouvoir" },
-    { id: "item", label: "Objet / Arme" },
-    { id: "place", label: "Lieu / Monde" },
-    { id: "guild", label: "Guilde / Clan / Équipe" },
-    { id: "creature", label: "Animal / Créature" },
-    { id: "studio", label: "Studio d'animation" },
-  ];
-  const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label]));
-
   const OTHER_GAMES = [
     { slug: "undercover", label: "Undercover" },
     { slug: "hundred", label: "1 à 100" },
-    { slug: "whoami", label: "Qui suis-je" },
-    { slug: "detective", label: "Détective Anime" },
+    { slug: "bac", label: "Petit Bac" },
   ];
 
   const el = {
@@ -40,20 +24,21 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
-    categoryCheckboxes: $("category-checkboxes"),
     startBtn: $("start-btn"),
     startHint: $("start-hint"),
     waitingHost: $("waiting-host"),
 
     screenPlay: $("screen-play"),
-    playLetter: $("play-letter"),
-    stopBtn: $("stop-btn"),
-    answersForm: $("answers-form"),
+    guessForm: $("guess-form"),
+    guessInput: $("guess-input"),
+    guessSubmit: $("guess-submit"),
+    foundHint: $("found-hint"),
+    endRoundBtn: $("end-round-btn"),
+    othersList: $("others-list"),
 
     screenEnded: $("screen-ended"),
-    endTitle: $("end-title"),
-    endStoppedBy: $("end-stopped-by"),
-    resultsTable: $("results-table"),
+    ranking: $("ranking"),
+    revealGrid: $("reveal-grid"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
@@ -74,11 +59,11 @@
 
   function wsUrl(code) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${location.host}/ws/bac/${code}`;
+    return `${proto}://${location.host}/ws/whoami/${code}`;
   }
 
   function storageKey(code, suffix) {
-    return `bac:${code}:${suffix}`;
+    return `whoami:${code}:${suffix}`;
   }
 
   function connect(code, name, token, asHost) {
@@ -131,7 +116,7 @@
       myPlayerId = msg.playerId;
       localStorage.setItem(storageKey(roomCode, "token"), msg.token);
       localStorage.setItem(storageKey(roomCode, "name"), el.nameInput.value.trim() || "Joueur");
-      localStorage.setItem("bac:lastName", el.nameInput.value.trim() || "Joueur");
+      localStorage.setItem("whoami:lastName", el.nameInput.value.trim() || "Joueur");
       const params = new URLSearchParams(location.search);
       params.set("room", roomCode);
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
@@ -156,22 +141,6 @@
   function showScreen(screen) {
     for (const s of SCREENS) s.classList.toggle("hidden", s !== screen);
   }
-
-  function populateCategoryCheckboxes() {
-    el.categoryCheckboxes.innerHTML = "";
-    for (const cat of CATEGORIES) {
-      const label = document.createElement("label");
-      label.className = "category-checkbox";
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.value = cat.id;
-      input.checked = true;
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(cat.label));
-      el.categoryCheckboxes.appendChild(label);
-    }
-  }
-  populateCategoryCheckboxes();
 
   function populateSwitchGameSelect() {
     el.switchGameSelect.innerHTML = "";
@@ -249,124 +218,102 @@
     }
   }
 
-  // Rebuilt only when a new round's letter shows up, so unrelated re-renders
-  // (another player disconnecting, etc.) don't wipe out what you're typing.
-  let answersFormLetter = null;
-  const answerDebounce = {};
+  function characterCard(p) {
+    const card = document.createElement("div");
+    card.className = "whoami-card";
+    if (p.found) card.classList.add("found");
+
+    if (p.characterImage) {
+      const img = document.createElement("img");
+      img.className = "whoami-image";
+      img.src = p.characterImage;
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      card.appendChild(img);
+    }
+
+    const name = document.createElement("div");
+    name.className = "whoami-owner";
+    name.textContent = p.name + (p.id === myPlayerId ? " (toi)" : "");
+    card.appendChild(name);
+
+    const character = document.createElement("div");
+    character.className = "whoami-character";
+    character.textContent = p.character ?? "?";
+    card.appendChild(character);
+
+    if (p.found) {
+      const badge = document.createElement("div");
+      badge.className = "whoami-found-badge";
+      badge.textContent = "Trouvé ✓";
+      card.appendChild(badge);
+    }
+
+    return card;
+  }
 
   function renderPlay(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
-    el.playLetter.textContent = state.letter;
 
-    if (answersFormLetter === state.letter) return;
-    answersFormLetter = state.letter;
+    const you = state.players.find((p) => p.id === myPlayerId);
+    const isHost = state.hostId === myPlayerId;
 
-    el.answersForm.innerHTML = "";
-    for (const catId of state.categories) {
-      const row = document.createElement("div");
-      row.className = "answer-row";
+    el.guessForm.classList.toggle("hidden", !!you?.found);
+    el.foundHint.classList.toggle("hidden", !you?.found);
+    el.endRoundBtn.classList.toggle("hidden", !isHost);
 
-      const label = document.createElement("label");
-      label.textContent = CATEGORY_LABELS[catId] ?? catId;
-      row.appendChild(label);
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.maxLength = 40;
-      input.autocomplete = "off";
-      input.value = state.you?.answers?.[catId] ?? "";
-      input.placeholder = `Commence par ${state.letter}...`;
-      input.addEventListener("input", () => {
-        clearTimeout(answerDebounce[catId]);
-        answerDebounce[catId] = setTimeout(() => {
-          send({ type: "answer", category: catId, text: input.value });
-        }, 250);
-      });
-      row.appendChild(input);
-
-      el.answersForm.appendChild(row);
+    el.othersList.innerHTML = "";
+    for (const p of state.players) {
+      if (p.id === myPlayerId) continue;
+      el.othersList.appendChild(characterCard(p));
     }
   }
 
   function renderEnded(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
-    answersFormLetter = null;
 
-    el.endTitle.textContent = `Stop ! Lettre ${state.result?.letter ?? ""}`;
-    el.endStoppedBy.textContent = state.stoppedByName
-      ? `${state.stoppedByName} a crié stop en premier.`
-      : "";
+    el.ranking.innerHTML = "";
+    state.foundOrder.forEach((playerId, index) => {
+      const p = state.players.find((pl) => pl.id === playerId);
+      if (!p) return;
+      const row = document.createElement("div");
+      row.className = "player-row";
+      if (p.id === myPlayerId) row.classList.add("you");
 
-    renderResultsTable(state);
+      const rank = document.createElement("span");
+      rank.className = "dot";
+      rank.textContent = "";
+      row.appendChild(rank);
+
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = `${index + 1}. ${p.name}${p.id === myPlayerId ? " (toi)" : ""}`;
+      row.appendChild(name);
+
+      el.ranking.appendChild(row);
+    });
+
+    const notFound = state.players.filter((p) => !state.foundOrder.includes(p.id));
+    for (const p of notFound) {
+      const row = document.createElement("div");
+      row.className = "player-row offline";
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = `${p.name}${p.id === myPlayerId ? " (toi)" : ""} — n'a pas trouvé`;
+      row.appendChild(name);
+      el.ranking.appendChild(row);
+    }
+
+    el.revealGrid.innerHTML = "";
+    for (const p of state.players) {
+      el.revealGrid.appendChild(characterCard(p));
+    }
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
-  }
-
-  function renderResultsTable(state) {
-    const result = state.result;
-    el.resultsTable.innerHTML = "";
-    if (!result) return;
-
-    const players = state.players.filter((p) => result.totals[p.id] !== undefined);
-
-    const thead = document.createElement("thead");
-    const headRow = document.createElement("tr");
-    headRow.appendChild(document.createElement("th"));
-    for (const p of players) {
-      const th = document.createElement("th");
-      th.textContent = p.name + (p.id === myPlayerId ? " (toi)" : "");
-      headRow.appendChild(th);
-    }
-    thead.appendChild(headRow);
-    el.resultsTable.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    for (const catResult of result.byCategory) {
-      const tr = document.createElement("tr");
-      const th = document.createElement("th");
-      th.className = "category-name";
-      th.textContent = CATEGORY_LABELS[catResult.category] ?? catResult.category;
-      tr.appendChild(th);
-
-      for (const p of players) {
-        const entry = catResult.entries.find((e) => e.playerId === p.id);
-        const td = document.createElement("td");
-        if (entry) {
-          td.classList.add(entry.valid ? (entry.points === 2 ? "score-unique" : "score-duplicate") : "score-invalid");
-          const answer = document.createElement("div");
-          answer.className = "answer-text";
-          answer.textContent = entry.answer.trim() || "—";
-          td.appendChild(answer);
-          const points = document.createElement("div");
-          points.className = "answer-points";
-          points.textContent = `${entry.points} pt${entry.points > 1 ? "s" : ""}`;
-          td.appendChild(points);
-        }
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    el.resultsTable.appendChild(tbody);
-
-    const maxTotal = Math.max(...players.map((p) => result.totals[p.id] ?? 0));
-    const tfoot = document.createElement("tfoot");
-    const totalRow = document.createElement("tr");
-    const totalTh = document.createElement("th");
-    totalTh.textContent = "Total";
-    totalRow.appendChild(totalTh);
-    for (const p of players) {
-      const td = document.createElement("td");
-      td.className = "total-cell";
-      const total = result.totals[p.id] ?? 0;
-      td.textContent = total + (total === maxTotal && maxTotal > 0 ? " 🏆" : "");
-      totalRow.appendChild(td);
-    }
-    tfoot.appendChild(totalRow);
-    el.resultsTable.appendChild(tfoot);
   }
 
   // ---- events ----
@@ -376,7 +323,7 @@
     if (!name) return showToast("Entre un pseudo d'abord.");
     el.createBtn.disabled = true;
     try {
-      const res = await fetch("/api/bac/create", { method: "POST" });
+      const res = await fetch("/api/whoami/create", { method: "POST" });
       if (!res.ok) throw new Error("Erreur serveur");
       const { code } = await res.json();
       connect(code, name);
@@ -399,15 +346,20 @@
     if (e.key === "Enter") el.joinBtn.click();
   });
 
-  el.startBtn.addEventListener("click", () => {
-    const categories = Array.from(el.categoryCheckboxes.querySelectorAll("input:checked")).map(
-      (input) => input.value
-    );
-    if (categories.length === 0) return showToast("Choisis au moins une catégorie.");
-    send({ type: "start", categories });
-  });
+  el.startBtn.addEventListener("click", () => send({ type: "start" }));
 
-  el.stopBtn.addEventListener("click", () => send({ type: "stop" }));
+  el.guessSubmit.addEventListener("click", submitGuess);
+  el.guessInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitGuess();
+  });
+  function submitGuess() {
+    const text = el.guessInput.value.trim();
+    if (!text) return;
+    send({ type: "guess", text });
+    el.guessInput.value = "";
+  }
+
+  el.endRoundBtn.addEventListener("click", () => send({ type: "endRound" }));
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
   el.switchGameBtn.addEventListener("click", () => {
@@ -425,7 +377,7 @@
     const codeFromUrl = params.get("room");
     const autojoinName = params.get("autojoin");
     const asHost = params.get("asHost") === "1";
-    const lastName = localStorage.getItem("bac:lastName");
+    const lastName = localStorage.getItem("whoami:lastName");
     if (lastName) el.nameInput.value = lastName;
 
     if (codeFromUrl) {

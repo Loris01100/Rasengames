@@ -1,26 +1,11 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
-  // Kept in sync with src/games/bac/categories.ts.
-  const CATEGORIES = [
-    { id: "anime", label: "Anime / Manga" },
-    { id: "hero", label: "Personnage principal" },
-    { id: "sidekick", label: "Personnage secondaire" },
-    { id: "villain", label: "Antagoniste" },
-    { id: "technique", label: "Technique / Pouvoir" },
-    { id: "item", label: "Objet / Arme" },
-    { id: "place", label: "Lieu / Monde" },
-    { id: "guild", label: "Guilde / Clan / Équipe" },
-    { id: "creature", label: "Animal / Créature" },
-    { id: "studio", label: "Studio d'animation" },
-  ];
-  const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label]));
-
   const OTHER_GAMES = [
     { slug: "undercover", label: "Undercover" },
     { slug: "hundred", label: "1 à 100" },
+    { slug: "bac", label: "Petit Bac" },
     { slug: "whoami", label: "Qui suis-je" },
-    { slug: "detective", label: "Détective Anime" },
   ];
 
   const el = {
@@ -40,20 +25,36 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
-    categoryCheckboxes: $("category-checkboxes"),
     startBtn: $("start-btn"),
     startHint: $("start-hint"),
     waitingHost: $("waiting-host"),
 
+    screenSetup: $("screen-setup"),
+    categoryForm: $("category-form"),
+    categoryInput: $("category-input"),
+    categorySubmit: $("category-submit"),
+    categoryDoneHint: $("category-done-hint"),
+
     screenPlay: $("screen-play"),
-    playLetter: $("play-letter"),
-    stopBtn: $("stop-btn"),
-    answersForm: $("answers-form"),
+    myCategory: $("my-category"),
+    incomingPanel: $("incoming-panel"),
+    incomingTitle: $("incoming-title"),
+    incomingText: $("incoming-text"),
+    incomingYes: $("incoming-yes"),
+    incomingNo: $("incoming-no"),
+    proposeForm: $("propose-form"),
+    proposeInput: $("propose-input"),
+    proposeSubmit: $("propose-submit"),
+    proposeWaitHint: $("propose-wait-hint"),
+    guessForm: $("guess-form"),
+    guessInput: $("guess-input"),
+    guessSubmit: $("guess-submit"),
+    logList: $("log-list"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
-    endStoppedBy: $("end-stopped-by"),
-    resultsTable: $("results-table"),
+    endCategories: $("end-categories"),
+    endLogList: $("end-log-list"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
@@ -74,11 +75,11 @@
 
   function wsUrl(code) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${location.host}/ws/bac/${code}`;
+    return `${proto}://${location.host}/ws/detective/${code}`;
   }
 
   function storageKey(code, suffix) {
-    return `bac:${code}:${suffix}`;
+    return `detective:${code}:${suffix}`;
   }
 
   function connect(code, name, token, asHost) {
@@ -131,7 +132,7 @@
       myPlayerId = msg.playerId;
       localStorage.setItem(storageKey(roomCode, "token"), msg.token);
       localStorage.setItem(storageKey(roomCode, "name"), el.nameInput.value.trim() || "Joueur");
-      localStorage.setItem("bac:lastName", el.nameInput.value.trim() || "Joueur");
+      localStorage.setItem("detective:lastName", el.nameInput.value.trim() || "Joueur");
       const params = new URLSearchParams(location.search);
       params.set("room", roomCode);
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
@@ -151,27 +152,11 @@
 
   // ---- rendering ----
 
-  const SCREENS = [el.screenJoin, el.screenLobby, el.screenPlay, el.screenEnded];
+  const SCREENS = [el.screenJoin, el.screenLobby, el.screenSetup, el.screenPlay, el.screenEnded];
 
   function showScreen(screen) {
     for (const s of SCREENS) s.classList.toggle("hidden", s !== screen);
   }
-
-  function populateCategoryCheckboxes() {
-    el.categoryCheckboxes.innerHTML = "";
-    for (const cat of CATEGORIES) {
-      const label = document.createElement("label");
-      label.className = "category-checkbox";
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.value = cat.id;
-      input.checked = true;
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(cat.label));
-      el.categoryCheckboxes.appendChild(label);
-    }
-  }
-  populateCategoryCheckboxes();
 
   function populateSwitchGameSelect() {
     el.switchGameSelect.innerHTML = "";
@@ -190,6 +175,9 @@
     if (state.phase === "lobby") {
       showScreen(el.screenLobby);
       renderLobby(state);
+    } else if (state.phase === "setup") {
+      showScreen(el.screenSetup);
+      renderSetup(state);
     } else if (state.phase === "play") {
       showScreen(el.screenPlay);
       renderPlay(state);
@@ -238,135 +226,80 @@
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
       el.waitingHost.classList.add("hidden");
-      const canStart = connectedCount >= 2;
+      const canStart = connectedCount === 2;
       el.startBtn.disabled = !canStart;
-      el.startHint.textContent = canStart
-        ? ""
-        : `Il faut au moins 2 joueurs connectés (actuellement ${connectedCount}).`;
+      el.startHint.textContent = canStart ? "" : "Il faut exactement 2 joueurs connectés.";
     } else {
       el.hostSettings.classList.add("hidden");
       el.waitingHost.classList.remove("hidden");
     }
   }
 
-  // Rebuilt only when a new round's letter shows up, so unrelated re-renders
-  // (another player disconnecting, etc.) don't wipe out what you're typing.
-  let answersFormLetter = null;
-  const answerDebounce = {};
+  function renderSetup(state) {
+    el.roomBadge.textContent = state.code;
+    el.roomBadge.classList.remove("hidden");
+
+    const you = state.players.find((p) => p.id === myPlayerId);
+    const ready = !!you?.ready;
+    el.categoryForm.classList.toggle("hidden", ready);
+    el.categoryDoneHint.classList.toggle("hidden", !ready);
+  }
+
+  function renderLog(state, listEl) {
+    listEl.innerHTML = "";
+    const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? "?";
+    for (const entry of [...state.log].reverse()) {
+      const li = document.createElement("li");
+      const who = nameOf(entry.from) + (entry.from === myPlayerId ? " (toi)" : "");
+      const verb = entry.kind === "proposal" ? "a proposé" : "a deviné";
+      const outcome =
+        entry.kind === "proposal" ? (entry.fits ? "Oui ✅" : "Non ❌") : entry.fits ? "Correct ✅" : "Faux ❌";
+      li.textContent = `${who} ${verb} « ${entry.text} » → ${outcome}`;
+      listEl.appendChild(li);
+    }
+  }
 
   function renderPlay(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
-    el.playLetter.textContent = state.letter;
+    el.myCategory.textContent = state.you?.category ?? "";
 
-    if (answersFormLetter === state.letter) return;
-    answersFormLetter = state.letter;
-
-    el.answersForm.innerHTML = "";
-    for (const catId of state.categories) {
-      const row = document.createElement("div");
-      row.className = "answer-row";
-
-      const label = document.createElement("label");
-      label.textContent = CATEGORY_LABELS[catId] ?? catId;
-      row.appendChild(label);
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.maxLength = 40;
-      input.autocomplete = "off";
-      input.value = state.you?.answers?.[catId] ?? "";
-      input.placeholder = `Commence par ${state.letter}...`;
-      input.addEventListener("input", () => {
-        clearTimeout(answerDebounce[catId]);
-        answerDebounce[catId] = setTimeout(() => {
-          send({ type: "answer", category: catId, text: input.value });
-        }, 250);
-      });
-      row.appendChild(input);
-
-      el.answersForm.appendChild(row);
+    const incoming = state.you?.incoming;
+    el.incomingPanel.classList.toggle("hidden", !incoming);
+    if (incoming) {
+      const fromName = state.opponent?.name ?? "Ton adversaire";
+      el.incomingTitle.textContent =
+        incoming.kind === "proposal"
+          ? `${fromName} propose un personnage pour TA catégorie`
+          : `${fromName} pense connaître TA catégorie`;
+      el.incomingText.textContent = incoming.text;
     }
+
+    const busy = !!state.opponent?.busy;
+    el.proposeForm.classList.toggle("hidden", busy);
+    el.guessForm.classList.toggle("hidden", busy);
+    el.proposeWaitHint.classList.toggle("hidden", !busy);
+
+    renderLog(state, el.logList);
   }
 
   function renderEnded(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
-    answersFormLetter = null;
 
-    el.endTitle.textContent = `Stop ! Lettre ${state.result?.letter ?? ""}`;
-    el.endStoppedBy.textContent = state.stoppedByName
-      ? `${state.stoppedByName} a crié stop en premier.`
-      : "";
+    const iWon = state.winner === myPlayerId;
+    el.endTitle.textContent = iWon ? "Tu as gagné ! 🎉" : `${state.winnerName ?? "?"} a gagné !`;
 
-    renderResultsTable(state);
+    const myCat = state.you?.category ?? "?";
+    const oppName = state.opponent?.name ?? "L'adversaire";
+    const oppCat = state.opponent?.category ?? "?";
+    el.endCategories.textContent = `Ta catégorie : ${myCat} — Catégorie de ${oppName} : ${oppCat}`;
+
+    renderLog(state, el.endLogList);
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
-  }
-
-  function renderResultsTable(state) {
-    const result = state.result;
-    el.resultsTable.innerHTML = "";
-    if (!result) return;
-
-    const players = state.players.filter((p) => result.totals[p.id] !== undefined);
-
-    const thead = document.createElement("thead");
-    const headRow = document.createElement("tr");
-    headRow.appendChild(document.createElement("th"));
-    for (const p of players) {
-      const th = document.createElement("th");
-      th.textContent = p.name + (p.id === myPlayerId ? " (toi)" : "");
-      headRow.appendChild(th);
-    }
-    thead.appendChild(headRow);
-    el.resultsTable.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    for (const catResult of result.byCategory) {
-      const tr = document.createElement("tr");
-      const th = document.createElement("th");
-      th.className = "category-name";
-      th.textContent = CATEGORY_LABELS[catResult.category] ?? catResult.category;
-      tr.appendChild(th);
-
-      for (const p of players) {
-        const entry = catResult.entries.find((e) => e.playerId === p.id);
-        const td = document.createElement("td");
-        if (entry) {
-          td.classList.add(entry.valid ? (entry.points === 2 ? "score-unique" : "score-duplicate") : "score-invalid");
-          const answer = document.createElement("div");
-          answer.className = "answer-text";
-          answer.textContent = entry.answer.trim() || "—";
-          td.appendChild(answer);
-          const points = document.createElement("div");
-          points.className = "answer-points";
-          points.textContent = `${entry.points} pt${entry.points > 1 ? "s" : ""}`;
-          td.appendChild(points);
-        }
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    el.resultsTable.appendChild(tbody);
-
-    const maxTotal = Math.max(...players.map((p) => result.totals[p.id] ?? 0));
-    const tfoot = document.createElement("tfoot");
-    const totalRow = document.createElement("tr");
-    const totalTh = document.createElement("th");
-    totalTh.textContent = "Total";
-    totalRow.appendChild(totalTh);
-    for (const p of players) {
-      const td = document.createElement("td");
-      td.className = "total-cell";
-      const total = result.totals[p.id] ?? 0;
-      td.textContent = total + (total === maxTotal && maxTotal > 0 ? " 🏆" : "");
-      totalRow.appendChild(td);
-    }
-    tfoot.appendChild(totalRow);
-    el.resultsTable.appendChild(tfoot);
   }
 
   // ---- events ----
@@ -376,7 +309,7 @@
     if (!name) return showToast("Entre un pseudo d'abord.");
     el.createBtn.disabled = true;
     try {
-      const res = await fetch("/api/bac/create", { method: "POST" });
+      const res = await fetch("/api/detective/create", { method: "POST" });
       if (!res.ok) throw new Error("Erreur serveur");
       const { code } = await res.json();
       connect(code, name);
@@ -399,15 +332,43 @@
     if (e.key === "Enter") el.joinBtn.click();
   });
 
-  el.startBtn.addEventListener("click", () => {
-    const categories = Array.from(el.categoryCheckboxes.querySelectorAll("input:checked")).map(
-      (input) => input.value
-    );
-    if (categories.length === 0) return showToast("Choisis au moins une catégorie.");
-    send({ type: "start", categories });
-  });
+  el.startBtn.addEventListener("click", () => send({ type: "start" }));
 
-  el.stopBtn.addEventListener("click", () => send({ type: "stop" }));
+  el.categorySubmit.addEventListener("click", submitCategory);
+  el.categoryInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitCategory();
+  });
+  function submitCategory() {
+    const text = el.categoryInput.value.trim();
+    if (!text) return;
+    send({ type: "setCategory", text });
+  }
+
+  el.incomingYes.addEventListener("click", () => send({ type: "answerIncoming", fits: true }));
+  el.incomingNo.addEventListener("click", () => send({ type: "answerIncoming", fits: false }));
+
+  el.proposeSubmit.addEventListener("click", submitPropose);
+  el.proposeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitPropose();
+  });
+  function submitPropose() {
+    const text = el.proposeInput.value.trim();
+    if (!text) return;
+    send({ type: "proposeCharacter", text });
+    el.proposeInput.value = "";
+  }
+
+  el.guessSubmit.addEventListener("click", submitGuess);
+  el.guessInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitGuess();
+  });
+  function submitGuess() {
+    const text = el.guessInput.value.trim();
+    if (!text) return;
+    send({ type: "guessCategory", text });
+    el.guessInput.value = "";
+  }
+
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
   el.switchGameBtn.addEventListener("click", () => {
@@ -425,7 +386,7 @@
     const codeFromUrl = params.get("room");
     const autojoinName = params.get("autojoin");
     const asHost = params.get("asHost") === "1";
-    const lastName = localStorage.getItem("bac:lastName");
+    const lastName = localStorage.getItem("detective:lastName");
     if (lastName) el.nameInput.value = lastName;
 
     if (codeFromUrl) {
