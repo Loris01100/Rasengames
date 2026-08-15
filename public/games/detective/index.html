@@ -79,16 +79,16 @@
           <button id="incoming-yes" class="btn">Oui</button>
           <button id="incoming-no" class="btn secondary">Non</button>
         </div>
+        <p id="incoming-more-hint" class="muted small hidden"></p>
       </div>
 
       <div class="card">
         <h3>Proposer un personnage</h3>
-        <p class="muted small">Teste si ce perso correspond à la catégorie secrète de ton adversaire.</p>
+        <p class="muted small">Teste si ce perso correspond à la catégorie secrète de ton adversaire. Pas besoin d'attendre sa réponse pour en reproposer un autre.</p>
         <div id="propose-form" class="inline-form">
           <input id="propose-input" type="text" maxlength="40" placeholder="Nom du personnage" autocomplete="off" />
           <button id="propose-submit" class="btn">Proposer</button>
         </div>
-        <p id="propose-wait-hint" class="muted small hidden">En attente de la réponse de ton adversaire...</p>
       </div>
 
       <div class="card">
@@ -100,8 +100,7 @@
       </div>
 
       <div class="card">
-        <h3>Historique</h3>
-        <ul id="log-list" class="detective-log"></ul>
+        <div id="log-columns" class="detective-columns"></div>
       </div>
     </section>
 
@@ -115,8 +114,7 @@
       </div>
 
       <div class="card">
-        <h3>Historique</h3>
-        <ul id="end-log-list" class="detective-log"></ul>
+        <div id="end-log-columns" class="detective-columns"></div>
       </div>
     </section>
   </main>

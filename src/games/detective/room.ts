@@ -189,7 +189,7 @@ export class DetectiveRoom {
       connected: true,
       category: null,
       ready: false,
-      incoming: null,
+      incoming: [],
     };
     room.players[id] = player;
     room.playerOrder.push(id);
@@ -219,7 +219,7 @@ export class DetectiveRoom {
     for (const player of Object.values(room.players)) {
       player.category = null;
       player.ready = false;
-      player.incoming = null;
+      player.incoming = [];
     }
     room.log = [];
     room.winner = null;
@@ -264,15 +264,10 @@ export class DetectiveRoom {
     const opponent = room.players[opponentId];
     if (!opponent || !opponent.connected) return;
 
-    if (opponent.incoming) {
-      this.sendError(session.ws, "Attends que ton adversaire réponde d'abord.");
-      return;
-    }
-
     const text = String(msg.text ?? "").trim().slice(0, MAX_TEXT_LENGTH);
     if (!text) return;
 
-    opponent.incoming = { from, kind, text };
+    opponent.incoming.push({ from, kind, text });
 
     await this.saveRoom();
     this.broadcast();
@@ -281,12 +276,11 @@ export class DetectiveRoom {
   private async onAnswerIncoming(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "play") return;
     const player = room.players[session.playerId];
-    if (!player || !player.incoming) return;
+    if (!player || player.incoming.length === 0) return;
 
     const fits = msg.fits === true;
-    const { from, kind, text } = player.incoming;
+    const { from, kind, text } = player.incoming.shift()!;
     room.log.push({ kind, from, text, fits });
-    player.incoming = null;
 
     if (kind === "guess" && fits) {
       room.phase = "ended";
@@ -303,7 +297,7 @@ export class DetectiveRoom {
     for (const player of Object.values(room.players)) {
       player.category = null;
       player.ready = false;
-      player.incoming = null;
+      player.incoming = [];
     }
     room.log = [];
     room.winner = null;
@@ -380,7 +374,7 @@ export class DetectiveRoom {
         name: opponent.name,
         connected: opponent.connected,
         ready: opponent.ready,
-        busy: opponent.incoming !== null,
+        pendingCount: opponent.incoming.length,
         category: revealAll ? opponent.category : null,
       },
       log: room.log,

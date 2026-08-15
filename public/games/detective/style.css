@@ -26,20 +26,54 @@
   gap: 10px;
 }
 
-.detective-log {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.detective-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-.detective-log li {
-  padding: 8px 12px;
-  background: var(--surface-2);
-  border-radius: 8px;
+@media (max-width: 560px) {
+  .detective-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detective-column h4 {
+  margin: 0 0 10px;
   font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.detective-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detective-chip {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.9rem;
+  border-left: 3px solid transparent;
+}
+
+.detective-chip.fits {
+  border-left-color: var(--success);
+  color: var(--success);
+}
+
+.detective-chip.no-fit {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
+.detective-chip .chip-kind {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 6px;
 }
 
 #restart-btn {

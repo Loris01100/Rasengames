@@ -42,19 +42,19 @@
     incomingText: $("incoming-text"),
     incomingYes: $("incoming-yes"),
     incomingNo: $("incoming-no"),
+    incomingMoreHint: $("incoming-more-hint"),
     proposeForm: $("propose-form"),
     proposeInput: $("propose-input"),
     proposeSubmit: $("propose-submit"),
-    proposeWaitHint: $("propose-wait-hint"),
     guessForm: $("guess-form"),
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
-    logList: $("log-list"),
+    logColumns: $("log-columns"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
     endCategories: $("end-categories"),
-    endLogList: $("end-log-list"),
+    endLogColumns: $("end-log-columns"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
@@ -245,17 +245,41 @@
     el.categoryDoneHint.classList.toggle("hidden", !ready);
   }
 
-  function renderLog(state, listEl) {
-    listEl.innerHTML = "";
+  // One column per player: everything that was tested against THEIR
+  // category, colored by whether it fit (or, for a guess, was correct).
+  function renderLogColumns(state, containerEl) {
+    containerEl.innerHTML = "";
     const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? "?";
-    for (const entry of [...state.log].reverse()) {
-      const li = document.createElement("li");
-      const who = nameOf(entry.from) + (entry.from === myPlayerId ? " (toi)" : "");
-      const verb = entry.kind === "proposal" ? "a proposé" : "a deviné";
-      const outcome =
-        entry.kind === "proposal" ? (entry.fits ? "Oui ✅" : "Non ❌") : entry.fits ? "Correct ✅" : "Faux ❌";
-      li.textContent = `${who} ${verb} « ${entry.text} » → ${outcome}`;
-      listEl.appendChild(li);
+    const opponentId = state.opponent?.id;
+
+    for (const targetId of [myPlayerId, opponentId]) {
+      if (!targetId) continue;
+      const column = document.createElement("div");
+      column.className = "detective-column";
+
+      const title = document.createElement("h4");
+      title.textContent =
+        targetId === myPlayerId ? "Ta catégorie" : `Catégorie de ${nameOf(targetId)}`;
+      column.appendChild(title);
+
+      const chips = document.createElement("div");
+      chips.className = "detective-chips";
+      // Entries targeting this player are the ones submitted by the OTHER one.
+      const entries = state.log.filter((e) => e.from !== targetId);
+      for (const entry of entries) {
+        const chip = document.createElement("div");
+        chip.className = `detective-chip ${entry.fits ? "fits" : "no-fit"}`;
+        if (entry.kind === "guess") {
+          const kindTag = document.createElement("span");
+          kindTag.className = "chip-kind";
+          kindTag.textContent = "deviné";
+          chip.appendChild(kindTag);
+        }
+        chip.appendChild(document.createTextNode(entry.text));
+        chips.appendChild(chip);
+      }
+      column.appendChild(chips);
+      containerEl.appendChild(column);
     }
   }
 
@@ -264,7 +288,8 @@
     el.roomBadge.classList.remove("hidden");
     el.myCategory.textContent = state.you?.category ?? "";
 
-    const incoming = state.you?.incoming;
+    const queue = state.you?.incoming ?? [];
+    const incoming = queue[0];
     el.incomingPanel.classList.toggle("hidden", !incoming);
     if (incoming) {
       const fromName = state.opponent?.name ?? "Ton adversaire";
@@ -273,14 +298,11 @@
           ? `${fromName} propose un personnage pour TA catégorie`
           : `${fromName} pense connaître TA catégorie`;
       el.incomingText.textContent = incoming.text;
+      el.incomingMoreHint.classList.toggle("hidden", queue.length <= 1);
+      el.incomingMoreHint.textContent = `+${queue.length - 1} autre(s) en attente de réponse`;
     }
 
-    const busy = !!state.opponent?.busy;
-    el.proposeForm.classList.toggle("hidden", busy);
-    el.guessForm.classList.toggle("hidden", busy);
-    el.proposeWaitHint.classList.toggle("hidden", !busy);
-
-    renderLog(state, el.logList);
+    renderLogColumns(state, el.logColumns);
   }
 
   function renderEnded(state) {
@@ -295,7 +317,7 @@
     const oppCat = state.opponent?.category ?? "?";
     el.endCategories.textContent = `Ta catégorie : ${myCat} — Catégorie de ${oppName} : ${oppCat}`;
 
-    renderLog(state, el.endLogList);
+    renderLogColumns(state, el.endLogColumns);
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);

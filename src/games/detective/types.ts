@@ -20,7 +20,7 @@ export interface Player {
   connected: boolean;
   category: string | null; // this player's own secret category
   ready: boolean; // has submitted their category during setup
-  incoming: Incoming | null; // a proposal/guess from the opponent this player must judge
+  incoming: Incoming[]; // proposals/guesses from the opponent this player must judge, oldest first
 }
 
 export interface RoomState {
