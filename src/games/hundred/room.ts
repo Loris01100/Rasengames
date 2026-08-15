@@ -2,7 +2,7 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
 import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
-import { fetchCharacterImage } from "../../lib/images";
+import { fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
@@ -252,7 +252,7 @@ export class HundredRoom {
     await this.saveRoom();
     this.broadcast();
 
-    const image = await fetchCharacterImage(text);
+    const image = await fetchCharacterOrAnimeImage(text);
     // The player may have re-proposed (or the room restarted) while this
     // lookup was in flight; only apply it if it's still the current proposal.
     if (player.proposal === text) {

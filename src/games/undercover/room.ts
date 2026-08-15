@@ -10,19 +10,19 @@ import {
   normalizeWord,
 } from "./logic";
 import { CATEGORY_LABELS, type WordCategory } from "./words";
-import { fetchCharacterImage, fetchAnimeImage } from "../../lib/images";
+import { fetchAnimeImage, fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const VALID_CATEGORIES = new Set(Object.keys(CATEGORY_LABELS));
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 
 // "technique"/"random" words aren't reliably findable on MyAnimeList (jutsu
-// names aren't indexed there), so we try the character lookup first — many
-// "random" words are character names — and fall back to an anime lookup.
+// names aren't indexed there), so non-anime categories try the character
+// lookup first and fall back to an anime lookup (also covers Jikan's
+// character search being down while anime search still works).
 async function lookupWordImage(word: string, category: WordCategory): Promise<string | null> {
   if (category === "anime") return fetchAnimeImage(word);
-  if (category === "character") return fetchCharacterImage(word);
-  return (await fetchCharacterImage(word)) ?? (await fetchAnimeImage(word));
+  return fetchCharacterOrAnimeImage(word);
 }
 
 const MAX_NAME_LENGTH = 20;
