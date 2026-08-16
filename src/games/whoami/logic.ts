@@ -21,10 +21,17 @@ export function assignCharacters(room: RoomState): void {
     player.character = picks[index];
     player.characterImage = null;
     player.found = false;
+    player.guesses = [];
   });
   room.foundOrder = [];
 }
 
+// Flexible on purpose: a compound name ("Eren Yeager") is accepted from any
+// single word of it ("Eren" alone passes), not just the exact full name.
 export function isCorrectGuess(guess: string, character: string): boolean {
-  return normalizeGuess(guess) === normalizeGuess(character);
+  const normGuess = normalizeGuess(guess);
+  if (!normGuess) return false;
+  if (normGuess === normalizeGuess(character)) return true;
+  const tokens = character.split(/\s+/).map(normalizeGuess).filter(Boolean);
+  return tokens.includes(normGuess);
 }

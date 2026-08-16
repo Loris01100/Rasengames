@@ -281,6 +281,18 @@ export class UndercoverRoom {
       return;
     }
 
+    const player = room.players[session.playerId];
+    if (player?.word && normalizeWord(text) === normalizeWord(player.word)) {
+      this.sendError(session.ws, "Tu ne peux pas écrire ton propre mot.");
+      return;
+    }
+
+    const alreadyGiven = room.clues.some((c) => normalizeWord(c.text) === normalizeWord(text));
+    if (alreadyGiven) {
+      this.sendError(session.ws, "Cet indice a déjà été donné ce tour-ci.");
+      return;
+    }
+
     room.clues.push({ playerId: session.playerId, text });
     room.currentTurnIndex += 1;
 

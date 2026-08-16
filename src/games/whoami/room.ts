@@ -178,6 +178,7 @@ export class WhoamiRoom {
       character: null,
       characterImage: null,
       found: false,
+      guesses: [],
     };
     room.players[id] = player;
     room.playerOrder.push(id);
@@ -245,7 +246,11 @@ export class WhoamiRoom {
     const guess = String(msg.text ?? "").trim().slice(0, MAX_GUESS_LENGTH);
     if (!guess) return;
 
+    player.guesses.push(guess);
+
     if (!isCorrectGuess(guess, player.character)) {
+      await this.saveRoom();
+      this.broadcast();
       this.sendError(session.ws, "Pas encore, retente !");
       return;
     }
@@ -276,6 +281,7 @@ export class WhoamiRoom {
       player.character = null;
       player.characterImage = null;
       player.found = false;
+      player.guesses = [];
     }
     room.foundOrder = [];
     room.phase = "lobby";
@@ -337,6 +343,9 @@ export class WhoamiRoom {
         // already see it, that's the whole game — revealed to you too once ended.
         character: p.id !== forPlayerId || revealAll ? p.character : null,
         characterImage: p.id !== forPlayerId || revealAll ? p.characterImage : null,
+        // Attempts never reveal the character themselves (they're just what
+        // was typed), so they're always visible to everyone, self included.
+        guesses: p.guesses,
       }));
 
     const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);

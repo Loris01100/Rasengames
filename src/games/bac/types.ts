@@ -1,4 +1,4 @@
-export type Phase = "lobby" | "play" | "ended";
+export type Phase = "lobby" | "play" | "review" | "ended";
 
 export interface Player {
   id: string;

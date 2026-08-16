@@ -50,6 +50,14 @@
     stopBtn: $("stop-btn"),
     answersForm: $("answers-form"),
 
+    screenReview: $("screen-review"),
+    reviewTitle: $("review-title"),
+    reviewStoppedBy: $("review-stopped-by"),
+    reviewHint: $("review-hint"),
+    reviewTable: $("review-table"),
+    finishReviewBtn: $("finish-review-btn"),
+    reviewWaitHint: $("review-wait-hint"),
+
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
     endStoppedBy: $("end-stopped-by"),
@@ -79,6 +87,18 @@
 
   function storageKey(code, suffix) {
     return `bac:${code}:${suffix}`;
+  }
+
+  // Kept in sync with src/games/bac/logic.ts's normalizeWord/isValidAnswer —
+  // used only as a soft "looks valid" hint in the review table, the host
+  // always makes the actual call.
+  const COMBINING_MARKS = new RegExp(`[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`, "g");
+  function normalizeWord(word) {
+    return (word || "").trim().toLowerCase().normalize("NFD").replace(COMBINING_MARKS, "");
+  }
+  function looksValid(answer, letter) {
+    const n = normalizeWord(answer);
+    return !!n && n[0] === normalizeWord(letter);
   }
 
   function connect(code, name, token, asHost) {
@@ -151,7 +171,7 @@
 
   // ---- rendering ----
 
-  const SCREENS = [el.screenJoin, el.screenLobby, el.screenPlay, el.screenEnded];
+  const SCREENS = [el.screenJoin, el.screenLobby, el.screenPlay, el.screenReview, el.screenEnded];
 
   function showScreen(screen) {
     for (const s of SCREENS) s.classList.toggle("hidden", s !== screen);
@@ -193,6 +213,9 @@
     } else if (state.phase === "play") {
       showScreen(el.screenPlay);
       renderPlay(state);
+    } else if (state.phase === "review") {
+      showScreen(el.screenReview);
+      renderReview(state);
     } else if (state.phase === "ended") {
       showScreen(el.screenEnded);
       renderEnded(state);
@@ -289,26 +312,47 @@
     }
   }
 
+  function renderReview(state) {
+    el.roomBadge.textContent = state.code;
+    el.roomBadge.classList.remove("hidden");
+    answersFormLetter = null;
+
+    el.reviewTitle.textContent = `Stop ! Lettre ${state.result?.letter ?? ""}`;
+    el.reviewStoppedBy.textContent = state.stoppedByName
+      ? `${state.stoppedByName} a crié stop en premier.`
+      : "";
+
+    const isHost = state.hostId === myPlayerId;
+    el.reviewHint.textContent = isHost
+      ? "Clique sur une réponse pour la valider ou l'invalider. Rien n'est validé par défaut."
+      : "L'hôte valide les réponses une par une...";
+
+    renderResultsTable(state, el.reviewTable, isHost);
+
+    el.finishReviewBtn.classList.toggle("hidden", !isHost);
+    el.reviewWaitHint.classList.toggle("hidden", isHost);
+  }
+
   function renderEnded(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
     answersFormLetter = null;
 
-    el.endTitle.textContent = `Stop ! Lettre ${state.result?.letter ?? ""}`;
+    el.endTitle.textContent = `Résultats — Lettre ${state.result?.letter ?? ""}`;
     el.endStoppedBy.textContent = state.stoppedByName
       ? `${state.stoppedByName} a crié stop en premier.`
       : "";
 
-    renderResultsTable(state);
+    renderResultsTable(state, el.resultsTable, false);
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
   }
 
-  function renderResultsTable(state) {
+  function renderResultsTable(state, tableEl, editable) {
     const result = state.result;
-    el.resultsTable.innerHTML = "";
+    tableEl.innerHTML = "";
     if (!result) return;
 
     const players = state.players.filter((p) => result.totals[p.id] !== undefined);
@@ -322,7 +366,7 @@
       headRow.appendChild(th);
     }
     thead.appendChild(headRow);
-    el.resultsTable.appendChild(thead);
+    tableEl.appendChild(thead);
 
     const tbody = document.createElement("tbody");
     for (const catResult of result.byCategory) {
@@ -337,22 +381,33 @@
         const td = document.createElement("td");
         if (entry) {
           td.classList.add(entry.valid ? (entry.points === 2 ? "score-unique" : "score-duplicate") : "score-invalid");
+          if (editable) {
+            td.classList.add("editable");
+            if (!entry.valid && looksValid(entry.answer, result.letter)) td.classList.add("hint-valid");
+            td.addEventListener("click", () => {
+              send({ type: "setValid", category: catResult.category, playerId: p.id, valid: !entry.valid });
+            });
+          }
           const answer = document.createElement("div");
           answer.className = "answer-text";
           answer.textContent = entry.answer.trim() || "—";
           td.appendChild(answer);
           const points = document.createElement("div");
           points.className = "answer-points";
-          points.textContent = `${entry.points} pt${entry.points > 1 ? "s" : ""}`;
+          points.textContent = entry.valid
+            ? `${entry.points} pt${entry.points > 1 ? "s" : ""}`
+            : editable
+              ? "à valider"
+              : "invalide";
           td.appendChild(points);
         }
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
     }
-    el.resultsTable.appendChild(tbody);
+    tableEl.appendChild(tbody);
 
-    const maxTotal = Math.max(...players.map((p) => result.totals[p.id] ?? 0));
+    const maxTotal = Math.max(0, ...players.map((p) => result.totals[p.id] ?? 0));
     const tfoot = document.createElement("tfoot");
     const totalRow = document.createElement("tr");
     const totalTh = document.createElement("th");
@@ -366,7 +421,7 @@
       totalRow.appendChild(td);
     }
     tfoot.appendChild(totalRow);
-    el.resultsTable.appendChild(tfoot);
+    tableEl.appendChild(tfoot);
   }
 
   // ---- events ----
@@ -408,6 +463,7 @@
   });
 
   el.stopBtn.addEventListener("click", () => send({ type: "stop" }));
+  el.finishReviewBtn.addEventListener("click", () => send({ type: "finishReview" }));
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
   el.switchGameBtn.addEventListener("click", () => {

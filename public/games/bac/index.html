@@ -69,6 +69,23 @@
       </div>
     </section>
 
+    <!-- Review: host validates each answer by hand -->
+    <section id="screen-review" class="hidden">
+      <div class="card">
+        <h2 id="review-title"></h2>
+        <p id="review-stopped-by" class="muted"></p>
+        <p id="review-hint" class="muted small"></p>
+      </div>
+
+      <div class="card">
+        <div id="review-table-wrap" class="results-table-wrap">
+          <table id="review-table" class="results-table"></table>
+        </div>
+        <button id="finish-review-btn" class="btn hidden">Terminer la manche</button>
+        <p id="review-wait-hint" class="muted small hidden">En attente que l'hôte valide les réponses...</p>
+      </div>
+    </section>
+
     <!-- Ended -->
     <section id="screen-ended" class="hidden">
       <div class="card">

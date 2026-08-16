@@ -33,6 +33,7 @@
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
     foundHint: $("found-hint"),
+    myAttempts: $("my-attempts"),
     endRoundBtn: $("end-round-btn"),
     othersList: $("others-list"),
 
@@ -249,7 +250,24 @@
       card.appendChild(badge);
     }
 
+    if (p.guesses && p.guesses.length > 0) {
+      card.appendChild(attemptsList(p.guesses, p.found));
+    }
+
     return card;
+  }
+
+  function attemptsList(guesses, found) {
+    const wrap = document.createElement("div");
+    wrap.className = "whoami-attempts";
+    guesses.forEach((text, index) => {
+      const chip = document.createElement("span");
+      chip.className = "whoami-attempt-chip";
+      if (found && index === guesses.length - 1) chip.classList.add("correct");
+      chip.textContent = text;
+      wrap.appendChild(chip);
+    });
+    return wrap;
   }
 
   function renderPlay(state) {
@@ -262,6 +280,11 @@
     el.guessForm.classList.toggle("hidden", !!you?.found);
     el.foundHint.classList.toggle("hidden", !you?.found);
     el.endRoundBtn.classList.toggle("hidden", !isHost);
+
+    el.myAttempts.innerHTML = "";
+    if (you?.guesses?.length) {
+      el.myAttempts.appendChild(attemptsList(you.guesses, you.found));
+    }
 
     el.othersList.innerHTML = "";
     for (const p of state.players) {

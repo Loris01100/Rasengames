@@ -55,3 +55,25 @@
   font-weight: 700;
   color: var(--success);
 }
+
+.whoami-attempts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.whoami-attempt-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.whoami-attempt-chip.correct {
+  border-color: var(--success);
+  color: var(--success);
+}

@@ -8,6 +8,7 @@ export interface Player {
   character: string | null; // the character THIS player must guess — hidden from themself
   characterImage: string | null;
   found: boolean;
+  guesses: string[]; // every attempt this player made this round, visible to everyone
 }
 
 export interface RoomState {

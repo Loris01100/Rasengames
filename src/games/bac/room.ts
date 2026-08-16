@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { pickRandomLetter, scoreRound } from "./logic";
+import { pickRandomLetter, buildRoundResult, recomputeScores } from "./logic";
 import { CATEGORY_IDS } from "./categories";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
@@ -124,6 +124,12 @@ export class BacRoom {
       case "stop":
         await this.onStop(session, room);
         break;
+      case "setValid":
+        await this.onSetValid(session, room, msg);
+        break;
+      case "finishReview":
+        await this.onFinishReview(session, room);
+        break;
       case "restart":
         await this.onRestart(session, room);
         break;
@@ -243,9 +249,36 @@ export class BacRoom {
     if (!player || !player.connected) return;
 
     room.stoppedBy = session.playerId;
-    room.result = scoreRound(room);
-    room.phase = "ended";
+    room.result = buildRoundResult(room);
+    room.phase = "review";
 
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private async onSetValid(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (session.playerId !== room.hostId) {
+      this.sendError(session.ws, "Seul l'hôte peut valider les réponses.");
+      return;
+    }
+    if (room.phase !== "review" || !room.result) return;
+
+    const category = String(msg.category ?? "");
+    const playerId = String(msg.playerId ?? "");
+    const catResult = room.result.byCategory.find((c) => c.category === category);
+    const entry = catResult?.entries.find((e) => e.playerId === playerId);
+    if (!entry) return;
+
+    entry.valid = msg.valid === true;
+    recomputeScores(room.result);
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private async onFinishReview(session: Session, room: RoomState) {
+    if (session.playerId !== room.hostId || room.phase !== "review") return;
+    room.phase = "ended";
     await this.saveRoom();
     this.broadcast();
   }
@@ -325,7 +358,7 @@ export class BacRoom {
       letter: room.phase === "lobby" ? null : room.letter,
       you: you && { id: you.id, answers: you.answers },
       stoppedByName: room.stoppedBy ? room.players[room.stoppedBy]?.name ?? null : null,
-      result: room.phase === "ended" ? room.result : null,
+      result: room.phase === "review" || room.phase === "ended" ? room.result : null,
     };
   }
 }
