@@ -210,10 +210,7 @@
     if (p.alive === false) row.classList.add("dead");
     if (p.connected === false) row.classList.add("offline");
 
-    const avatar = document.createElement("span");
-    avatar.className = "avatar";
-    avatar.textContent = (p.name || "?").trim().charAt(0).toUpperCase();
-    row.appendChild(avatar);
+    row.appendChild(makeAvatar(p.name));
 
     const dot = document.createElement("span");
     dot.className = "dot";
