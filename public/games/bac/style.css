@@ -29,9 +29,13 @@
 }
 
 .play-letter {
+  font-family: var(--font-display);
   font-size: 4rem;
   font-weight: 800;
-  color: var(--accent);
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   margin: 6px 0 16px;
 }
 

@@ -249,6 +249,11 @@
     if (p.id === myPlayerId) row.classList.add("you");
     if (p.connected === false) row.classList.add("offline");
 
+    const avatar = document.createElement("span");
+    avatar.className = "avatar";
+    avatar.textContent = (p.name || "?").trim().charAt(0).toUpperCase();
+    row.appendChild(avatar);
+
     const dot = document.createElement("span");
     dot.className = "dot";
     row.appendChild(dot);
@@ -310,6 +315,11 @@
       row.className = "player-row";
       if (p.id === myPlayerId) row.classList.add("you");
       if (p.connected === false) row.classList.add("offline");
+
+      const avatar = document.createElement("span");
+      avatar.className = "avatar";
+      avatar.textContent = (p.name || "?").trim().charAt(0).toUpperCase();
+      row.appendChild(avatar);
 
       const dot = document.createElement("span");
       dot.className = "dot";

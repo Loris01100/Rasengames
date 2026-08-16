@@ -27,6 +27,7 @@
 
 .whoami-card.found {
   border-color: var(--success);
+  box-shadow: 0 0 0 1px var(--success), 0 8px 24px rgba(62, 207, 142, 0.25);
 }
 
 .whoami-image {
@@ -45,8 +46,9 @@
 }
 
 .whoami-character {
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .whoami-found-badge {
