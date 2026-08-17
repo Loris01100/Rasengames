@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>1 à 100</h1>
-      <p class="muted">Chacun reçoit un chiffre secret et propose un personnage qui l'incarne. Débattez pour vous ranger dans le bon ordre. 3 joueurs minimum.</p>
+      <p class="muted">Chacun reçoit un chiffre secret et propose un personnage — ou un anime, au choix de l'hôte — qui l'incarne. Débattez pour vous ranger dans le bon ordre. 3 joueurs minimum.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -50,6 +50,11 @@
 
       <div id="host-settings" class="hidden">
         <h3>Réglages</h3>
+        <label for="mode-select">Variante</label>
+        <select id="mode-select">
+          <option value="perso">Personnages — proposez un perso</option>
+          <option value="anime">Animes — proposez un anime</option>
+        </select>
         <label for="theme-select">Thème</label>
         <select id="theme-select"></select>
         <button id="start-btn" class="btn">Démarrer la partie</button>
@@ -76,7 +81,7 @@
 
       <div class="card">
         <h3>Propositions</h3>
-        <p class="muted small">Les propositions des autres restent secrètes jusqu'à ce que tout le monde ait proposé un personnage.</p>
+        <p id="proposals-secret-hint" class="muted small"></p>
         <div id="proposals-list" class="players-list"></div>
       </div>
     </section>

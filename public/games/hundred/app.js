@@ -3,28 +3,67 @@
 
   // Kept in sync with src/games/hundred/themes.ts — duplicated client-side so
   // the host can preview the full list in a dropdown instead of typing blind.
-  const THEMES = [
-    "Puissance de combat",
-    "Intelligence",
-    "Popularité",
-    "Charisme",
-    "Drôlerie",
-    "Loyauté",
-    "Détermination",
-    "Vitesse",
-    "Instinct de sacrifice",
-    "Chance",
-    "Ambition",
-    "Résistance à la douleur",
-    "Niveau de cringe",
-    "Capacité à survivre dans un shonen",
-    "Talent pour les punchlines",
-    "Sens de la mode",
-    "Capacité à mourir bêtement",
-    "Alignement moral (gentil → méchant)",
-    "Tragique (histoire triste)",
-    "Capacité à retourner sa veste",
-  ];
+  const THEMES_BY_MODE = {
+    perso: [
+      "Puissance de combat",
+      "Intelligence",
+      "Popularité",
+      "Charisme",
+      "Drôlerie",
+      "Loyauté",
+      "Détermination",
+      "Vitesse",
+      "Instinct de sacrifice",
+      "Chance",
+      "Ambition",
+      "Résistance à la douleur",
+      "Niveau de cringe",
+      "Capacité à survivre dans un shonen",
+      "Talent pour les punchlines",
+      "Sens de la mode",
+      "Capacité à mourir bêtement",
+      "Alignement moral (gentil → méchant)",
+      "Tragique (histoire triste)",
+      "Capacité à retourner sa veste",
+    ],
+    anime: [
+      "Qualité des personnages",
+      "Qualité de l'OST",
+      "Qualité de l'opening",
+      "Qualité globale de l'anime",
+      "Qualité de l'animation",
+      "Qualité des combats",
+      "Qualité du méchant",
+      "Qualité de la fin",
+      "Popularité",
+      "Niveau de hype",
+      "Niveau de feels (ça fait pleurer)",
+      "Complexité du scénario",
+      "Envie de le revoir",
+      "Fidélité au manga",
+      "Niveau de cringe",
+      "Niveau de fanservice",
+      "Lenteur du rythme",
+      "Sous-coté → sur-coté",
+      "Difficulté à le conseiller à un non-initié",
+      "Ancienneté",
+    ],
+  };
+
+  // Formulations propres à chaque variante. Le serveur renvoie `mode` dans
+  // chaque state, donc tout le monde voit les mêmes mots, pas seulement l'hôte.
+  const WORDING = {
+    perso: {
+      indefinite: "un personnage",
+      placeholder: "Un personnage qui correspond à ton chiffre",
+    },
+    anime: {
+      indefinite: "un anime",
+      placeholder: "Un anime qui correspond à ton chiffre",
+    },
+  };
+
+  const wordingFor = (mode) => WORDING[mode] ?? WORDING.perso;
 
   const el = {
     toast: $("toast"),
@@ -43,6 +82,7 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
+    modeSelect: $("mode-select"),
     themeSelect: $("theme-select"),
     startBtn: $("start-btn"),
     startHint: $("start-hint"),
@@ -56,6 +96,7 @@
     proposalSubmit: $("proposal-submit"),
     proposalDoneHint: $("proposal-done-hint"),
     proposeProgress: $("propose-progress"),
+    proposalsSecretHint: $("proposals-secret-hint"),
     proposalsList: $("proposals-list"),
 
     screenArrange: $("screen-arrange"),
@@ -204,7 +245,7 @@
     randomOpt.value = "";
     randomOpt.textContent = "🎲 Thème aléatoire";
     el.themeSelect.appendChild(randomOpt);
-    for (const theme of THEMES) {
+    for (const theme of THEMES_BY_MODE[el.modeSelect.value] ?? []) {
       const opt = document.createElement("option");
       opt.value = theme;
       opt.textContent = theme;
@@ -212,6 +253,10 @@
     }
   }
   populateThemeSelect();
+  // Les deux variantes n'ont pas les mêmes thèmes : changer de variante
+  // repeuple la liste (et retombe sur "aléatoire", le thème choisi n'existant
+  // pas forcément dans l'autre).
+  el.modeSelect.addEventListener("change", populateThemeSelect);
 
   // Other games the group can switch to without disbanding — see the
   // "switchGame" message handling below.
@@ -315,7 +360,10 @@
     const alreadyProposed = !!state.you?.proposal;
     el.proposeForm.classList.toggle("hidden", alreadyProposed);
     el.proposalDoneHint.classList.toggle("hidden", !alreadyProposed);
-    el.proposeProgress.textContent = `${state.proposalsSubmitted}/${state.proposalsNeeded} ont proposé un personnage`;
+    const wording = wordingFor(state.mode);
+    el.proposalInput.placeholder = wording.placeholder;
+    el.proposalsSecretHint.textContent = `Les propositions des autres restent secrètes jusqu'à ce que tout le monde ait proposé ${wording.indefinite}.`;
+    el.proposeProgress.textContent = `${state.proposalsSubmitted}/${state.proposalsNeeded} ont proposé ${wording.indefinite}`;
 
     el.proposalsList.innerHTML = "";
     for (const p of state.players) {
@@ -534,7 +582,7 @@
   });
 
   el.startBtn.addEventListener("click", () => {
-    send({ type: "start", theme: el.themeSelect.value });
+    send({ type: "start", mode: el.modeSelect.value, theme: el.themeSelect.value });
   });
 
   el.proposalSubmit.addEventListener("click", submitProposal);

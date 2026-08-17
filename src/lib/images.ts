@@ -115,3 +115,10 @@ export function fetchAnimeImage(name: string): Promise<string | null> {
 export async function fetchCharacterOrAnimeImage(name: string): Promise<string | null> {
   return (await fetchCharacterImage(name)) ?? (await fetchAnimeImage(name));
 }
+
+// Same idea the other way round, for contexts where the text is expected to
+// be a show title (a character with the same name as its anime would
+// otherwise win the lookup and show the wrong picture).
+export async function fetchAnimeOrCharacterImage(name: string): Promise<string | null> {
+  return (await fetchAnimeImage(name)) ?? (await fetchCharacterImage(name));
+}

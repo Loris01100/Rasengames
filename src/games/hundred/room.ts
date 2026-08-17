@@ -1,8 +1,8 @@
 import type { Env } from "../../env";
-import { type RoomState, type Player, createEmptyRoom } from "./types";
+import { type RoomState, type Player, type Mode, createEmptyRoom } from "./types";
 import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
-import { fetchCharacterOrAnimeImage } from "../../lib/images";
+import { fetchAnimeOrCharacterImage, fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
@@ -10,6 +10,7 @@ const MAX_PROPOSAL_LENGTH = 40;
 const MAX_THEME_LENGTH = 60;
 const MIN_PLAYERS_TO_START = 3;
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
+const VALID_MODES: Mode[] = ["perso", "anime"];
 
 interface Session {
   ws: WebSocket;
@@ -53,6 +54,8 @@ export class HundredRoom {
     if (!this.room) {
       const stored = await this.state.storage.get<RoomState>("room");
       this.room = stored ?? createEmptyRoom(code.toUpperCase());
+      // Rooms persisted before the anime mode existed have no `mode` field.
+      this.room.mode = VALID_MODES.includes(this.room.mode) ? this.room.mode : "perso";
     }
     return this.room;
   }
@@ -219,8 +222,11 @@ export class HundredRoom {
       }
     }
 
+    const requestedMode = msg.mode as Mode;
+    room.mode = VALID_MODES.includes(requestedMode) ? requestedMode : "perso";
+
     const customTheme = String(msg.theme ?? "").trim().slice(0, MAX_THEME_LENGTH);
-    room.theme = customTheme || pickRandomTheme();
+    room.theme = customTheme || pickRandomTheme(room.mode);
     room.order = [];
     room.score = null;
     assignNumbers(room);
@@ -252,7 +258,10 @@ export class HundredRoom {
     await this.saveRoom();
     this.broadcast();
 
-    const image = await fetchCharacterOrAnimeImage(text);
+    const image =
+      room.mode === "anime"
+        ? await fetchAnimeOrCharacterImage(text)
+        : await fetchCharacterOrAnimeImage(text);
     // The player may have re-proposed (or the room restarted) while this
     // lookup was in flight; only apply it if it's still the current proposal.
     if (player.proposal === text) {
@@ -368,7 +377,7 @@ export class HundredRoom {
     const revealedInOrder =
       room.phase === "reveal" ? new Set(room.order.slice(0, room.revealedCount)) : null;
     // Proposals stay secret only while people are still submitting them —
-    // once everyone's in, seeing the actual characters is the whole point of
+    // once everyone's in, seeing the actual proposals is the whole point of
     // the debate. Numbers are the one thing that stays hidden until the
     // one-by-one reveal.
     const proposalVisibleFor = (id: string) => id === forPlayerId || room.phase !== "propose";
@@ -395,6 +404,7 @@ export class HundredRoom {
     return {
       code: room.code,
       phase: room.phase,
+      mode: room.mode,
       hostId: room.hostId,
       theme: room.theme,
       players,

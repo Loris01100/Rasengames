@@ -1,5 +1,10 @@
 export type Phase = "lobby" | "propose" | "arrange" | "reveal" | "ended";
 
+// "perso": chacun propose un personnage. "anime": chacun propose un anime.
+// Seuls la liste de thèmes et les formulations changent, la mécanique est
+// identique — c'est le même Durable Object, choisi par l'hôte au lobby.
+export type Mode = "perso" | "anime";
+
 export interface Player {
   id: string;
   token: string;
@@ -20,6 +25,7 @@ export interface RoomState {
   code: string;
   hostId: string | null;
   phase: Phase;
+  mode: Mode;
   players: Record<string, Player>;
   playerOrder: string[];
   theme: string | null;
@@ -33,6 +39,7 @@ export function createEmptyRoom(code: string): RoomState {
     code,
     hostId: null,
     phase: "lobby",
+    mode: "perso",
     players: {},
     playerOrder: [],
     theme: null,
