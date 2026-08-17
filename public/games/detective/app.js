@@ -139,7 +139,9 @@
       el.roomBadge.textContent = roomCode;
       el.roomBadge.classList.remove("hidden");
     } else if (msg.type === "state") {
+      const previous = latestState;
       latestState = msg.state;
+      playSounds(previous, latestState);
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
@@ -147,6 +149,22 @@
       location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
     } else if (msg.type === "error") {
       showToast(msg.message);
+    }
+  }
+
+  // ---- sons ----
+
+  // Signale que l'adversaire a joué : une proposition arrive pour ma catégorie,
+  // ou il vient de répondre à l'une des miennes. Sound.onIncrease ignore le
+  // premier state reçu, donc pas de bip au chargement ni à la reconnexion.
+  function playSounds(previous, state) {
+    if (state.phase === "play") {
+      Sound.onIncrease("detective:incoming", (state.you?.incoming ?? []).length, "notify");
+      const answers = (state.log ?? []).filter((e) => e.from === myPlayerId);
+      Sound.onIncrease("detective:answers", answers.length, answers.at(-1)?.fits ? "yes" : "no");
+    }
+    if (state.phase === "ended" && previous && previous.phase !== "ended") {
+      Sound.play(state.winner === myPlayerId ? "win" : "lose");
     }
   }
 

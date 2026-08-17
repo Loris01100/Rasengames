@@ -176,6 +176,7 @@
       el.roomBadge.classList.remove("hidden");
     } else if (msg.type === "state") {
       latestState = msg.state;
+      playSounds(latestState);
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
@@ -184,6 +185,19 @@
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
+  }
+
+  // ---- sons ----
+
+  // Sound.onIncrease / onChange ignorent le premier state reçu, donc rien ne
+  // sonne au chargement ni à la reconnexion.
+  function playSounds(state) {
+    // Seulement les indices des autres : on ne se bipe pas soi-même.
+    const othersClues = (state.clues ?? []).filter((c) => c.playerId !== myPlayerId);
+    Sound.onIncrease("uc:clues", othersClues.length, "notify");
+    Sound.onIncrease("uc:votes", state.votesCast ?? 0, "tick");
+    const myTurn = state.phase === "clue" && state.currentTurnPlayerId === myPlayerId;
+    Sound.onChange("uc:turn", `${state.phase}:${state.currentTurnPlayerId}`, myTurn ? "turn" : null);
   }
 
   // ---- rendering ----

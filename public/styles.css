@@ -128,6 +128,37 @@ h3 {
   font-size: 0.85rem;
 }
 
+/* Boutons son/musique injectés dans l'entête par /js/sound.js. */
+.audio-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.switch-game + .audio-toggles {
+  margin-left: 8px;
+}
+
+.audio-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 6px 9px;
+}
+
+.audio-btn:hover {
+  background: #282c38;
+}
+
+.audio-btn.off {
+  opacity: 0.45;
+}
+
 .site-footer {
   text-align: center;
   padding: 24px 20px 40px;

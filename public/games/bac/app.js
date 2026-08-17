@@ -159,6 +159,7 @@
       el.roomBadge.classList.remove("hidden");
     } else if (msg.type === "state") {
       latestState = msg.state;
+      playSounds(latestState);
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
@@ -167,6 +168,15 @@
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
+  }
+
+  // ---- sons ----
+
+  // Sound.onChange ignore le premier state reçu, donc rien ne sonne au
+  // chargement ni à la reconnexion. Le changement de phase couvre l'essentiel :
+  // quelqu'un a crié stop, ou la manche est finie.
+  function playSounds(state) {
+    Sound.onChange("bac:phase", state.phase, "notify");
   }
 
   // ---- rendering ----

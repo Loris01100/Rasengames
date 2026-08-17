@@ -125,6 +125,7 @@
       el.roomBadge.classList.remove("hidden");
     } else if (msg.type === "state") {
       latestState = msg.state;
+      playSounds(latestState);
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
@@ -133,6 +134,15 @@
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
+  }
+
+  // ---- sons ----
+
+  // Sound.onIncrease / onChange ignorent le premier state reçu, donc rien ne
+  // sonne au chargement ni à la reconnexion.
+  function playSounds(state) {
+    Sound.onChange("whoami:phase", state.phase, "notify");
+    Sound.onIncrease("whoami:found", (state.foundOrder ?? []).length, "yes");
   }
 
   // ---- rendering ----
