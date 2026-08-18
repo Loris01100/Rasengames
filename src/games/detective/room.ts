@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn } from "./logic";
+import { MIN_PLAYERS, MAX_PLAYERS, SOLVES_TO_END, connectedIds, othersOf, nextTurn } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
@@ -50,6 +50,8 @@ export class DetectiveRoom {
     if (!this.room) {
       const stored = await this.state.storage.get<RoomState>("room");
       this.room = stored ?? createEmptyRoom(code.toUpperCase());
+      // rooms stored before multi-solve shipped have no `solved` array
+      this.room.solved ??= [];
     }
     return this.room;
   }
@@ -86,7 +88,7 @@ export class DetectiveRoom {
     if (!stillConnected) {
       player.connected = false;
       if (this.room.phase === "play" && this.room.turnId === player.id) {
-        this.room.turnId = nextTurn(this.room, player.id);
+        this.room.turnId = this.advanceTurn(this.room, player.id);
       }
       await this.saveRoom();
       this.broadcast();
@@ -225,7 +227,7 @@ export class DetectiveRoom {
       player.incoming = [];
     }
     room.log = [];
-    room.winner = null;
+    room.solved = [];
     room.turnId = null;
     room.phase = "setup";
 
@@ -268,7 +270,9 @@ export class DetectiveRoom {
       this.sendError(session.ws, "Ce n'est pas ton tour.");
       return;
     }
-    const targets = othersOf(room, from);
+    // A category that's already been found is out of play: no point asking its
+    // owner to keep judging proposals about it.
+    const targets = this.openTargets(room, from);
     if (targets.length === 0) return;
 
     const text = String(msg.text ?? "").trim().slice(0, MAX_TEXT_LENGTH);
@@ -277,7 +281,7 @@ export class DetectiveRoom {
     // One submission is asked of every other player at once; each answers for
     // their own category, producing one log entry per target.
     for (const id of targets) room.players[id].incoming.push({ from, kind, text });
-    room.turnId = nextTurn(room, from);
+    room.turnId = this.advanceTurn(room, from);
 
     await this.saveRoom();
     this.broadcast();
@@ -292,13 +296,35 @@ export class DetectiveRoom {
     const { from, kind, text } = player.incoming.shift()!;
     room.log.push({ kind, from, target: player.id, text, fits });
 
-    if (kind === "guess" && fits) {
-      room.phase = "ended";
-      room.winner = from;
+    if (kind === "guess" && fits && !this.isSolved(room, player.id)) {
+      room.solved.push({ target: player.id, by: from });
+      if (room.solved.length >= SOLVES_TO_END) room.phase = "ended";
+    }
+    if (room.phase === "play" && room.turnId && this.openTargets(room, room.turnId).length === 0) {
+      room.turnId = this.advanceTurn(room, room.turnId);
     }
 
     await this.saveRoom();
     this.broadcast();
+  }
+
+  private isSolved(room: RoomState, playerId: string): boolean {
+    return room.solved.some((s) => s.target === playerId);
+  }
+
+  private openTargets(room: RoomState, playerId: string): string[] {
+    return othersOf(room, playerId).filter((id) => !this.isSolved(room, id));
+  }
+
+  // Skips anyone left with nothing to test (2-player room where the opponent's
+  // category has already been found) — otherwise their turn would deadlock.
+  private advanceTurn(room: RoomState, afterId: string | null): string | null {
+    let next = nextTurn(room, afterId);
+    for (let i = connectedIds(room).length; i > 0 && next; i--) {
+      if (this.openTargets(room, next).length > 0) return next;
+      next = nextTurn(room, next);
+    }
+    return next;
   }
 
   private async onRestart(session: Session, room: RoomState) {
@@ -310,7 +336,7 @@ export class DetectiveRoom {
       player.incoming = [];
     }
     room.log = [];
-    room.winner = null;
+    room.solved = [];
     room.turnId = null;
     room.phase = "lobby";
 
@@ -357,6 +383,7 @@ export class DetectiveRoom {
 
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
+    const nameOf = (id: string) => room.players[id]?.name ?? "?";
     const you = room.players[forPlayerId] ?? null;
 
     return {
@@ -377,6 +404,7 @@ export class DetectiveRoom {
         id: you.id,
         category: you.category,
         incoming: you.incoming,
+        solved: this.isSolved(room, you.id),
       },
       others: room.playerOrder
         .filter((id) => id !== forPlayerId)
@@ -388,13 +416,20 @@ export class DetectiveRoom {
           connected: p.connected,
           ready: p.ready,
           pendingCount: p.incoming.length,
-          category: revealAll ? p.category : null,
+          // A found category is public knowledge, no need to wait for the end.
+          category: revealAll || this.isSolved(room, p.id) ? p.category : null,
+          solved: this.isSolved(room, p.id),
         })),
       turnId: room.turnId,
       turnName: room.turnId ? room.players[room.turnId]?.name ?? null : null,
       log: room.log,
-      winner: room.winner,
-      winnerName: room.winner ? room.players[room.winner]?.name ?? null : null,
+      solvesToEnd: SOLVES_TO_END,
+      solved: room.solved.map((s) => ({
+        target: s.target,
+        targetName: nameOf(s.target),
+        by: s.by,
+        byName: nameOf(s.by),
+      })),
     };
   }
 }

@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Détective Anime</h1>
-      <p class="muted">2 ou 3 joueurs. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle des autres (chacun son tour), et tente d'en deviner une en premier.</p>
+      <p class="muted">2 ou 3 joueurs. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle des autres (chacun son tour), et tente d'en deviner. La manche s'arrête quand 2 catégories ont été trouvées.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -77,6 +77,7 @@
 
       <div class="card">
         <h3 id="turn-banner" class="turn-banner"></h3>
+        <p id="solved-progress" class="muted small turn-banner"></p>
       </div>
 
       <div id="incoming-panel" class="card hidden">
@@ -115,6 +116,7 @@
     <section id="screen-ended" class="hidden">
       <div class="card">
         <h2 id="end-title"></h2>
+        <div id="end-solved"></div>
         <p id="end-categories" class="muted"></p>
         <button id="restart-btn" class="btn hidden">Rejouer</button>
         <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>

@@ -2,6 +2,9 @@ import type { RoomState } from "./types";
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 3;
+// The round ends once this many secret categories have been guessed, not the
+// first one — one lucky guess shouldn't stop the game for everyone.
+export const SOLVES_TO_END = 2;
 
 export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);

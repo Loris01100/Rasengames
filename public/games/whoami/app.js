@@ -26,6 +26,8 @@
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
     startBtn: $("start-btn"),
+    guesserSelect: $("guesser-select"),
+    animeSelect: $("anime-select"),
     startHint: $("start-hint"),
     waitingHost: $("waiting-host"),
 
@@ -39,7 +41,12 @@
     endRoundBtn: $("end-round-btn"),
     makeGuessPanel: $("make-guess-panel"),
     makeGuessTitle: $("make-guess-title"),
-    guesserCard: $("guesser-card"),
+    hostRoundActions: $("host-round-actions"),
+    revealImage: $("reveal-image"),
+    revealPlaceholder: $("reveal-placeholder"),
+    revealName: $("reveal-name"),
+    revealAnime: $("reveal-anime"),
+    revealAttempts: $("reveal-attempts"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
@@ -225,6 +232,21 @@
     const isHost = state.hostId === myPlayerId;
     const connectedCount = state.players.filter((p) => p.connected).length;
 
+    fillSelect(
+      el.guesserSelect,
+      [{ value: "", label: "Aléatoire" }].concat(
+        state.players
+          .filter((p) => p.connected)
+          .map((p) => ({ value: p.id, label: p.name + (p.id === myPlayerId ? " (toi)" : "") }))
+      )
+    );
+    fillSelect(
+      el.animeSelect,
+      [{ value: "", label: "Aléatoire (tous)" }].concat(
+        (state.animeList ?? []).map((a) => ({ value: a, label: a }))
+      )
+    );
+
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
       el.waitingHost.classList.add("hidden");
@@ -237,6 +259,20 @@
       el.hostSettings.classList.add("hidden");
       el.waitingHost.classList.remove("hidden");
     }
+  }
+
+  // Rebuilt on every render like everything else; `keep` preserves the host's
+  // pick across re-renders triggered by someone else joining the lobby.
+  function fillSelect(select, options) {
+    const keep = select.value;
+    select.innerHTML = "";
+    for (const o of options) {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    }
+    if (options.some((o) => o.value === keep)) select.value = keep;
   }
 
   function characterCard(p) {
@@ -300,7 +336,7 @@
 
     el.guesserPanel.classList.toggle("hidden", !iGuess);
     el.makeGuessPanel.classList.toggle("hidden", iGuess);
-    el.endRoundBtn.classList.toggle("hidden", !isHost);
+    el.hostRoundActions.classList.toggle("hidden", !isHost);
 
     if (iGuess) {
       el.guessForm.classList.toggle("hidden", !!guesser?.found);
@@ -311,8 +347,21 @@
       }
     } else {
       el.makeGuessTitle.textContent = `Fais deviner ${guesser?.name ?? "le joueur"}`;
-      el.guesserCard.innerHTML = "";
-      if (guesser) el.guesserCard.appendChild(characterCard(guesser));
+      const hasImage = !!guesser?.characterImage;
+      el.revealImage.classList.toggle("hidden", !hasImage);
+      el.revealPlaceholder.classList.toggle("hidden", hasImage);
+      if (hasImage) el.revealImage.src = guesser.characterImage;
+      el.revealName.textContent = guesser?.character ?? "?";
+      el.revealAnime.textContent = guesser?.characterAnime ?? "";
+      el.revealAttempts.innerHTML = "";
+      el.revealAttempts.appendChild(
+        guesser?.guesses?.length
+          ? attemptsList(guesser.guesses, guesser.found)
+          : Object.assign(document.createElement("p"), {
+              className: "muted small",
+              textContent: "Aucun essai pour l'instant.",
+            })
+      );
     }
   }
 
@@ -365,7 +414,13 @@
     if (e.key === "Enter") el.joinBtn.click();
   });
 
-  el.startBtn.addEventListener("click", () => send({ type: "start" }));
+  el.startBtn.addEventListener("click", () =>
+    send({
+      type: "start",
+      guesserId: el.guesserSelect.value || undefined,
+      anime: el.animeSelect.value || undefined,
+    })
+  );
 
   el.guessSubmit.addEventListener("click", submitGuess);
   el.guessInput.addEventListener("keydown", (e) => {

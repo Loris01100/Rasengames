@@ -29,8 +29,19 @@
 
 .detective-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
+}
+
+.detective-column.solved h4 {
+  color: var(--success);
+}
+
+.detective-solved-category {
+  margin: 0 0 10px;
+  color: var(--success);
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 560px) {

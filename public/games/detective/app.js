@@ -54,6 +54,8 @@
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
+    endSolved: $("end-solved"),
+    solvedProgress: $("solved-progress"),
     endCategories: $("end-categories"),
     endLogColumns: $("end-log-columns"),
     restartBtn: $("restart-btn"),
@@ -165,7 +167,7 @@
       Sound.onIncrease("detective:answers", answers.length, answers.at(-1)?.fits ? "yes" : "no");
     }
     if (state.phase === "ended" && previous && previous.phase !== "ended") {
-      Sound.play(state.winner === myPlayerId ? "win" : "lose");
+      Sound.play((state.solved ?? []).some((s) => s.by === myPlayerId) ? "win" : "lose");
     }
   }
 
@@ -278,10 +280,25 @@
       const column = document.createElement("div");
       column.className = "detective-column";
 
+      const solvedEntry = (state.solved ?? []).find((s) => s.target === targetId);
       const title = document.createElement("h4");
       title.textContent =
         targetId === myPlayerId ? "Ta catégorie" : `Catégorie de ${nameOf(targetId)}`;
       column.appendChild(title);
+      if (solvedEntry) {
+        column.classList.add("solved");
+        title.textContent += ` — trouvée par ${solvedEntry.byName} ✓`;
+        const revealed =
+          targetId === myPlayerId
+            ? state.you?.category
+            : state.others?.find((o) => o.id === targetId)?.category;
+        if (revealed) {
+          const sub = document.createElement("p");
+          sub.className = "detective-solved-category";
+          sub.textContent = revealed;
+          column.appendChild(sub);
+        }
+      }
 
       const chips = document.createElement("div");
       chips.className = "detective-chips";
@@ -331,6 +348,9 @@
       el.incomingMoreHint.textContent = `+${queue.length - 1} autre(s) en attente de réponse`;
     }
 
+    const found = (state.solved ?? []).length;
+    el.solvedProgress.textContent = `${found} / ${state.solvesToEnd ?? 2} catégorie(s) trouvée(s)`;
+
     renderLogColumns(state, el.logColumns);
   }
 
@@ -338,8 +358,18 @@
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const iWon = state.winner === myPlayerId;
-    el.endTitle.textContent = iWon ? "Tu as gagné ! 🎉" : `${state.winnerName ?? "?"} a gagné !`;
+    const solved = state.solved ?? [];
+    const iScored = solved.some((s) => s.by === myPlayerId);
+    el.endTitle.textContent = iScored ? "Manche terminée — tu as marqué ! 🎉" : "Manche terminée !";
+    el.endSolved.innerHTML = "";
+    for (const s of solved) {
+      const line = document.createElement("p");
+      line.className = "muted";
+      const who = s.by === myPlayerId ? "Tu as" : `${s.byName} a`;
+      const whose = s.target === myPlayerId ? "ta catégorie" : `la catégorie de ${s.targetName}`;
+      line.textContent = `${who} trouvé ${whose}`;
+      el.endSolved.appendChild(line);
+    }
 
     const parts = [`Ta catégorie : ${state.you?.category ?? "?"}`];
     for (const o of state.others ?? []) parts.push(`${o.name} : ${o.category ?? "?"}`);

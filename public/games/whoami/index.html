@@ -49,6 +49,12 @@
       <div id="players-list" class="players-list"></div>
 
       <div id="host-settings" class="hidden">
+        <div class="whoami-options">
+          <label for="guesser-select">Qui devine ?</label>
+          <select id="guesser-select"></select>
+          <label for="anime-select">Anime</label>
+          <select id="anime-select"></select>
+        </div>
         <button id="start-btn" class="btn">Démarrer la partie</button>
         <p id="start-hint" class="muted small"></p>
       </div>
@@ -72,11 +78,27 @@
       <div id="make-guess-panel" class="card hidden">
         <h3 id="make-guess-title"></h3>
         <p class="muted small">Réponds à ses questions à voix haute, sans jamais dire le nom.</p>
-        <div id="guesser-card" class="whoami-grid"></div>
+
+        <div class="whoami-reveal">
+          <div class="whoami-reveal-media">
+            <img id="reveal-image" class="whoami-reveal-image hidden" alt="" referrerpolicy="no-referrer" />
+            <div id="reveal-placeholder" class="whoami-reveal-placeholder">?</div>
+          </div>
+          <div class="whoami-reveal-info">
+            <div class="muted small">Le personnage à faire deviner</div>
+            <h2 id="reveal-name" class="whoami-reveal-name"></h2>
+            <div id="reveal-anime" class="whoami-reveal-anime"></div>
+            <p class="whoami-rules muted small">
+              Réponds seulement par oui / non / peut-être. Jamais le nom, ni son anime.
+            </p>
+            <div class="muted small">Ses essais</div>
+            <div id="reveal-attempts"></div>
+          </div>
+        </div>
       </div>
 
-      <div class="card">
-        <button id="end-round-btn" class="btn secondary small hidden">Terminer la manche</button>
+      <div id="host-round-actions" class="card hidden">
+        <button id="end-round-btn" class="btn secondary small">Terminer la manche</button>
       </div>
     </section>
 

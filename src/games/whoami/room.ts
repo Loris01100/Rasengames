@@ -1,7 +1,8 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
 import { startRound, isCorrectGuess } from "./logic";
-import { fetchCharacterOrAnimeImage } from "../../lib/images";
+import { ANIME_LIST } from "./characters";
+import { fetchCharacterOrAnimeImage, fetchAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
@@ -116,7 +117,7 @@ export class WhoamiRoom {
         await this.onJoin(session, room, msg);
         break;
       case "start":
-        await this.onStart(session, room);
+        await this.onStart(session, room, msg);
         break;
       case "guess":
         await this.onGuess(session, room, msg);
@@ -176,6 +177,7 @@ export class WhoamiRoom {
       name,
       connected: true,
       character: null,
+      characterAnime: null,
       characterImage: null,
       found: false,
       guesses: [],
@@ -192,7 +194,7 @@ export class WhoamiRoom {
     this.broadcast();
   }
 
-  private async onStart(session: Session, room: RoomState) {
+  private async onStart(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
       this.sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
       return;
@@ -212,7 +214,10 @@ export class WhoamiRoom {
       }
     }
 
-    startRound(room);
+    const anime = ANIME_LIST.includes(String(msg.anime ?? "")) ? String(msg.anime) : null;
+    const guesserId = typeof msg.guesserId === "string" ? msg.guesserId : null;
+    room.anime = anime;
+    startRound(room, guesserId, anime);
     room.phase = "play";
 
     await this.saveRoom();
@@ -221,7 +226,10 @@ export class WhoamiRoom {
     const guesser = room.guesserId ? room.players[room.guesserId] : null;
     if (!guesser?.character) return;
     const startedWith = guesser.character;
-    const image = await fetchCharacterOrAnimeImage(startedWith);
+    // Falls back to the series cover so the card is never left imageless.
+    const image =
+      (await fetchCharacterOrAnimeImage(startedWith)) ??
+      (guesser.characterAnime ? await fetchAnimeImage(guesser.characterAnime) : null);
     // The room may have restarted (new character assigned) while this lookup
     // was in flight; only apply it if it's still the same round.
     if (room.phase === "play" && guesser.character === startedWith) {
@@ -271,6 +279,7 @@ export class WhoamiRoom {
 
     for (const player of Object.values(room.players)) {
       player.character = null;
+      player.characterAnime = null;
       player.characterImage = null;
       player.found = false;
       player.guesses = [];
@@ -333,6 +342,7 @@ export class WhoamiRoom {
         // Hidden from the guesser while the round is live — everyone else can
         // already see it, that's the whole game — revealed to them once ended.
         character: p.id !== forPlayerId || revealAll ? p.character : null,
+        characterAnime: p.id !== forPlayerId || revealAll ? p.characterAnime : null,
         characterImage: p.id !== forPlayerId || revealAll ? p.characterImage : null,
         // Attempts never reveal the character themselves (they're just what
         // was typed), so they're always visible to everyone, self included.
@@ -345,6 +355,8 @@ export class WhoamiRoom {
       hostId: room.hostId,
       players,
       guesserId: room.guesserId,
+      anime: room.anime,
+      animeList: ANIME_LIST,
     };
   }
 }

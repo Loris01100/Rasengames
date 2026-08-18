@@ -6,6 +6,7 @@ export interface Player {
   name: string;
   connected: boolean;
   character: string | null; // set only on the guesser — hidden from themself
+  characterAnime: string | null;
   characterImage: string | null;
   found: boolean;
   guesses: string[]; // every attempt this player made this round, visible to everyone
@@ -18,6 +19,7 @@ export interface RoomState {
   players: Record<string, Player>;
   playerOrder: string[];
   guesserId: string | null; // the single player guessing this round; everyone else makes them guess
+  anime: string | null; // round restricted to this series, null = whole pool
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -28,5 +30,6 @@ export function createEmptyRoom(code: string): RoomState {
     players: {},
     playerOrder: [],
     guesserId: null,
+    anime: null,
   };
 }

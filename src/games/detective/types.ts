@@ -32,7 +32,7 @@ export interface RoomState {
   playerOrder: string[]; // capped at MAX_PLAYERS, ever
   turnId: string | null; // whose turn it is to propose/guess during "play"
   log: LogEntry[];
-  winner: string | null; // playerId, once ended
+  solved: { target: string; by: string }[]; // categories found, oldest first
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -44,6 +44,6 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     turnId: null,
     log: [],
-    winner: null,
+    solved: [],
   };
 }

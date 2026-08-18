@@ -9,6 +9,71 @@
   margin-top: 12px;
 }
 
+.whoami-options {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0;
+}
+
+.whoami-options select {
+  width: 100%;
+}
+
+.whoami-reveal {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: 20px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.whoami-reveal-image,
+.whoami-reveal-placeholder {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.whoami-reveal-placeholder {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  color: var(--text-muted);
+}
+
+.whoami-reveal-name {
+  margin: 4px 0 2px;
+  font-size: 1.9rem;
+  line-height: 1.1;
+  color: var(--accent);
+}
+
+.whoami-reveal-anime {
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.whoami-rules {
+  margin: 0 0 14px;
+}
+
+.whoami-reveal .whoami-attempts {
+  justify-content: flex-start;
+}
+
+@media (max-width: 560px) {
+  .whoami-reveal {
+    grid-template-columns: 1fr;
+  }
+}
+
 .whoami-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
