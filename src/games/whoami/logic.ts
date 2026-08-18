@@ -12,18 +12,23 @@ export function normalizeGuess(word: string): string {
   return word.trim().toLowerCase().normalize("NFD").replace(COMBINING_MARKS, "");
 }
 
-export function assignCharacters(room: RoomState): void {
+// A single player guesses per round; the guesser role rotates through the
+// connected players so nobody has to sit out two rounds in a row.
+export function startRound(room: RoomState): void {
   const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-  const picks = pickRandomCharacters(connectedIds.length);
+  if (connectedIds.length === 0) return;
 
-  connectedIds.forEach((id, index) => {
+  const previous = room.guesserId ? connectedIds.indexOf(room.guesserId) : -1;
+  room.guesserId = connectedIds[(previous + 1) % connectedIds.length];
+
+  for (const id of connectedIds) {
     const player = room.players[id];
-    player.character = picks[index];
+    player.character = null;
     player.characterImage = null;
     player.found = false;
     player.guesses = [];
-  });
-  room.foundOrder = [];
+  }
+  room.players[room.guesserId].character = pickRandomCharacters(1)[0];
 }
 
 // Flexible on purpose: a compound name ("Eren Yeager") is accepted from any

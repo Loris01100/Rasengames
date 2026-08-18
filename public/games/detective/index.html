@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Détective Anime</h1>
-      <p class="muted">Duel à 2. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle de l'autre, et tente de la deviner en premier.</p>
+      <p class="muted">2 ou 3 joueurs. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle des autres (chacun son tour), et tente d'en deviner une en premier.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -44,7 +44,7 @@
     <!-- Lobby -->
     <section id="screen-lobby" class="card hidden">
       <h2>Salon <span id="lobby-code"></span></h2>
-      <p class="muted">Partage ce code avec ton adversaire (2 joueurs max).</p>
+      <p class="muted">Partage ce code avec tes adversaires (3 joueurs max).</p>
 
       <div id="players-list" class="players-list"></div>
 
@@ -59,7 +59,7 @@
     <section id="screen-setup" class="hidden">
       <div class="card narrow">
         <h2>Ta catégorie secrète</h2>
-        <p class="muted small">Ex: "a les cheveux roses", "a souffert", "porte des lunettes"... Ton adversaire devra deviner laquelle tu as choisie.</p>
+        <p class="muted small">Ex: "a les cheveux roses", "a souffert", "porte des lunettes"... Les autres devront deviner laquelle tu as choisie.</p>
         <div id="category-form" class="inline-form">
           <input id="category-input" type="text" maxlength="60" placeholder="Ta catégorie" autocomplete="off" />
           <button id="category-submit" class="btn">Prêt</button>
@@ -75,6 +75,10 @@
         <h3 id="my-category"></h3>
       </div>
 
+      <div class="card">
+        <h3 id="turn-banner" class="turn-banner"></h3>
+      </div>
+
       <div id="incoming-panel" class="card hidden">
         <h3 id="incoming-title"></h3>
         <p id="incoming-text" class="incoming-text"></p>
@@ -87,7 +91,7 @@
 
       <div class="card">
         <h3>Proposer un personnage</h3>
-        <p class="muted small">Teste si ce perso correspond à la catégorie secrète de ton adversaire. Pas besoin d'attendre sa réponse pour en reproposer un autre.</p>
+        <p class="muted small">Teste si ce perso correspond à la catégorie secrète des autres joueurs. Après ta proposition, c'est au tour du suivant.</p>
         <div id="propose-form" class="inline-form">
           <input id="propose-input" type="text" maxlength="40" placeholder="Nom du personnage" autocomplete="off" />
           <button id="propose-submit" class="btn">Proposer</button>
@@ -95,7 +99,7 @@
       </div>
 
       <div class="card">
-        <h3>Deviner sa catégorie</h3>
+        <h3>Deviner une catégorie</h3>
         <div id="guess-form" class="inline-form">
           <input id="guess-input" type="text" maxlength="60" placeholder="Sa catégorie est..." autocomplete="off" />
           <button id="guess-submit" class="btn secondary">Deviner</button>

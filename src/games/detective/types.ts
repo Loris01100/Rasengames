@@ -8,7 +8,8 @@ export interface Incoming {
 
 export interface LogEntry {
   kind: "proposal" | "guess";
-  from: string; // playerId
+  from: string; // playerId who submitted it
+  target: string; // playerId whose category it was tested against
   text: string;
   fits: boolean; // for a proposal: does it fit the target's category; for a guess: was it correct
 }
@@ -20,7 +21,7 @@ export interface Player {
   connected: boolean;
   category: string | null; // this player's own secret category
   ready: boolean; // has submitted their category during setup
-  incoming: Incoming[]; // proposals/guesses from the opponent this player must judge, oldest first
+  incoming: Incoming[]; // proposals/guesses from the others this player must judge, oldest first
 }
 
 export interface RoomState {
@@ -28,7 +29,8 @@ export interface RoomState {
   hostId: string | null;
   phase: Phase;
   players: Record<string, Player>;
-  playerOrder: string[]; // capped at 2 players, ever
+  playerOrder: string[]; // capped at MAX_PLAYERS, ever
+  turnId: string | null; // whose turn it is to propose/guess during "play"
   log: LogEntry[];
   winner: string | null; // playerId, once ended
 }
@@ -40,6 +42,7 @@ export function createEmptyRoom(code: string): RoomState {
     phase: "lobby",
     players: {},
     playerOrder: [],
+    turnId: null,
     log: [],
     winner: null,
   };

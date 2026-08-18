@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Qui suis-je ?</h1>
-      <p class="muted">Chacun a un personnage collé au front, sauf le sien. Posez des questions à voix haute pour deviner qui vous êtes. 2 joueurs minimum.</p>
+      <p class="muted">Un joueur a un personnage collé au front : à lui de deviner qui il est, les autres le font deviner. Le rôle tourne à chaque manche. 2 joueurs minimum.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -57,34 +57,37 @@
 
     <!-- Play phase -->
     <section id="screen-play" class="hidden">
-      <div class="card">
+      <div id="guesser-panel" class="card hidden">
         <div class="muted small">Ton personnage</div>
         <h2>???</h2>
-        <p class="muted small">Demande aux autres à voix haute pour deviner. Quand tu penses savoir, tape le nom ci-dessous.</p>
+        <p class="muted small">Pose des questions à voix haute aux autres. Quand tu penses savoir, tape le nom ci-dessous.</p>
         <div id="guess-form" class="inline-form">
           <input id="guess-input" type="text" maxlength="40" placeholder="Je pense être..." autocomplete="off" />
           <button id="guess-submit" class="btn">Valider</button>
         </div>
-        <p id="found-hint" class="muted small hidden">Trouvé ! 🎉 En attente des autres...</p>
+        <p id="found-hint" class="muted small hidden">Trouvé ! 🎉</p>
         <div id="my-attempts"></div>
-        <button id="end-round-btn" class="btn secondary small hidden">Terminer la manche</button>
+      </div>
+
+      <div id="make-guess-panel" class="card hidden">
+        <h3 id="make-guess-title"></h3>
+        <p class="muted small">Réponds à ses questions à voix haute, sans jamais dire le nom.</p>
+        <div id="guesser-card" class="whoami-grid"></div>
       </div>
 
       <div class="card">
-        <h3>Les autres</h3>
-        <div id="others-list" class="whoami-grid"></div>
+        <button id="end-round-btn" class="btn secondary small hidden">Terminer la manche</button>
       </div>
     </section>
 
     <!-- Ended -->
     <section id="screen-ended" class="hidden">
       <div class="card">
-        <h2>Résultats</h2>
-        <div id="ranking" class="players-list"></div>
+        <h2 id="end-title"></h2>
       </div>
 
       <div class="card">
-        <h3>Tout le monde</h3>
+        <h3>Le personnage</h3>
         <div id="reveal-grid" class="whoami-grid"></div>
         <button id="restart-btn" class="btn hidden">Rejouer</button>
         <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>

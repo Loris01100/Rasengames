@@ -80,3 +80,12 @@
 #restart-btn {
   margin-top: 12px;
 }
+
+.turn-banner {
+  margin: 0;
+  text-align: center;
+}
+
+.turn-banner.my-turn {
+  color: var(--accent);
+}

@@ -5,6 +5,7 @@
     { slug: "undercover", label: "Undercover" },
     { slug: "hundred", label: "1 à 100" },
     { slug: "bac", label: "Petit Bac" },
+    { slug: "detective", label: "Détective Anime" },
   ];
 
   const el = {
@@ -29,16 +30,19 @@
     waitingHost: $("waiting-host"),
 
     screenPlay: $("screen-play"),
+    guesserPanel: $("guesser-panel"),
     guessForm: $("guess-form"),
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
     foundHint: $("found-hint"),
     myAttempts: $("my-attempts"),
     endRoundBtn: $("end-round-btn"),
-    othersList: $("others-list"),
+    makeGuessPanel: $("make-guess-panel"),
+    makeGuessTitle: $("make-guess-title"),
+    guesserCard: $("guesser-card"),
 
     screenEnded: $("screen-ended"),
-    ranking: $("ranking"),
+    endTitle: $("end-title"),
     revealGrid: $("reveal-grid"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
@@ -142,7 +146,11 @@
   // sonne au chargement ni à la reconnexion.
   function playSounds(state) {
     Sound.onChange("whoami:phase", state.phase, "notify");
-    Sound.onIncrease("whoami:found", (state.foundOrder ?? []).length, "yes");
+    Sound.onIncrease(
+      "whoami:found",
+      (state.players ?? []).filter((p) => p.found).length,
+      "yes"
+    );
   }
 
   // ---- rendering ----
@@ -286,22 +294,25 @@
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const you = state.players.find((p) => p.id === myPlayerId);
+    const guesser = state.players.find((p) => p.id === state.guesserId);
+    const iGuess = state.guesserId === myPlayerId;
     const isHost = state.hostId === myPlayerId;
 
-    el.guessForm.classList.toggle("hidden", !!you?.found);
-    el.foundHint.classList.toggle("hidden", !you?.found);
+    el.guesserPanel.classList.toggle("hidden", !iGuess);
+    el.makeGuessPanel.classList.toggle("hidden", iGuess);
     el.endRoundBtn.classList.toggle("hidden", !isHost);
 
-    el.myAttempts.innerHTML = "";
-    if (you?.guesses?.length) {
-      el.myAttempts.appendChild(attemptsList(you.guesses, you.found));
-    }
-
-    el.othersList.innerHTML = "";
-    for (const p of state.players) {
-      if (p.id === myPlayerId) continue;
-      el.othersList.appendChild(characterCard(p));
+    if (iGuess) {
+      el.guessForm.classList.toggle("hidden", !!guesser?.found);
+      el.foundHint.classList.toggle("hidden", !guesser?.found);
+      el.myAttempts.innerHTML = "";
+      if (guesser?.guesses?.length) {
+        el.myAttempts.appendChild(attemptsList(guesser.guesses, guesser.found));
+      }
+    } else {
+      el.makeGuessTitle.textContent = `Fais deviner ${guesser?.name ?? "le joueur"}`;
+      el.guesserCard.innerHTML = "";
+      if (guesser) el.guesserCard.appendChild(characterCard(guesser));
     }
   }
 
@@ -309,42 +320,15 @@
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    el.ranking.innerHTML = "";
-    state.foundOrder.forEach((playerId, index) => {
-      const p = state.players.find((pl) => pl.id === playerId);
-      if (!p) return;
-      const row = document.createElement("div");
-      row.className = "player-row";
-      if (p.id === myPlayerId) row.classList.add("you");
-
-      const rank = document.createElement("span");
-      rank.className = "dot";
-      rank.textContent = "";
-      row.appendChild(rank);
-
-      const name = document.createElement("span");
-      name.className = "name";
-      name.textContent = `${index + 1}. ${p.name}${p.id === myPlayerId ? " (toi)" : ""}`;
-      row.appendChild(name);
-
-      el.ranking.appendChild(row);
-    });
-
-    const notFound = state.players.filter((p) => !state.foundOrder.includes(p.id));
-    for (const p of notFound) {
-      const row = document.createElement("div");
-      row.className = "player-row offline";
-      const name = document.createElement("span");
-      name.className = "name";
-      name.textContent = `${p.name}${p.id === myPlayerId ? " (toi)" : ""} — n'a pas trouvé`;
-      row.appendChild(name);
-      el.ranking.appendChild(row);
-    }
+    const guesser = state.players.find((p) => p.id === state.guesserId);
+    const who = state.guesserId === myPlayerId ? "Tu as" : `${guesser?.name ?? "?"} a`;
+    const tries = guesser?.guesses?.length ?? 0;
+    el.endTitle.textContent = guesser?.found
+      ? `${who} trouvé en ${tries} essai${tries > 1 ? "s" : ""} ! 🎉`
+      : `${who} pas trouvé...`;
 
     el.revealGrid.innerHTML = "";
-    for (const p of state.players) {
-      el.revealGrid.appendChild(characterCard(p));
-    }
+    if (guesser) el.revealGrid.appendChild(characterCard(guesser));
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);

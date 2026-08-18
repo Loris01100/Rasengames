@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { MAX_PLAYERS, opponentOf } from "./logic";
+import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
@@ -85,6 +85,9 @@ export class DetectiveRoom {
     const stillConnected = this.sessions.some((s) => s.playerId === session.playerId);
     if (!stillConnected) {
       player.connected = false;
+      if (this.room.phase === "play" && this.room.turnId === player.id) {
+        this.room.turnId = nextTurn(this.room, player.id);
+      }
       await this.saveRoom();
       this.broadcast();
     }
@@ -165,10 +168,10 @@ export class DetectiveRoom {
       return;
     }
 
-    // A "détective" room is a permanent 1v1 — capped at 2 players ever, not
-    // just 2 connected, so a third person can't sneak in if one drops.
+    // Capped at MAX_PLAYERS ever, not just connected, so a late arrival can't
+    // sneak into a slot freed by someone dropping mid-game.
     if (room.playerOrder.length >= MAX_PLAYERS) {
-      this.sendError(session.ws, "Ce salon est complet (2 joueurs max).");
+      this.sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
       return;
     }
 
@@ -211,8 +214,8 @@ export class DetectiveRoom {
     if (room.phase !== "lobby") return;
 
     const connectedCount = Object.values(room.players).filter((p) => p.connected).length;
-    if (connectedCount < MAX_PLAYERS) {
-      this.sendError(session.ws, "Il faut 2 joueurs connectés.");
+    if (connectedCount < MIN_PLAYERS) {
+      this.sendError(session.ws, `Il faut au moins ${MIN_PLAYERS} joueurs connectés.`);
       return;
     }
 
@@ -223,6 +226,7 @@ export class DetectiveRoom {
     }
     room.log = [];
     room.winner = null;
+    room.turnId = null;
     room.phase = "setup";
 
     await this.saveRoom();
@@ -242,9 +246,10 @@ export class DetectiveRoom {
     player.category = text;
     player.ready = true;
 
-    const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-    if (connectedIds.length === MAX_PLAYERS && connectedIds.every((id) => room.players[id]?.ready)) {
+    const ids = connectedIds(room);
+    if (ids.length >= MIN_PLAYERS && ids.every((id) => room.players[id]?.ready)) {
       room.phase = "play";
+      room.turnId = ids[0];
     }
 
     await this.saveRoom();
@@ -259,15 +264,20 @@ export class DetectiveRoom {
   ) {
     if (room.phase !== "play") return;
     const from = session.playerId;
-    const opponentId = opponentOf(room, from);
-    if (!opponentId) return;
-    const opponent = room.players[opponentId];
-    if (!opponent || !opponent.connected) return;
+    if (room.turnId !== from) {
+      this.sendError(session.ws, "Ce n'est pas ton tour.");
+      return;
+    }
+    const targets = othersOf(room, from);
+    if (targets.length === 0) return;
 
     const text = String(msg.text ?? "").trim().slice(0, MAX_TEXT_LENGTH);
     if (!text) return;
 
-    opponent.incoming.push({ from, kind, text });
+    // One submission is asked of every other player at once; each answers for
+    // their own category, producing one log entry per target.
+    for (const id of targets) room.players[id].incoming.push({ from, kind, text });
+    room.turnId = nextTurn(room, from);
 
     await this.saveRoom();
     this.broadcast();
@@ -280,7 +290,7 @@ export class DetectiveRoom {
 
     const fits = msg.fits === true;
     const { from, kind, text } = player.incoming.shift()!;
-    room.log.push({ kind, from, text, fits });
+    room.log.push({ kind, from, target: player.id, text, fits });
 
     if (kind === "guess" && fits) {
       room.phase = "ended";
@@ -301,6 +311,7 @@ export class DetectiveRoom {
     }
     room.log = [];
     room.winner = null;
+    room.turnId = null;
     room.phase = "lobby";
 
     await this.saveRoom();
@@ -347,8 +358,6 @@ export class DetectiveRoom {
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
     const you = room.players[forPlayerId] ?? null;
-    const opponentId = opponentOf(room, forPlayerId);
-    const opponent = opponentId ? room.players[opponentId] : null;
 
     return {
       code: room.code,
@@ -369,14 +378,20 @@ export class DetectiveRoom {
         category: you.category,
         incoming: you.incoming,
       },
-      opponent: opponent && {
-        id: opponent.id,
-        name: opponent.name,
-        connected: opponent.connected,
-        ready: opponent.ready,
-        pendingCount: opponent.incoming.length,
-        category: revealAll ? opponent.category : null,
-      },
+      others: room.playerOrder
+        .filter((id) => id !== forPlayerId)
+        .map((id) => room.players[id])
+        .filter((p): p is Player => !!p)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          connected: p.connected,
+          ready: p.ready,
+          pendingCount: p.incoming.length,
+          category: revealAll ? p.category : null,
+        })),
+      turnId: room.turnId,
+      turnName: room.turnId ? room.players[room.turnId]?.name ?? null : null,
       log: room.log,
       winner: room.winner,
       winnerName: room.winner ? room.players[room.winner]?.name ?? null : null,

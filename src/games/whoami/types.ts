@@ -5,7 +5,7 @@ export interface Player {
   token: string;
   name: string;
   connected: boolean;
-  character: string | null; // the character THIS player must guess — hidden from themself
+  character: string | null; // set only on the guesser — hidden from themself
   characterImage: string | null;
   found: boolean;
   guesses: string[]; // every attempt this player made this round, visible to everyone
@@ -17,7 +17,7 @@ export interface RoomState {
   phase: Phase;
   players: Record<string, Player>;
   playerOrder: string[];
-  foundOrder: string[]; // player IDs, in the order they guessed correctly
+  guesserId: string | null; // the single player guessing this round; everyone else makes them guess
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -27,6 +27,6 @@ export function createEmptyRoom(code: string): RoomState {
     phase: "lobby",
     players: {},
     playerOrder: [],
-    foundOrder: [],
+    guesserId: null,
   };
 }

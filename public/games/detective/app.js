@@ -37,6 +37,7 @@
 
     screenPlay: $("screen-play"),
     myCategory: $("my-category"),
+    turnBanner: $("turn-banner"),
     incomingPanel: $("incoming-panel"),
     incomingTitle: $("incoming-title"),
     incomingText: $("incoming-text"),
@@ -246,9 +247,9 @@
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
       el.waitingHost.classList.add("hidden");
-      const canStart = connectedCount === 2;
+      const canStart = connectedCount >= 2;
       el.startBtn.disabled = !canStart;
-      el.startHint.textContent = canStart ? "" : "Il faut exactement 2 joueurs connectés.";
+      el.startHint.textContent = canStart ? "" : "Il faut au moins 2 joueurs connectés (2 ou 3).";
     } else {
       el.hostSettings.classList.add("hidden");
       el.waitingHost.classList.remove("hidden");
@@ -270,9 +271,9 @@
   function renderLogColumns(state, containerEl) {
     containerEl.innerHTML = "";
     const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? "?";
-    const opponentId = state.opponent?.id;
+    const targetIds = [myPlayerId, ...(state.others ?? []).map((o) => o.id)];
 
-    for (const targetId of [myPlayerId, opponentId]) {
+    for (const targetId of targetIds) {
       if (!targetId) continue;
       const column = document.createElement("div");
       column.className = "detective-column";
@@ -284,8 +285,7 @@
 
       const chips = document.createElement("div");
       chips.className = "detective-chips";
-      // Entries targeting this player are the ones submitted by the OTHER one.
-      const entries = state.log.filter((e) => e.from !== targetId);
+      const entries = state.log.filter((e) => e.target === targetId);
       for (const entry of entries) {
         const chip = document.createElement("div");
         chip.className = `detective-chip ${entry.fits ? "fits" : "no-fit"}`;
@@ -308,11 +308,20 @@
     el.roomBadge.classList.remove("hidden");
     el.myCategory.textContent = state.you?.category ?? "";
 
+    const myTurn = state.turnId === myPlayerId;
+    el.turnBanner.textContent = myTurn
+      ? "À toi de jouer"
+      : `Au tour de ${state.turnName ?? "..."}`;
+    el.turnBanner.classList.toggle("my-turn", myTurn);
+    el.proposeForm.classList.toggle("hidden", !myTurn);
+    el.guessForm.classList.toggle("hidden", !myTurn);
+
     const queue = state.you?.incoming ?? [];
     const incoming = queue[0];
     el.incomingPanel.classList.toggle("hidden", !incoming);
     if (incoming) {
-      const fromName = state.opponent?.name ?? "Ton adversaire";
+      const fromName =
+        state.others?.find((o) => o.id === incoming.from)?.name ?? "Un adversaire";
       el.incomingTitle.textContent =
         incoming.kind === "proposal"
           ? `${fromName} propose un personnage pour TA catégorie`
@@ -332,10 +341,9 @@
     const iWon = state.winner === myPlayerId;
     el.endTitle.textContent = iWon ? "Tu as gagné ! 🎉" : `${state.winnerName ?? "?"} a gagné !`;
 
-    const myCat = state.you?.category ?? "?";
-    const oppName = state.opponent?.name ?? "L'adversaire";
-    const oppCat = state.opponent?.category ?? "?";
-    el.endCategories.textContent = `Ta catégorie : ${myCat} — Catégorie de ${oppName} : ${oppCat}`;
+    const parts = [`Ta catégorie : ${state.you?.category ?? "?"}`];
+    for (const o of state.others ?? []) parts.push(`${o.name} : ${o.category ?? "?"}`);
+    el.endCategories.textContent = parts.join(" — ");
 
     renderLogColumns(state, el.endLogColumns);
 

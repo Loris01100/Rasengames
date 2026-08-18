@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { assignCharacters, isCorrectGuess } from "./logic";
+import { startRound, isCorrectGuess } from "./logic";
 import { fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
@@ -212,27 +212,20 @@ export class WhoamiRoom {
       }
     }
 
-    assignCharacters(room);
+    startRound(room);
     room.phase = "play";
 
     await this.saveRoom();
     this.broadcast();
 
-    const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-    const startedWithCharacters = new Set(connectedIds.map((id) => room.players[id]?.character));
-    await Promise.all(
-      connectedIds.map(async (id) => {
-        const player = room.players[id];
-        if (!player.character) return;
-        const image = await fetchCharacterOrAnimeImage(player.character);
-        // The room may have restarted (new characters assigned) while this
-        // lookup was in flight; only apply it if it's still the same round.
-        if (player.character && startedWithCharacters.has(player.character)) {
-          player.characterImage = image;
-        }
-      })
-    );
-    if (room.phase === "play") {
+    const guesser = room.guesserId ? room.players[room.guesserId] : null;
+    if (!guesser?.character) return;
+    const startedWith = guesser.character;
+    const image = await fetchCharacterOrAnimeImage(startedWith);
+    // The room may have restarted (new character assigned) while this lookup
+    // was in flight; only apply it if it's still the same round.
+    if (room.phase === "play" && guesser.character === startedWith) {
+      guesser.characterImage = image;
       await this.saveRoom();
       this.broadcast();
     }
@@ -242,6 +235,10 @@ export class WhoamiRoom {
     if (room.phase !== "play") return;
     const player = room.players[session.playerId];
     if (!player || !player.connected || player.found || !player.character) return;
+    if (room.guesserId !== player.id) {
+      this.sendError(session.ws, "Ce n'est pas toi qui devines cette manche.");
+      return;
+    }
 
     const guess = String(msg.text ?? "").trim().slice(0, MAX_GUESS_LENGTH);
     if (!guess) return;
@@ -256,12 +253,7 @@ export class WhoamiRoom {
     }
 
     player.found = true;
-    room.foundOrder.push(player.id);
-
-    const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-    if (connectedIds.every((id) => room.players[id]?.found)) {
-      room.phase = "ended";
-    }
+    room.phase = "ended";
 
     await this.saveRoom();
     this.broadcast();
@@ -283,7 +275,6 @@ export class WhoamiRoom {
       player.found = false;
       player.guesses = [];
     }
-    room.foundOrder = [];
     room.phase = "lobby";
 
     await this.saveRoom();
@@ -339,8 +330,8 @@ export class WhoamiRoom {
         connected: p.connected,
         isHost: p.id === room.hostId,
         found: p.found,
-        // Hidden from yourself while the round is live — everyone else can
-        // already see it, that's the whole game — revealed to you too once ended.
+        // Hidden from the guesser while the round is live — everyone else can
+        // already see it, that's the whole game — revealed to them once ended.
         character: p.id !== forPlayerId || revealAll ? p.character : null,
         characterImage: p.id !== forPlayerId || revealAll ? p.characterImage : null,
         // Attempts never reveal the character themselves (they're just what
@@ -348,15 +339,12 @@ export class WhoamiRoom {
         guesses: p.guesses,
       }));
 
-    const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-
     return {
       code: room.code,
       phase: room.phase,
       hostId: room.hostId,
       players,
-      foundOrder: room.foundOrder,
-      totalToFind: connectedIds.length,
+      guesserId: room.guesserId,
     };
   }
 }

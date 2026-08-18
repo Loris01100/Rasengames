@@ -4,12 +4,24 @@ export interface WordPair {
   b: string;
 }
 
-export type WordCategory = "anime" | "character" | "technique" | "random";
+export type WordCategory =
+  | "anime"
+  | "character"
+  | "technique"
+  | "place"
+  | "arc"
+  | "group"
+  | "object"
+  | "random";
 
 export const CATEGORY_LABELS: Record<WordCategory, string> = {
   anime: "Titres d'anime",
   character: "Personnages",
-  technique: "Techniques / Jutsu",
+  technique: "Pouvoirs",
+  place: "Lieux",
+  arc: "Arcs",
+  group: "Groupes",
+  object: "Objets",
   random: "Aléatoire (tout mélangé)",
 };
 
@@ -74,10 +86,76 @@ const TECHNIQUE_PAIRS: WordPair[] = [
   { a: "Kaioken", b: "Ultra Instinct" },
 ];
 
+const PLACE_PAIRS: WordPair[] = [
+  { a: "Konoha", b: "Suna" },
+  { a: "Marineford", b: "Enies Lobby" },
+  { a: "Mur Maria", b: "Mur Rose" },
+  { a: "UA", b: "Shiketsu" },
+  { a: "Soul Society", b: "Hueco Mundo" },
+  { a: "Vallée de la Fin", b: "Pont Kannabi" },
+  { a: "Wano", b: "Dressrosa" },
+  { a: "Namek", b: "Planète Vegeta" },
+  { a: "Tour Céleste", b: "Salle de l'Esprit et du Temps" },
+  { a: "Île Céleste", b: "Water Seven" },
+  { a: "Shibuya", b: "Tokyo Jujutsu" },
+  { a: "Village caché de la Pluie", b: "Village caché de la Brume" },
+  { a: "Mont Natagumo", b: "Quartier des Plaisirs" },
+  { a: "Ville de Magnolia", b: "Ville de Crocus" },
+];
+
+const ARC_PAIRS: WordPair[] = [
+  { a: "Examen Chunin", b: "Examen Hunter" },
+  { a: "Guerre des Ninjas", b: "Guerre de Marineford" },
+  { a: "Arc Wano", b: "Arc Alabasta" },
+  { a: "Arc Shibuya", b: "Arc Kyoto" },
+  { a: "Arc du Train de l'Infini", b: "Arc du Quartier des Plaisirs" },
+  { a: "Arc de Namek", b: "Arc de Cell" },
+  { a: "Arc de la Reconquête de Shiganshina", b: "Arc de Marley" },
+  { a: "Arc Pain", b: "Arc Sasuke Retrieval" },
+  { a: "Arc Soul Society", b: "Arc Arrancar" },
+  { a: "Arc Chimera Ant", b: "Arc Greed Island" },
+  { a: "Arc du Festival du Sport", b: "Arc du Stage" },
+  { a: "Arc Aincrad", b: "Arc Alfheim" },
+];
+
+const GROUP_PAIRS: WordPair[] = [
+  { a: "Akatsuki", b: "Anbu" },
+  { a: "Équipage du Chapeau de Paille", b: "Équipage de Barbe Blanche" },
+  { a: "Marine", b: "Cipher Pol" },
+  { a: "Pilier", b: "Lune Supérieure" },
+  { a: "Bataillon d'exploration", b: "Brigade Spéciale" },
+  { a: "Espada", b: "Capitaines du Gotei 13" },
+  { a: "Team 7", b: "Team Gai" },
+  { a: "Fairy Tail", b: "Sabertooth" },
+  { a: "Fantômes Troupe", b: "Zodiaques" },
+  { a: "Force Ginyu", b: "Guerriers Z" },
+  { a: "Sept Péchés Capitaux", b: "Dix Commandements" },
+  { a: "Classe 1-A", b: "Classe 1-B" },
+];
+
+const OBJECT_PAIRS: WordPair[] = [
+  { a: "Death Note", b: "Grimoire" },
+  { a: "Pierre Philosophale", b: "Dragon Balls" },
+  { a: "Sabre Yoru", b: "Sabre Wado Ichimonji" },
+  { a: "Kunai", b: "Shuriken" },
+  { a: "Bandeau frontal", b: "Cape de l'Hokage" },
+  { a: "Log Pose", b: "Vivre Card" },
+  { a: "Fruit du Démon", b: "Nen" },
+  { a: "Boucle d'oreille Potara", b: "Ceinture de Nuage Magique" },
+  { a: "Manoir hanté", b: "Lame Nichirin" },
+  { a: "Équipement tridimensionnel", b: "Fusil anti-Titan" },
+  { a: "Zanpakuto", b: "Hollow Mask" },
+  { a: "Doigt de Sukuna", b: "Œil de Gojo" },
+];
+
 const CATEGORY_MAP: Record<Exclude<WordCategory, "random">, WordPair[]> = {
   anime: ANIME_PAIRS,
   character: CHARACTER_PAIRS,
   technique: TECHNIQUE_PAIRS,
+  place: PLACE_PAIRS,
+  arc: ARC_PAIRS,
+  group: GROUP_PAIRS,
+  object: OBJECT_PAIRS,
 };
 
 export function pickRandomPair(category: WordCategory): WordPair {

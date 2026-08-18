@@ -70,8 +70,12 @@
   const CATEGORY_LABELS = {
     random: "Aléatoire",
     character: "Personnages",
-    technique: "Techniques / Jutsu",
+    technique: "Pouvoirs",
     anime: "Titres d'anime",
+    place: "Lieux",
+    arc: "Arcs",
+    group: "Groupes",
+    object: "Objets",
   };
 
   // Other games the group can switch to without disbanding — see the
