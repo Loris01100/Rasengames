@@ -6,6 +6,7 @@
     { slug: "hundred", label: "1 à 100" },
     { slug: "bac", label: "Petit Bac" },
     { slug: "whoami", label: "Qui suis-je" },
+    { slug: "note", label: "Le jeu de la note" },
   ];
 
   const el = {

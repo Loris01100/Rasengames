@@ -5,4 +5,5 @@ export interface Env {
   BAC_ROOM: DurableObjectNamespace;
   WHOAMI_ROOM: DurableObjectNamespace;
   DETECTIVE_ROOM: DurableObjectNamespace;
+  NOTE_ROOM: DurableObjectNamespace;
 }

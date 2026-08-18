@@ -21,6 +21,7 @@
     { slug: "hundred", label: "1 à 100" },
     { slug: "whoami", label: "Qui suis-je" },
     { slug: "detective", label: "Détective Anime" },
+    { slug: "note", label: "Le jeu de la note" },
   ];
 
   const el = {

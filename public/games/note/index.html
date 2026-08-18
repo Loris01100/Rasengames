@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Le jeu de la note · RasenGames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/note/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+    <div id="switch-game" class="switch-game hidden">
+      <select id="switch-game-select"></select>
+      <button id="switch-game-btn" class="btn secondary small">Changer de jeu</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Join / create screen -->
+    <section id="screen-join" class="card narrow">
+      <h1>Le jeu de la note</h1>
+      <p class="muted">Tout le monde sauf un joueur voit un chiffre secret entre 1 et 10, tiré au sort. Chacun donne un personnage, un anime, puis en dernière chance un arc, un lieu ou un pouvoir qu'il juge à ce niveau. Le dernier joueur doit deviner le chiffre à partir de leurs réponses. 3 joueurs minimum.</p>
+
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
+
+      <div class="join-actions">
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lobby -->
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Partage ce code avec tes amis pour qu'ils rejoignent.</p>
+
+      <div id="players-list" class="players-list"></div>
+
+      <div id="host-settings" class="hidden">
+        <div class="note-options">
+          <label for="guesser-select">Qui devine ?</label>
+          <select id="guesser-select"></select>
+        </div>
+        <button id="start-btn" class="btn">Démarrer la partie</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
+    </section>
+
+    <!-- Play phase -->
+    <section id="screen-play" class="hidden">
+      <div id="number-panel" class="card hidden">
+        <div class="muted small">Le chiffre secret</div>
+        <div id="number-display" class="note-number-display">—</div>
+      </div>
+
+      <div id="guesser-wait-panel" class="card hidden">
+        <h3>Tu es celui qui devine</h3>
+        <p class="muted small">Tu ne vois pas le chiffre. Écoute (ou lis) les réponses des autres pour essayer de le déduire.</p>
+      </div>
+
+      <div class="card">
+        <h3 id="step-title"></h3>
+        <div id="clue-form" class="hidden">
+          <div id="last-chance-kind" class="note-kind-choice hidden">
+            <label><input type="radio" name="kind" value="arc" checked /> Arc</label>
+            <label><input type="radio" name="kind" value="lieu" /> Lieu</label>
+            <label><input type="radio" name="kind" value="pouvoir" /> Pouvoir</label>
+          </div>
+          <div class="inline-form">
+            <input id="clue-input" type="text" maxlength="60" placeholder="Ta réponse" autocomplete="off" />
+            <button id="clue-submit" class="btn">Envoyer</button>
+          </div>
+        </div>
+        <p id="clue-wait-hint" class="muted small hidden">Envoyé ! En attente des autres...</p>
+        <p id="step-progress" class="muted small"></p>
+      </div>
+
+      <div id="guess-panel" class="card hidden">
+        <h3>À toi de deviner !</h3>
+        <p class="muted small">D'après les exemples donnés, quel chiffre entre 1 et 10 les autres ont-ils choisi ?</p>
+        <div id="guess-numbers" class="note-numbers"></div>
+      </div>
+
+      <div class="card">
+        <h3>Réponses données</h3>
+        <div id="clue-log" class="note-columns"></div>
+      </div>
+    </section>
+
+    <!-- Ended -->
+    <section id="screen-ended" class="hidden">
+      <div class="card">
+        <h2 id="end-title"></h2>
+        <p id="end-detail" class="muted"></p>
+        <button id="restart-btn" class="btn hidden">Rejouer</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
+      </div>
+
+      <div class="card">
+        <h3>Réponses données</h3>
+        <div id="end-clue-log" class="note-columns"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/sound.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/games/note/app.js"></script>
+</body>
+</html>

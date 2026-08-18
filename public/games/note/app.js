@@ -5,9 +5,23 @@
     { slug: "undercover", label: "Undercover" },
     { slug: "hundred", label: "1 à 100" },
     { slug: "bac", label: "Petit Bac" },
+    { slug: "whoami", label: "Qui suis-je" },
     { slug: "detective", label: "Détective Anime" },
-    { slug: "note", label: "Le jeu de la note" },
   ];
+
+  const STEP_LABELS = {
+    character: "Donne un personnage que tu juges à ce niveau",
+    anime: "Donne un anime que tu juges à ce niveau",
+    lastChance: "Dernière chance : un arc, un lieu ou un pouvoir",
+  };
+
+  const CLUE_COLUMNS = [
+    { key: "character", label: "Personnage" },
+    { key: "anime", label: "Anime" },
+    { key: "lastChance", label: "Dernière chance" },
+  ];
+
+  const KIND_LABELS = { arc: "Arc", lieu: "Lieu", pouvoir: "Pouvoir" };
 
   const el = {
     toast: $("toast"),
@@ -26,35 +40,30 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
+    guesserSelect: $("guesser-select"),
     startBtn: $("start-btn"),
     startHint: $("start-hint"),
     waitingHost: $("waiting-host"),
 
-    screenSubmit: $("screen-submit"),
-    wordForm: $("word-form"),
-    wordInput: $("word-input"),
-    wordSubmit: $("word-submit"),
-    wordDoneHint: $("word-done-hint"),
-    submitProgress: $("submit-progress"),
-
     screenPlay: $("screen-play"),
-    guessForm: $("guess-form"),
-    guessInput: $("guess-input"),
-    guessSubmit: $("guess-submit"),
-    foundHint: $("found-hint"),
-    myAttempts: $("my-attempts"),
-    myQuestions: $("my-questions"),
-    playProgress: $("play-progress"),
-    turnBanner: $("turn-banner"),
-    askedBtn: $("asked-btn"),
-    othersGrid: $("others-grid"),
-    endRoundBtn: $("end-round-btn"),
-    hostRoundActions: $("host-round-actions"),
+    numberPanel: $("number-panel"),
+    numberDisplay: $("number-display"),
+    guesserWaitPanel: $("guesser-wait-panel"),
+    stepTitle: $("step-title"),
+    clueForm: $("clue-form"),
+    lastChanceKind: $("last-chance-kind"),
+    clueInput: $("clue-input"),
+    clueSubmit: $("clue-submit"),
+    clueWaitHint: $("clue-wait-hint"),
+    stepProgress: $("step-progress"),
+    guessPanel: $("guess-panel"),
+    guessNumbers: $("guess-numbers"),
+    clueLog: $("clue-log"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
-    endBest: $("end-best"),
-    revealGrid: $("reveal-grid"),
+    endDetail: $("end-detail"),
+    endClueLog: $("end-clue-log"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
@@ -75,11 +84,11 @@
 
   function wsUrl(code) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${location.host}/ws/whoami/${code}`;
+    return `${proto}://${location.host}/ws/note/${code}`;
   }
 
   function storageKey(code, suffix) {
-    return `whoami:${code}:${suffix}`;
+    return `note:${code}:${suffix}`;
   }
 
   function connect(code, name, token, asHost) {
@@ -132,15 +141,16 @@
       myPlayerId = msg.playerId;
       localStorage.setItem(storageKey(roomCode, "token"), msg.token);
       localStorage.setItem(storageKey(roomCode, "name"), el.nameInput.value.trim() || "Joueur");
-      localStorage.setItem("whoami:lastName", el.nameInput.value.trim() || "Joueur");
+      localStorage.setItem("note:lastName", el.nameInput.value.trim() || "Joueur");
       const params = new URLSearchParams(location.search);
       params.set("room", roomCode);
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
       el.roomBadge.textContent = roomCode;
       el.roomBadge.classList.remove("hidden");
     } else if (msg.type === "state") {
+      const previous = latestState;
       latestState = msg.state;
-      playSounds(latestState);
+      playSounds(previous, latestState);
       render(latestState);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
@@ -153,20 +163,20 @@
 
   // ---- sons ----
 
-  // Sound.onIncrease / onChange ignorent le premier state reçu, donc rien ne
-  // sonne au chargement ni à la reconnexion.
-  function playSounds(state) {
-    Sound.onChange("whoami:phase", state.phase, "notify");
-    Sound.onIncrease(
-      "whoami:found",
-      (state.players ?? []).filter((p) => p.found).length,
-      "yes"
-    );
+  // Sound.onIncrease ignore le premier state reçu, donc rien ne sonne au
+  // chargement ni à la reconnexion.
+  function playSounds(previous, state) {
+    if (state.phase === "play") {
+      Sound.onIncrease("note:clues", (state.clues ?? []).length, "notify");
+    }
+    if (state.phase === "ended" && previous && previous.phase !== "ended") {
+      Sound.play(state.guess === state.number ? "win" : "lose");
+    }
   }
 
   // ---- rendering ----
 
-  const SCREENS = [el.screenJoin, el.screenLobby, el.screenSubmit, el.screenPlay, el.screenEnded];
+  const SCREENS = [el.screenJoin, el.screenLobby, el.screenPlay, el.screenEnded];
 
   function showScreen(screen) {
     for (const s of SCREENS) s.classList.toggle("hidden", s !== screen);
@@ -183,15 +193,24 @@
   }
   populateSwitchGameSelect();
 
+  function buildGuessButtons() {
+    el.guessNumbers.innerHTML = "";
+    for (let n = 1; n <= 10; n++) {
+      const btn = document.createElement("button");
+      btn.className = "btn secondary note-number-btn";
+      btn.textContent = String(n);
+      btn.addEventListener("click", () => send({ type: "submitGuess", number: n }));
+      el.guessNumbers.appendChild(btn);
+    }
+  }
+  buildGuessButtons();
+
   function render(state) {
     el.switchGame.classList.toggle("hidden", state.hostId !== myPlayerId);
 
     if (state.phase === "lobby") {
       showScreen(el.screenLobby);
       renderLobby(state);
-    } else if (state.phase === "submit") {
-      showScreen(el.screenSubmit);
-      renderSubmit(state);
     } else if (state.phase === "play") {
       showScreen(el.screenPlay);
       renderPlay(state);
@@ -239,160 +258,119 @@
     const isHost = state.hostId === myPlayerId;
     const connectedCount = state.players.filter((p) => p.connected).length;
 
+    fillSelect(
+      el.guesserSelect,
+      [{ value: "", label: "Aléatoire" }].concat(
+        state.players
+          .filter((p) => p.connected)
+          .map((p) => ({ value: p.id, label: p.name + (p.id === myPlayerId ? " (toi)" : "") }))
+      )
+    );
+
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
       el.waitingHost.classList.add("hidden");
-      const canStart = connectedCount >= 2 && connectedCount <= 5;
+      const canStart = connectedCount >= 3;
       el.startBtn.disabled = !canStart;
       el.startHint.textContent = canStart
         ? ""
-        : `Il faut entre 2 et 5 joueurs connectés (actuellement ${connectedCount}).`;
+        : `Il faut au moins 3 joueurs connectés (actuellement ${connectedCount}).`;
     } else {
       el.hostSettings.classList.add("hidden");
       el.waitingHost.classList.remove("hidden");
     }
   }
 
-  function renderSubmit(state) {
-    el.roomBadge.textContent = state.code;
-    el.roomBadge.classList.remove("hidden");
-
-    const you = state.players.find((p) => p.id === myPlayerId);
-    const ready = !!you?.ready;
-    el.wordForm.classList.toggle("hidden", ready);
-    el.wordDoneHint.classList.toggle("hidden", !ready);
-
-    const readyCount = state.players.filter((p) => p.connected && p.ready).length;
-    const totalCount = state.players.filter((p) => p.connected).length;
-    el.submitProgress.textContent = `${readyCount}/${totalCount} ont écrit leur mot`;
+  // Rebuilt on every render like everything else; `keep` preserves the
+  // host's pick across re-renders triggered by someone else joining.
+  function fillSelect(select, options) {
+    const keep = select.value;
+    select.innerHTML = "";
+    for (const o of options) {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    }
+    if (options.some((o) => o.value === keep)) select.value = keep;
   }
 
-  function characterCard(p, rank) {
-    const card = document.createElement("div");
-    card.className = "whoami-card";
-    if (p.found) card.classList.add("found");
+  function renderClueLog(state, container) {
+    container.innerHTML = "";
+    const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? "?";
+    for (const col of CLUE_COLUMNS) {
+      const entries = (state.clues ?? []).filter((c) => c.step === col.key);
+      if (entries.length === 0) continue;
 
-    if (rank) {
-      const badge = document.createElement("div");
-      badge.className = "whoami-rank";
-      badge.textContent = `#${rank}`;
-      card.appendChild(badge);
+      const column = document.createElement("div");
+      column.className = "note-column";
+      const h = document.createElement("h4");
+      h.textContent = col.label;
+      column.appendChild(h);
+
+      const chips = document.createElement("div");
+      chips.className = "note-chips";
+      for (const entry of entries) {
+        const chip = document.createElement("div");
+        chip.className = "note-chip";
+        const author = document.createElement("span");
+        author.className = "note-author";
+        author.textContent = nameOf(entry.playerId) + (entry.kind ? ` · ${KIND_LABELS[entry.kind] ?? entry.kind}` : "");
+        chip.appendChild(author);
+        chip.appendChild(document.createTextNode(entry.text));
+        chips.appendChild(chip);
+      }
+      column.appendChild(chips);
+      container.appendChild(column);
     }
-
-    if (p.wordImage) {
-      const img = document.createElement("img");
-      img.className = "whoami-image";
-      img.src = p.wordImage;
-      img.alt = "";
-      img.referrerPolicy = "no-referrer";
-      card.appendChild(img);
-    }
-
-    const name = document.createElement("div");
-    name.className = "whoami-owner";
-    name.textContent = p.name + (p.id === myPlayerId ? " (toi)" : "");
-    card.appendChild(name);
-
-    const word = document.createElement("div");
-    word.className = "whoami-character";
-    word.textContent = p.word ?? "?";
-    card.appendChild(word);
-
-    if (p.found) {
-      const badge = document.createElement("div");
-      badge.className = "whoami-found-badge";
-      badge.textContent = "Trouvé ✓";
-      card.appendChild(badge);
-    }
-
-    if (typeof p.questionsAsked === "number") {
-      const q = document.createElement("div");
-      q.className = "whoami-questions muted small";
-      q.textContent = `${p.questionsAsked} question${p.questionsAsked > 1 ? "s" : ""} posée${p.questionsAsked > 1 ? "s" : ""}`;
-      card.appendChild(q);
-    }
-
-    if (p.guesses && p.guesses.length > 0) {
-      card.appendChild(attemptsList(p.guesses, p.found));
-    }
-
-    return card;
-  }
-
-  function attemptsList(guesses, found) {
-    const wrap = document.createElement("div");
-    wrap.className = "whoami-attempts";
-    guesses.forEach((text, index) => {
-      const chip = document.createElement("span");
-      chip.className = "whoami-attempt-chip";
-      if (found && index === guesses.length - 1) chip.classList.add("correct");
-      chip.textContent = text;
-      wrap.appendChild(chip);
-    });
-    return wrap;
   }
 
   function renderPlay(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const you = state.players.find((p) => p.id === myPlayerId);
-    const isHost = state.hostId === myPlayerId;
-    const myTurn = state.turnId === myPlayerId;
+    const iAmGuesser = state.guesserId === myPlayerId;
+    const me = state.players.find((p) => p.id === myPlayerId);
+    const isClueStep = state.step === "character" || state.step === "anime" || state.step === "lastChance";
 
-    el.guessForm.classList.toggle("hidden", !!you?.found);
-    el.foundHint.classList.toggle("hidden", !you?.found);
-    el.myAttempts.innerHTML = "";
-    if (you?.guesses?.length) el.myAttempts.appendChild(attemptsList(you.guesses, you.found));
-    el.myQuestions.textContent = `Questions posées : ${you?.questionsAsked ?? 0}`;
+    el.numberPanel.classList.toggle("hidden", iAmGuesser);
+    if (!iAmGuesser) el.numberDisplay.textContent = state.number ?? "—";
 
-    el.turnBanner.textContent = !state.turnId
-      ? ""
-      : myTurn
-        ? "À toi de poser une question"
-        : `Au tour de ${state.turnName ?? "..."}`;
-    el.turnBanner.classList.toggle("my-turn", myTurn);
-    el.askedBtn.classList.toggle("hidden", !myTurn);
+    el.guesserWaitPanel.classList.toggle("hidden", !iAmGuesser || state.step === "guessing");
 
-    el.hostRoundActions.classList.toggle("hidden", !isHost);
+    el.stepTitle.textContent = isClueStep ? STEP_LABELS[state.step] : "Tout le monde a répondu !";
 
-    el.othersGrid.innerHTML = "";
-    for (const p of state.players) {
-      if (p.id === myPlayerId) continue;
-      el.othersGrid.appendChild(characterCard(p));
-    }
+    const canSubmit = isClueStep && !iAmGuesser && !me?.submitted;
+    el.clueForm.classList.toggle("hidden", !canSubmit);
+    el.clueWaitHint.classList.toggle("hidden", !(isClueStep && !iAmGuesser && me?.submitted));
+    el.lastChanceKind.classList.toggle("hidden", state.step !== "lastChance");
 
-    const foundCount = state.players.filter((p) => p.connected && p.found).length;
-    const totalCount = state.players.filter((p) => p.connected).length;
-    el.playProgress.textContent = `${foundCount}/${totalCount} ont trouvé leur mot`;
+    const informed = state.players.filter((p) => p.connected && p.id !== state.guesserId);
+    const submittedCount = informed.filter((p) => p.submitted).length;
+    el.stepProgress.textContent = isClueStep ? `${submittedCount}/${informed.length} ont répondu` : "";
+
+    el.guessPanel.classList.toggle("hidden", !(iAmGuesser && state.step === "guessing"));
+
+    renderClueLog(state, el.clueLog);
   }
 
   function renderEnded(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const foundCount = state.players.filter((p) => p.found).length;
-    const total = state.players.length;
-    const you = state.players.find((p) => p.id === myPlayerId);
-    el.endTitle.textContent = you?.found
-      ? `Manche terminée — tu as trouvé ! (${foundCount}/${total}) 🎉`
-      : `Manche terminée (${foundCount}/${total} ont trouvé)`;
+    const guesserName = state.players.find((p) => p.id === state.guesserId)?.name ?? "?";
+    const iAmGuesser = state.guesserId === myPlayerId;
+    const who = iAmGuesser ? "Tu as" : `${guesserName} a`;
+    const exact = state.guess === state.number;
 
-    // Ranked by fewest guesses among those who found their word — the best
-    // detective of the round — with anyone who didn't find it trailing after.
-    const ranked = state.players.slice().sort((a, b) => {
-      if (a.found !== b.found) return a.found ? -1 : 1;
-      return (a.guesses?.length ?? Infinity) - (b.guesses?.length ?? Infinity);
-    });
-    const best = ranked.find((p) => p.found);
-    el.endBest.classList.toggle("hidden", !best);
-    if (best) {
-      const tries = best.guesses.length;
-      el.endBest.textContent = `🏆 ${best.name}${best.id === myPlayerId ? " (toi)" : ""} a trouvé le plus vite, en ${tries} essai${tries > 1 ? "s" : ""} !`;
-    }
+    el.endTitle.textContent = exact
+      ? `${who} deviné pile le bon chiffre : ${state.number} ! 🎯`
+      : `${who} dit ${state.guess}, c'était ${state.number}`;
 
-    el.revealGrid.innerHTML = "";
-    ranked.forEach((p, index) => el.revealGrid.appendChild(characterCard(p, p.found ? index + 1 : null)));
+    const diff = state.guess != null && state.number != null ? Math.abs(state.guess - state.number) : null;
+    el.endDetail.textContent = exact || diff == null ? "" : `Écart de ${diff}.`;
+
+    renderClueLog(state, el.endClueLog);
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
@@ -406,7 +384,7 @@
     if (!name) return showToast("Entre un pseudo d'abord.");
     el.createBtn.disabled = true;
     try {
-      const res = await fetch("/api/whoami/create", { method: "POST" });
+      const res = await fetch("/api/note/create", { method: "POST" });
       if (!res.ok) throw new Error("Erreur serveur");
       const { code } = await res.json();
       connect(code, name);
@@ -429,31 +407,26 @@
     if (e.key === "Enter") el.joinBtn.click();
   });
 
-  el.startBtn.addEventListener("click", () => send({ type: "start" }));
+  el.startBtn.addEventListener("click", () =>
+    send({ type: "start", guesserId: el.guesserSelect.value || undefined })
+  );
 
-  el.wordSubmit.addEventListener("click", submitWord);
-  el.wordInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") submitWord();
+  el.clueSubmit.addEventListener("click", submitClue);
+  el.clueInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitClue();
   });
-  function submitWord() {
-    const text = el.wordInput.value.trim();
+  function submitClue() {
+    const text = el.clueInput.value.trim();
     if (!text) return;
-    send({ type: "submitWord", text });
+    const payload = { type: "submitClue", text };
+    if (!el.lastChanceKind.classList.contains("hidden")) {
+      const checked = el.lastChanceKind.querySelector("input[name=kind]:checked");
+      payload.kind = checked ? checked.value : "arc";
+    }
+    send(payload);
+    el.clueInput.value = "";
   }
 
-  el.guessSubmit.addEventListener("click", submitGuess);
-  el.guessInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") submitGuess();
-  });
-  function submitGuess() {
-    const text = el.guessInput.value.trim();
-    if (!text) return;
-    send({ type: "guess", text });
-    el.guessInput.value = "";
-  }
-
-  el.askedBtn.addEventListener("click", () => send({ type: "askedQuestion" }));
-  el.endRoundBtn.addEventListener("click", () => send({ type: "endRound" }));
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 
   el.switchGameBtn.addEventListener("click", () => {
@@ -471,7 +444,7 @@
     const codeFromUrl = params.get("room");
     const autojoinName = params.get("autojoin");
     const asHost = params.get("asHost") === "1";
-    const lastName = localStorage.getItem("whoami:lastName");
+    const lastName = localStorage.getItem("note:lastName");
     if (lastName) el.nameInput.value = lastName;
 
     if (codeFromUrl) {

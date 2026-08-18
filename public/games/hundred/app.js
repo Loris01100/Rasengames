@@ -271,6 +271,7 @@
     { slug: "bac", label: "Petit Bac" },
     { slug: "whoami", label: "Qui suis-je" },
     { slug: "detective", label: "Détective Anime" },
+    { slug: "note", label: "Le jeu de la note" },
   ];
 
   function populateSwitchGameSelect() {

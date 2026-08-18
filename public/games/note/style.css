@@ -1,0 +1,92 @@
+#screen-play,
+#screen-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.note-options {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0;
+}
+
+.note-options select {
+  width: 100%;
+}
+
+.note-number-display {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 800;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 6px 0 4px;
+}
+
+.note-kind-choice {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.note-kind-choice label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.note-numbers {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.note-number-btn {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 14px 0;
+}
+
+.note-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.note-column h4 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.note-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-chip {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
+
+.note-author {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  display: block;
+  margin-bottom: 2px;
+}
