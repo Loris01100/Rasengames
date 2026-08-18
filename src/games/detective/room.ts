@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { MIN_PLAYERS, MAX_PLAYERS, SOLVES_TO_END, connectedIds, othersOf, nextTurn } from "./logic";
+import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
@@ -126,10 +126,10 @@ export class DetectiveRoom {
         await this.onSetCategory(session, room, msg);
         break;
       case "proposeCharacter":
-        await this.onSend(session, room, "proposal", msg);
+        await this.onProposeCharacter(session, room, msg);
         break;
       case "guessCategory":
-        await this.onSend(session, room, "guess", msg);
+        await this.onGuessCategory(session, room, msg);
         break;
       case "answerIncoming":
         await this.onAnswerIncoming(session, room, msg);
@@ -258,12 +258,9 @@ export class DetectiveRoom {
     this.broadcast();
   }
 
-  private async onSend(
-    session: Session,
-    room: RoomState,
-    kind: "proposal" | "guess",
-    msg: Record<string, unknown>
-  ) {
+  // A proposed character is asked of every opponent at once; each judges it
+  // against their own category, producing one log entry per target.
+  private async onProposeCharacter(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "play") return;
     const from = session.playerId;
     if (room.turnId !== from) {
@@ -278,9 +275,35 @@ export class DetectiveRoom {
     const text = String(msg.text ?? "").trim().slice(0, MAX_TEXT_LENGTH);
     if (!text) return;
 
-    // One submission is asked of every other player at once; each answers for
-    // their own category, producing one log entry per target.
-    for (const id of targets) room.players[id].incoming.push({ from, kind, text });
+    for (const id of targets) room.players[id].incoming.push({ from, kind: "proposal", text });
+    room.turnId = this.advanceTurn(room, from);
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Unlike a proposal, a guess names one specific opponent's category, so it's
+  // sent to that one target only instead of everybody still in play.
+  private async onGuessCategory(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (room.phase !== "play") return;
+    const from = session.playerId;
+    if (room.turnId !== from) {
+      this.sendError(session.ws, "Ce n'est pas ton tour.");
+      return;
+    }
+    const targets = this.openTargets(room, from);
+    if (targets.length === 0) return;
+
+    const targetId = String(msg.target ?? "");
+    if (!targets.includes(targetId)) {
+      this.sendError(session.ws, "Choisis un joueur valide à deviner.");
+      return;
+    }
+
+    const text = String(msg.text ?? "").trim().slice(0, MAX_TEXT_LENGTH);
+    if (!text) return;
+
+    room.players[targetId].incoming.push({ from, kind: "guess", text });
     room.turnId = this.advanceTurn(room, from);
 
     await this.saveRoom();
@@ -298,7 +321,9 @@ export class DetectiveRoom {
 
     if (kind === "guess" && fits && !this.isSolved(room, player.id)) {
       room.solved.push({ target: player.id, by: from });
-      if (room.solved.length >= SOLVES_TO_END) room.phase = "ended";
+      // Ends only once every connected player's category has been found, not
+      // after some fixed count — nobody's secret is left hanging.
+      if (room.solved.length >= connectedIds(room).length) room.phase = "ended";
     }
     if (room.phase === "play" && room.turnId && this.openTargets(room, room.turnId).length === 0) {
       room.turnId = this.advanceTurn(room, room.turnId);
@@ -423,7 +448,7 @@ export class DetectiveRoom {
       turnId: room.turnId,
       turnName: room.turnId ? room.players[room.turnId]?.name ?? null : null,
       log: room.log,
-      solvesToEnd: SOLVES_TO_END,
+      categoriesTotal: connectedIds(room).length,
       solved: room.solved.map((s) => ({
         target: s.target,
         targetName: nameOf(s.target),

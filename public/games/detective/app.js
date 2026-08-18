@@ -48,16 +48,15 @@
     proposeInput: $("propose-input"),
     proposeSubmit: $("propose-submit"),
     guessForm: $("guess-form"),
+    guessTarget: $("guess-target"),
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
+    solvedProgress: $("solved-progress"),
     logColumns: $("log-columns"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
-    endSolved: $("end-solved"),
-    solvedProgress: $("solved-progress"),
-    endCategories: $("end-categories"),
-    endLogColumns: $("end-log-columns"),
+    endRanking: $("end-ranking"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
@@ -258,6 +257,20 @@
     }
   }
 
+  // Rebuilt on every render like everything else; `keep` preserves the
+  // player's pick across re-renders triggered by an opponent's move.
+  function fillSelect(select, options) {
+    const keep = select.value;
+    select.innerHTML = "";
+    for (const o of options) {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    }
+    if (options.some((o) => o.value === keep)) select.value = keep;
+  }
+
   function renderSetup(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
@@ -333,6 +346,13 @@
     el.proposeForm.classList.toggle("hidden", !myTurn);
     el.guessForm.classList.toggle("hidden", !myTurn);
 
+    const openTargets = (state.others ?? []).filter((o) => o.connected && !o.solved);
+    fillSelect(
+      el.guessTarget,
+      openTargets.map((o) => ({ value: o.id, label: o.name }))
+    );
+    el.guessTarget.classList.toggle("hidden", openTargets.length <= 1);
+
     const queue = state.you?.incoming ?? [];
     const incoming = queue[0];
     el.incomingPanel.classList.toggle("hidden", !incoming);
@@ -349,33 +369,49 @@
     }
 
     const found = (state.solved ?? []).length;
-    el.solvedProgress.textContent = `${found} / ${state.solvesToEnd ?? 2} catégorie(s) trouvée(s)`;
+    el.solvedProgress.textContent = `${found} / ${state.categoriesTotal ?? found} catégorie(s) trouvée(s)`;
 
     renderLogColumns(state, el.logColumns);
   }
+
+  // Ranked by how long each category survived: found last = 1st place, since
+  // `solved` is oldest-first, reversing it puts the latest find on top.
+  const MEDALS = ["🥇", "🥈", "🧻"];
 
   function renderEnded(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const solved = state.solved ?? [];
-    const iScored = solved.some((s) => s.by === myPlayerId);
-    el.endTitle.textContent = iScored ? "Manche terminée — tu as marqué ! 🎉" : "Manche terminée !";
-    el.endSolved.innerHTML = "";
-    for (const s of solved) {
-      const line = document.createElement("p");
-      line.className = "muted";
-      const who = s.by === myPlayerId ? "Tu as" : `${s.byName} a`;
-      const whose = s.target === myPlayerId ? "ta catégorie" : `la catégorie de ${s.targetName}`;
-      line.textContent = `${who} trouvé ${whose}`;
-      el.endSolved.appendChild(line);
-    }
+    const ranking = (state.solved ?? []).slice().reverse();
+    const winner = ranking[0];
+    el.endTitle.textContent = winner
+      ? winner.target === myPlayerId
+        ? "Manche terminée — tu as gagné ! 🏆"
+        : `Manche terminée — ${winner.targetName} a gagné ! 🏆`
+      : "Manche terminée !";
 
-    const parts = [`Ta catégorie : ${state.you?.category ?? "?"}`];
-    for (const o of state.others ?? []) parts.push(`${o.name} : ${o.category ?? "?"}`);
-    el.endCategories.textContent = parts.join(" — ");
+    el.endRanking.innerHTML = "";
+    ranking.forEach((s, index) => {
+      const row = document.createElement("div");
+      row.className = "ranking-row";
 
-    renderLogColumns(state, el.endLogColumns);
+      const medal = document.createElement("span");
+      medal.className = "ranking-medal";
+      medal.textContent = MEDALS[index] ?? `#${index + 1}`;
+      row.appendChild(medal);
+
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = s.targetName + (s.target === myPlayerId ? " (toi)" : "");
+      row.appendChild(name);
+
+      const detail = document.createElement("span");
+      detail.className = "muted small";
+      detail.textContent = `trouvée par ${s.byName}`;
+      row.appendChild(detail);
+
+      el.endRanking.appendChild(row);
+    });
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
@@ -444,8 +480,9 @@
   });
   function submitGuess() {
     const text = el.guessInput.value.trim();
-    if (!text) return;
-    send({ type: "guessCategory", text });
+    const target = el.guessTarget.value;
+    if (!text || !target) return;
+    send({ type: "guessCategory", text, target });
     el.guessInput.value = "";
   }
 

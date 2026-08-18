@@ -92,6 +92,34 @@
   margin-top: 12px;
 }
 
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+
+.ranking-medal {
+  font-size: 1.3rem;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ranking-row .name {
+  font-weight: 700;
+  flex: 1;
+}
+
 .turn-banner {
   margin: 0;
   text-align: center;

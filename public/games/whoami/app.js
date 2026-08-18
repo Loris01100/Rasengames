@@ -26,27 +26,26 @@
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
     startBtn: $("start-btn"),
-    guesserSelect: $("guesser-select"),
-    animeSelect: $("anime-select"),
     startHint: $("start-hint"),
     waitingHost: $("waiting-host"),
 
+    screenSubmit: $("screen-submit"),
+    wordForm: $("word-form"),
+    wordInput: $("word-input"),
+    wordSubmit: $("word-submit"),
+    wordDoneHint: $("word-done-hint"),
+    submitProgress: $("submit-progress"),
+
     screenPlay: $("screen-play"),
-    guesserPanel: $("guesser-panel"),
     guessForm: $("guess-form"),
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
     foundHint: $("found-hint"),
     myAttempts: $("my-attempts"),
+    playProgress: $("play-progress"),
+    othersGrid: $("others-grid"),
     endRoundBtn: $("end-round-btn"),
-    makeGuessPanel: $("make-guess-panel"),
-    makeGuessTitle: $("make-guess-title"),
     hostRoundActions: $("host-round-actions"),
-    revealImage: $("reveal-image"),
-    revealPlaceholder: $("reveal-placeholder"),
-    revealName: $("reveal-name"),
-    revealAnime: $("reveal-anime"),
-    revealAttempts: $("reveal-attempts"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
@@ -162,7 +161,7 @@
 
   // ---- rendering ----
 
-  const SCREENS = [el.screenJoin, el.screenLobby, el.screenPlay, el.screenEnded];
+  const SCREENS = [el.screenJoin, el.screenLobby, el.screenSubmit, el.screenPlay, el.screenEnded];
 
   function showScreen(screen) {
     for (const s of SCREENS) s.classList.toggle("hidden", s !== screen);
@@ -185,6 +184,9 @@
     if (state.phase === "lobby") {
       showScreen(el.screenLobby);
       renderLobby(state);
+    } else if (state.phase === "submit") {
+      showScreen(el.screenSubmit);
+      renderSubmit(state);
     } else if (state.phase === "play") {
       showScreen(el.screenPlay);
       renderPlay(state);
@@ -232,47 +234,32 @@
     const isHost = state.hostId === myPlayerId;
     const connectedCount = state.players.filter((p) => p.connected).length;
 
-    fillSelect(
-      el.guesserSelect,
-      [{ value: "", label: "Aléatoire" }].concat(
-        state.players
-          .filter((p) => p.connected)
-          .map((p) => ({ value: p.id, label: p.name + (p.id === myPlayerId ? " (toi)" : "") }))
-      )
-    );
-    fillSelect(
-      el.animeSelect,
-      [{ value: "", label: "Aléatoire (tous)" }].concat(
-        (state.animeList ?? []).map((a) => ({ value: a, label: a }))
-      )
-    );
-
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
       el.waitingHost.classList.add("hidden");
-      const canStart = connectedCount >= 2;
+      const canStart = connectedCount >= 2 && connectedCount <= 5;
       el.startBtn.disabled = !canStart;
       el.startHint.textContent = canStart
         ? ""
-        : `Il faut au moins 2 joueurs connectés (actuellement ${connectedCount}).`;
+        : `Il faut entre 2 et 5 joueurs connectés (actuellement ${connectedCount}).`;
     } else {
       el.hostSettings.classList.add("hidden");
       el.waitingHost.classList.remove("hidden");
     }
   }
 
-  // Rebuilt on every render like everything else; `keep` preserves the host's
-  // pick across re-renders triggered by someone else joining the lobby.
-  function fillSelect(select, options) {
-    const keep = select.value;
-    select.innerHTML = "";
-    for (const o of options) {
-      const opt = document.createElement("option");
-      opt.value = o.value;
-      opt.textContent = o.label;
-      select.appendChild(opt);
-    }
-    if (options.some((o) => o.value === keep)) select.value = keep;
+  function renderSubmit(state) {
+    el.roomBadge.textContent = state.code;
+    el.roomBadge.classList.remove("hidden");
+
+    const you = state.players.find((p) => p.id === myPlayerId);
+    const ready = !!you?.ready;
+    el.wordForm.classList.toggle("hidden", ready);
+    el.wordDoneHint.classList.toggle("hidden", !ready);
+
+    const readyCount = state.players.filter((p) => p.connected && p.ready).length;
+    const totalCount = state.players.filter((p) => p.connected).length;
+    el.submitProgress.textContent = `${readyCount}/${totalCount} ont écrit leur mot`;
   }
 
   function characterCard(p) {
@@ -280,10 +267,10 @@
     card.className = "whoami-card";
     if (p.found) card.classList.add("found");
 
-    if (p.characterImage) {
+    if (p.wordImage) {
       const img = document.createElement("img");
       img.className = "whoami-image";
-      img.src = p.characterImage;
+      img.src = p.wordImage;
       img.alt = "";
       img.referrerPolicy = "no-referrer";
       card.appendChild(img);
@@ -294,10 +281,10 @@
     name.textContent = p.name + (p.id === myPlayerId ? " (toi)" : "");
     card.appendChild(name);
 
-    const character = document.createElement("div");
-    character.className = "whoami-character";
-    character.textContent = p.character ?? "?";
-    card.appendChild(character);
+    const word = document.createElement("div");
+    word.className = "whoami-character";
+    word.textContent = p.word ?? "?";
+    card.appendChild(word);
 
     if (p.found) {
       const badge = document.createElement("div");
@@ -330,54 +317,40 @@
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const guesser = state.players.find((p) => p.id === state.guesserId);
-    const iGuess = state.guesserId === myPlayerId;
+    const you = state.players.find((p) => p.id === myPlayerId);
     const isHost = state.hostId === myPlayerId;
 
-    el.guesserPanel.classList.toggle("hidden", !iGuess);
-    el.makeGuessPanel.classList.toggle("hidden", iGuess);
+    el.guessForm.classList.toggle("hidden", !!you?.found);
+    el.foundHint.classList.toggle("hidden", !you?.found);
+    el.myAttempts.innerHTML = "";
+    if (you?.guesses?.length) el.myAttempts.appendChild(attemptsList(you.guesses, you.found));
+
     el.hostRoundActions.classList.toggle("hidden", !isHost);
 
-    if (iGuess) {
-      el.guessForm.classList.toggle("hidden", !!guesser?.found);
-      el.foundHint.classList.toggle("hidden", !guesser?.found);
-      el.myAttempts.innerHTML = "";
-      if (guesser?.guesses?.length) {
-        el.myAttempts.appendChild(attemptsList(guesser.guesses, guesser.found));
-      }
-    } else {
-      el.makeGuessTitle.textContent = `Fais deviner ${guesser?.name ?? "le joueur"}`;
-      const hasImage = !!guesser?.characterImage;
-      el.revealImage.classList.toggle("hidden", !hasImage);
-      el.revealPlaceholder.classList.toggle("hidden", hasImage);
-      if (hasImage) el.revealImage.src = guesser.characterImage;
-      el.revealName.textContent = guesser?.character ?? "?";
-      el.revealAnime.textContent = guesser?.characterAnime ?? "";
-      el.revealAttempts.innerHTML = "";
-      el.revealAttempts.appendChild(
-        guesser?.guesses?.length
-          ? attemptsList(guesser.guesses, guesser.found)
-          : Object.assign(document.createElement("p"), {
-              className: "muted small",
-              textContent: "Aucun essai pour l'instant.",
-            })
-      );
+    el.othersGrid.innerHTML = "";
+    for (const p of state.players) {
+      if (p.id === myPlayerId) continue;
+      el.othersGrid.appendChild(characterCard(p));
     }
+
+    const foundCount = state.players.filter((p) => p.connected && p.found).length;
+    const totalCount = state.players.filter((p) => p.connected).length;
+    el.playProgress.textContent = `${foundCount}/${totalCount} ont trouvé leur mot`;
   }
 
   function renderEnded(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
 
-    const guesser = state.players.find((p) => p.id === state.guesserId);
-    const who = state.guesserId === myPlayerId ? "Tu as" : `${guesser?.name ?? "?"} a`;
-    const tries = guesser?.guesses?.length ?? 0;
-    el.endTitle.textContent = guesser?.found
-      ? `${who} trouvé en ${tries} essai${tries > 1 ? "s" : ""} ! 🎉`
-      : `${who} pas trouvé...`;
+    const foundCount = state.players.filter((p) => p.found).length;
+    const total = state.players.length;
+    const you = state.players.find((p) => p.id === myPlayerId);
+    el.endTitle.textContent = you?.found
+      ? `Manche terminée — tu as trouvé ! (${foundCount}/${total}) 🎉`
+      : `Manche terminée (${foundCount}/${total} ont trouvé)`;
 
     el.revealGrid.innerHTML = "";
-    if (guesser) el.revealGrid.appendChild(characterCard(guesser));
+    for (const p of state.players) el.revealGrid.appendChild(characterCard(p));
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
@@ -414,13 +387,17 @@
     if (e.key === "Enter") el.joinBtn.click();
   });
 
-  el.startBtn.addEventListener("click", () =>
-    send({
-      type: "start",
-      guesserId: el.guesserSelect.value || undefined,
-      anime: el.animeSelect.value || undefined,
-    })
-  );
+  el.startBtn.addEventListener("click", () => send({ type: "start" }));
+
+  el.wordSubmit.addEventListener("click", submitWord);
+  el.wordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitWord();
+  });
+  function submitWord() {
+    const text = el.wordInput.value.trim();
+    if (!text) return;
+    send({ type: "submitWord", text });
+  }
 
   el.guessSubmit.addEventListener("click", submitGuess);
   el.guessInput.addEventListener("keydown", (e) => {

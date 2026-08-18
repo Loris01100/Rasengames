@@ -1,13 +1,14 @@
-export type Phase = "lobby" | "play" | "ended";
+export type Phase = "lobby" | "submit" | "play" | "ended";
 
 export interface Player {
   id: string;
   token: string;
   name: string;
   connected: boolean;
-  character: string | null; // set only on the guesser — hidden from themself
-  characterAnime: string | null;
-  characterImage: string | null;
+  submittedWord: string | null; // written during "submit", for another player to guess
+  ready: boolean; // has submitted a word this round
+  word: string | null; // the word assigned to THIS player to guess — hidden from themself
+  wordImage: string | null;
   found: boolean;
   guesses: string[]; // every attempt this player made this round, visible to everyone
 }
@@ -18,8 +19,6 @@ export interface RoomState {
   phase: Phase;
   players: Record<string, Player>;
   playerOrder: string[];
-  guesserId: string | null; // the single player guessing this round; everyone else makes them guess
-  anime: string | null; // round restricted to this series, null = whole pool
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -29,7 +28,5 @@ export function createEmptyRoom(code: string): RoomState {
     phase: "lobby",
     players: {},
     playerOrder: [],
-    guesserId: null,
-    anime: null,
   };
 }

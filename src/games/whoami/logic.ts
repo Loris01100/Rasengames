@@ -1,5 +1,7 @@
 import type { RoomState } from "./types";
-import { pickCharacter } from "./characters";
+
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 5;
 
 // U+0300 (combining grave accent) to U+036F (combining latin small letter x),
 // built from char codes to avoid embedding raw combining marks in source.
@@ -12,39 +14,46 @@ export function normalizeGuess(word: string): string {
   return word.trim().toLowerCase().normalize("NFD").replace(COMBINING_MARKS, "");
 }
 
-// A single player guesses per round. The host can name the guesser; otherwise
-// it's drawn at random, never twice in a row when someone else could go.
-export function startRound(room: RoomState, guesserId?: string | null, anime?: string | null): void {
-  const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-  if (connectedIds.length === 0) return;
+export function connectedIds(room: RoomState): string[] {
+  return room.playerOrder.filter((id) => room.players[id]?.connected);
+}
 
-  if (guesserId && connectedIds.includes(guesserId)) {
-    room.guesserId = guesserId;
-  } else {
-    const candidates =
-      connectedIds.length > 1 ? connectedIds.filter((id) => id !== room.guesserId) : connectedIds;
-    room.guesserId = candidates[Math.floor(Math.random() * candidates.length)];
+function shuffled<T>(items: T[]): T[] {
+  const result = items.slice();
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
   }
+  return result;
+}
 
-  for (const id of connectedIds) {
-    const player = room.players[id];
-    player.character = null;
-    player.characterAnime = null;
-    player.characterImage = null;
-    player.found = false;
-    player.guesses = [];
+// Every connected player is assigned another player's submitted word to
+// guess. Shuffling the play order and then pairing each player with the next
+// one in that order (wrapping around) always produces a derangement — nobody
+// is ever assigned their own word — while the shuffle keeps who-got-whose
+// unpredictable. Also clears the now-consumed submissions.
+export function assignWords(room: RoomState): void {
+  const ids = shuffled(connectedIds(room));
+  for (let i = 0; i < ids.length; i++) {
+    const assignee = room.players[ids[i]];
+    const source = room.players[ids[(i + 1) % ids.length]];
+    assignee.word = source.submittedWord;
+    assignee.wordImage = null;
+    assignee.found = false;
+    assignee.guesses = [];
   }
-  const picked = pickCharacter(anime);
-  room.players[room.guesserId].character = picked.name;
-  room.players[room.guesserId].characterAnime = picked.anime;
+  for (const id of ids) {
+    room.players[id].submittedWord = null;
+    room.players[id].ready = false;
+  }
 }
 
 // Flexible on purpose: a compound name ("Eren Yeager") is accepted from any
 // single word of it ("Eren" alone passes), not just the exact full name.
-export function isCorrectGuess(guess: string, character: string): boolean {
+export function isCorrectGuess(guess: string, word: string): boolean {
   const normGuess = normalizeGuess(guess);
   if (!normGuess) return false;
-  if (normGuess === normalizeGuess(character)) return true;
-  const tokens = character.split(/\s+/).map(normalizeGuess).filter(Boolean);
+  if (normGuess === normalizeGuess(word)) return true;
+  const tokens = word.split(/\s+/).map(normalizeGuess).filter(Boolean);
   return tokens.includes(normGuess);
 }

@@ -1,13 +1,12 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { startRound, isCorrectGuess } from "./logic";
-import { ANIME_LIST } from "./characters";
-import { fetchCharacterOrAnimeImage, fetchAnimeImage } from "../../lib/images";
+import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, assignWords, isCorrectGuess } from "./logic";
+import { fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
 const MAX_NAME_LENGTH = 20;
+const MAX_WORD_LENGTH = 40;
 const MAX_GUESS_LENGTH = 40;
-const MIN_PLAYERS_TO_START = 2;
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 
 interface Session {
@@ -117,7 +116,10 @@ export class WhoamiRoom {
         await this.onJoin(session, room, msg);
         break;
       case "start":
-        await this.onStart(session, room, msg);
+        await this.onStart(session, room);
+        break;
+      case "submitWord":
+        await this.onSubmitWord(session, room, msg);
         break;
       case "guess":
         await this.onGuess(session, room, msg);
@@ -161,6 +163,13 @@ export class WhoamiRoom {
       return;
     }
 
+    // Capped at MAX_PLAYERS ever, not just connected, so a late arrival can't
+    // sneak into a slot freed by someone dropping mid-game.
+    if (room.playerOrder.length >= MAX_PLAYERS) {
+      this.sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
+      return;
+    }
+
     const nameTaken = Object.values(room.players).some(
       (p) => p.connected && p.name.toLowerCase() === name.toLowerCase()
     );
@@ -176,9 +185,10 @@ export class WhoamiRoom {
       token,
       name,
       connected: true,
-      character: null,
-      characterAnime: null,
-      characterImage: null,
+      submittedWord: null,
+      ready: false,
+      word: null,
+      wordImage: null,
       found: false,
       guesses: [],
     };
@@ -194,16 +204,16 @@ export class WhoamiRoom {
     this.broadcast();
   }
 
-  private async onStart(session: Session, room: RoomState, msg: Record<string, unknown>) {
+  private async onStart(session: Session, room: RoomState) {
     if (session.playerId !== room.hostId) {
       this.sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
       return;
     }
     if (room.phase !== "lobby") return;
 
-    const connectedCount = Object.values(room.players).filter((p) => p.connected).length;
-    if (connectedCount < MIN_PLAYERS_TO_START) {
-      this.sendError(session.ws, `Il faut au moins ${MIN_PLAYERS_TO_START} joueurs connectés.`);
+    const connectedCount = connectedIds(room).length;
+    if (connectedCount < MIN_PLAYERS) {
+      this.sendError(session.ws, `Il faut au moins ${MIN_PLAYERS} joueurs connectés.`);
       return;
     }
 
@@ -214,46 +224,82 @@ export class WhoamiRoom {
       }
     }
 
-    const anime = ANIME_LIST.includes(String(msg.anime ?? "")) ? String(msg.anime) : null;
-    const guesserId = typeof msg.guesserId === "string" ? msg.guesserId : null;
-    room.anime = anime;
-    startRound(room, guesserId, anime);
-    room.phase = "play";
+    for (const player of Object.values(room.players)) {
+      player.submittedWord = null;
+      player.ready = false;
+      player.word = null;
+      player.wordImage = null;
+      player.found = false;
+      player.guesses = [];
+    }
+    room.phase = "submit";
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private async onSubmitWord(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (room.phase !== "submit") return;
+    const player = room.players[session.playerId];
+    if (!player || !player.connected || player.ready) return;
+
+    const text = String(msg.text ?? "").trim().slice(0, MAX_WORD_LENGTH);
+    if (!text) {
+      this.sendError(session.ws, "Mot invalide.");
+      return;
+    }
+    player.submittedWord = text;
+    player.ready = true;
+
+    const ids = connectedIds(room);
+    const roundReady = ids.length >= MIN_PLAYERS && ids.every((id) => room.players[id]?.ready);
+    if (roundReady) {
+      assignWords(room);
+      room.phase = "play";
+    }
 
     await this.saveRoom();
     this.broadcast();
 
-    const guesser = room.guesserId ? room.players[room.guesserId] : null;
-    if (!guesser?.character) return;
-    const startedWith = guesser.character;
-    // Falls back to the series cover so the card is never left imageless.
-    const image =
-      (await fetchCharacterOrAnimeImage(startedWith)) ??
-      (guesser.characterAnime ? await fetchAnimeImage(guesser.characterAnime) : null);
-    // The room may have restarted (new character assigned) while this lookup
-    // was in flight; only apply it if it's still the same round.
-    if (room.phase === "play" && guesser.character === startedWith) {
-      guesser.characterImage = image;
-      await this.saveRoom();
-      this.broadcast();
-    }
+    if (roundReady) await this.fetchImagesForRound(room);
+  }
+
+  // Best-effort illustration per assigned word, fetched once everyone's
+  // submission is in and words are handed out. Runs after the round-start
+  // broadcast so players see their card immediately and the image pops in.
+  private async fetchImagesForRound(room: RoomState) {
+    const snapshot = connectedIds(room)
+      .map((id) => room.players[id])
+      .filter((p): p is Player => !!p?.word)
+      .map((p) => ({ id: p.id, word: p.word as string }));
+
+    await Promise.all(
+      snapshot.map(async ({ id, word }) => {
+        const image = await fetchCharacterOrAnimeImage(word);
+        // The room may have restarted (new words assigned) while this lookup
+        // was in flight; only apply it if it's still the same round.
+        const player = room.players[id];
+        if (room.phase === "play" && player && player.word === word) {
+          player.wordImage = image;
+        }
+      })
+    );
+
+    await this.saveRoom();
+    this.broadcast();
   }
 
   private async onGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "play") return;
     const player = room.players[session.playerId];
-    if (!player || !player.connected || player.found || !player.character) return;
-    if (room.guesserId !== player.id) {
-      this.sendError(session.ws, "Ce n'est pas toi qui devines cette manche.");
-      return;
-    }
+    if (!player || !player.connected || player.found || !player.word) return;
 
     const guess = String(msg.text ?? "").trim().slice(0, MAX_GUESS_LENGTH);
     if (!guess) return;
 
     player.guesses.push(guess);
 
-    if (!isCorrectGuess(guess, player.character)) {
+    if (!isCorrectGuess(guess, player.word)) {
       await this.saveRoom();
       this.broadcast();
       this.sendError(session.ws, "Pas encore, retente !");
@@ -261,7 +307,9 @@ export class WhoamiRoom {
     }
 
     player.found = true;
-    room.phase = "ended";
+    if (connectedIds(room).every((id) => room.players[id]?.found)) {
+      room.phase = "ended";
+    }
 
     await this.saveRoom();
     this.broadcast();
@@ -278,9 +326,10 @@ export class WhoamiRoom {
     if (session.playerId !== room.hostId || room.phase !== "ended") return;
 
     for (const player of Object.values(room.players)) {
-      player.character = null;
-      player.characterAnime = null;
-      player.characterImage = null;
+      player.submittedWord = null;
+      player.ready = false;
+      player.word = null;
+      player.wordImage = null;
       player.found = false;
       player.guesses = [];
     }
@@ -338,14 +387,14 @@ export class WhoamiRoom {
         name: p.name,
         connected: p.connected,
         isHost: p.id === room.hostId,
+        ready: p.ready,
         found: p.found,
-        // Hidden from the guesser while the round is live — everyone else can
-        // already see it, that's the whole game — revealed to them once ended.
-        character: p.id !== forPlayerId || revealAll ? p.character : null,
-        characterAnime: p.id !== forPlayerId || revealAll ? p.characterAnime : null,
-        characterImage: p.id !== forPlayerId || revealAll ? p.characterImage : null,
-        // Attempts never reveal the character themselves (they're just what
-        // was typed), so they're always visible to everyone, self included.
+        // Hidden from the assignee while the round is live — everyone else
+        // can already see it, that's the whole game — revealed once ended.
+        word: p.id !== forPlayerId || revealAll ? p.word : null,
+        wordImage: p.id !== forPlayerId || revealAll ? p.wordImage : null,
+        // Attempts never reveal the word themselves (they're just what was
+        // typed), so they're always visible to everyone, self included.
         guesses: p.guesses,
       }));
 
@@ -354,9 +403,6 @@ export class WhoamiRoom {
       phase: room.phase,
       hostId: room.hostId,
       players,
-      guesserId: room.guesserId,
-      anime: room.anime,
-      animeList: ANIME_LIST,
     };
   }
 }

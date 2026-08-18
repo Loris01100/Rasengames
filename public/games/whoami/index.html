@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Qui suis-je ?</h1>
-      <p class="muted">Un joueur a un personnage collé au front : à lui de deviner qui il est, les autres le font deviner. Le rôle tourne à chaque manche. 2 joueurs minimum.</p>
+      <p class="muted">Chacun écrit un mot ou un personnage. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. 2 à 5 joueurs.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -49,52 +49,44 @@
       <div id="players-list" class="players-list"></div>
 
       <div id="host-settings" class="hidden">
-        <div class="whoami-options">
-          <label for="guesser-select">Qui devine ?</label>
-          <select id="guesser-select"></select>
-          <label for="anime-select">Anime</label>
-          <select id="anime-select"></select>
-        </div>
         <button id="start-btn" class="btn">Démarrer la partie</button>
         <p id="start-hint" class="muted small"></p>
       </div>
       <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
     </section>
 
+    <!-- Submit: everyone writes a word for someone else -->
+    <section id="screen-submit" class="hidden">
+      <div class="card narrow">
+        <h2>Écris un mot ou un personnage</h2>
+        <p class="muted small">Il sera donné à un autre joueur au hasard, sans qu'il sache que ça vient de toi.</p>
+        <div id="word-form" class="inline-form">
+          <input id="word-input" type="text" maxlength="40" placeholder="Ex: Naruto Uzumaki" autocomplete="off" />
+          <button id="word-submit" class="btn">Envoyer</button>
+        </div>
+        <p id="word-done-hint" class="muted small hidden">Envoyé ! En attente des autres...</p>
+        <p id="submit-progress" class="muted small"></p>
+      </div>
+    </section>
+
     <!-- Play phase -->
     <section id="screen-play" class="hidden">
-      <div id="guesser-panel" class="card hidden">
-        <div class="muted small">Ton personnage</div>
+      <div class="card">
+        <div class="muted small">Ton mot</div>
         <h2>???</h2>
-        <p class="muted small">Pose des questions à voix haute aux autres. Quand tu penses savoir, tape le nom ci-dessous.</p>
+        <p class="muted small">Demande aux autres à voix haute pour deviner. Quand tu penses savoir, tape le nom ci-dessous.</p>
         <div id="guess-form" class="inline-form">
           <input id="guess-input" type="text" maxlength="40" placeholder="Je pense être..." autocomplete="off" />
           <button id="guess-submit" class="btn">Valider</button>
         </div>
-        <p id="found-hint" class="muted small hidden">Trouvé ! 🎉</p>
+        <p id="found-hint" class="muted small hidden">Trouvé ! 🎉 En attente des autres...</p>
         <div id="my-attempts"></div>
+        <p id="play-progress" class="muted small"></p>
       </div>
 
-      <div id="make-guess-panel" class="card hidden">
-        <h3 id="make-guess-title"></h3>
-        <p class="muted small">Réponds à ses questions à voix haute, sans jamais dire le nom.</p>
-
-        <div class="whoami-reveal">
-          <div class="whoami-reveal-media">
-            <img id="reveal-image" class="whoami-reveal-image hidden" alt="" referrerpolicy="no-referrer" />
-            <div id="reveal-placeholder" class="whoami-reveal-placeholder">?</div>
-          </div>
-          <div class="whoami-reveal-info">
-            <div class="muted small">Le personnage à faire deviner</div>
-            <h2 id="reveal-name" class="whoami-reveal-name"></h2>
-            <div id="reveal-anime" class="whoami-reveal-anime"></div>
-            <p class="whoami-rules muted small">
-              Réponds seulement par oui / non / peut-être. Jamais le nom, ni son anime.
-            </p>
-            <div class="muted small">Ses essais</div>
-            <div id="reveal-attempts"></div>
-          </div>
-        </div>
+      <div class="card">
+        <h3>Les autres</h3>
+        <div id="others-grid" class="whoami-grid"></div>
       </div>
 
       <div id="host-round-actions" class="card hidden">
@@ -109,7 +101,7 @@
       </div>
 
       <div class="card">
-        <h3>Le personnage</h3>
+        <h3>Tout le monde</h3>
         <div id="reveal-grid" class="whoami-grid"></div>
         <button id="restart-btn" class="btn hidden">Rejouer</button>
         <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>

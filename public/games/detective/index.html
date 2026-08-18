@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Détective Anime</h1>
-      <p class="muted">2 ou 3 joueurs. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle des autres (chacun son tour), et tente d'en deviner. La manche s'arrête quand 2 catégories ont été trouvées.</p>
+      <p class="muted">2 ou 3 joueurs. Chacun choisit une catégorie secrète (ex: "cheveux roses"), propose des persos pour tester celle des autres (chacun son tour), et tente d'en deviner une en particulier. La manche se termine une fois que toutes les catégories ont été trouvées.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -102,6 +102,7 @@
       <div class="card">
         <h3>Deviner une catégorie</h3>
         <div id="guess-form" class="inline-form">
+          <select id="guess-target"></select>
           <input id="guess-input" type="text" maxlength="60" placeholder="Sa catégorie est..." autocomplete="off" />
           <button id="guess-submit" class="btn secondary">Deviner</button>
         </div>
@@ -116,14 +117,9 @@
     <section id="screen-ended" class="hidden">
       <div class="card">
         <h2 id="end-title"></h2>
-        <div id="end-solved"></div>
-        <p id="end-categories" class="muted"></p>
+        <div id="end-ranking" class="ranking-list"></div>
         <button id="restart-btn" class="btn hidden">Rejouer</button>
         <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
-      </div>
-
-      <div class="card">
-        <div id="end-log-columns" class="detective-columns"></div>
       </div>
     </section>
   </main>
