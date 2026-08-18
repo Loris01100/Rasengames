@@ -18,6 +18,15 @@ export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
 }
 
+// Turn rotates only among players still guessing — someone who already found
+// their word has no reason to keep asking questions.
+export function nextTurn(room: RoomState, afterId: string | null): string | null {
+  const ids = connectedIds(room).filter((id) => !room.players[id]?.found);
+  if (ids.length === 0) return null;
+  const index = afterId ? ids.indexOf(afterId) : -1;
+  return ids[(index + 1) % ids.length];
+}
+
 function shuffled<T>(items: T[]): T[] {
   const result = items.slice();
   for (let i = result.length - 1; i > 0; i--) {

@@ -42,13 +42,17 @@
     guessSubmit: $("guess-submit"),
     foundHint: $("found-hint"),
     myAttempts: $("my-attempts"),
+    myQuestions: $("my-questions"),
     playProgress: $("play-progress"),
+    turnBanner: $("turn-banner"),
+    askedBtn: $("asked-btn"),
     othersGrid: $("others-grid"),
     endRoundBtn: $("end-round-btn"),
     hostRoundActions: $("host-round-actions"),
 
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
+    endBest: $("end-best"),
     revealGrid: $("reveal-grid"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
@@ -262,10 +266,17 @@
     el.submitProgress.textContent = `${readyCount}/${totalCount} ont écrit leur mot`;
   }
 
-  function characterCard(p) {
+  function characterCard(p, rank) {
     const card = document.createElement("div");
     card.className = "whoami-card";
     if (p.found) card.classList.add("found");
+
+    if (rank) {
+      const badge = document.createElement("div");
+      badge.className = "whoami-rank";
+      badge.textContent = `#${rank}`;
+      card.appendChild(badge);
+    }
 
     if (p.wordImage) {
       const img = document.createElement("img");
@@ -291,6 +302,13 @@
       badge.className = "whoami-found-badge";
       badge.textContent = "Trouvé ✓";
       card.appendChild(badge);
+    }
+
+    if (typeof p.questionsAsked === "number") {
+      const q = document.createElement("div");
+      q.className = "whoami-questions muted small";
+      q.textContent = `${p.questionsAsked} question${p.questionsAsked > 1 ? "s" : ""} posée${p.questionsAsked > 1 ? "s" : ""}`;
+      card.appendChild(q);
     }
 
     if (p.guesses && p.guesses.length > 0) {
@@ -319,11 +337,21 @@
 
     const you = state.players.find((p) => p.id === myPlayerId);
     const isHost = state.hostId === myPlayerId;
+    const myTurn = state.turnId === myPlayerId;
 
     el.guessForm.classList.toggle("hidden", !!you?.found);
     el.foundHint.classList.toggle("hidden", !you?.found);
     el.myAttempts.innerHTML = "";
     if (you?.guesses?.length) el.myAttempts.appendChild(attemptsList(you.guesses, you.found));
+    el.myQuestions.textContent = `Questions posées : ${you?.questionsAsked ?? 0}`;
+
+    el.turnBanner.textContent = !state.turnId
+      ? ""
+      : myTurn
+        ? "À toi de poser une question"
+        : `Au tour de ${state.turnName ?? "..."}`;
+    el.turnBanner.classList.toggle("my-turn", myTurn);
+    el.askedBtn.classList.toggle("hidden", !myTurn);
 
     el.hostRoundActions.classList.toggle("hidden", !isHost);
 
@@ -349,8 +377,21 @@
       ? `Manche terminée — tu as trouvé ! (${foundCount}/${total}) 🎉`
       : `Manche terminée (${foundCount}/${total} ont trouvé)`;
 
+    // Ranked by fewest guesses among those who found their word — the best
+    // detective of the round — with anyone who didn't find it trailing after.
+    const ranked = state.players.slice().sort((a, b) => {
+      if (a.found !== b.found) return a.found ? -1 : 1;
+      return (a.guesses?.length ?? Infinity) - (b.guesses?.length ?? Infinity);
+    });
+    const best = ranked.find((p) => p.found);
+    el.endBest.classList.toggle("hidden", !best);
+    if (best) {
+      const tries = best.guesses.length;
+      el.endBest.textContent = `🏆 ${best.name}${best.id === myPlayerId ? " (toi)" : ""} a trouvé le plus vite, en ${tries} essai${tries > 1 ? "s" : ""} !`;
+    }
+
     el.revealGrid.innerHTML = "";
-    for (const p of state.players) el.revealGrid.appendChild(characterCard(p));
+    ranked.forEach((p, index) => el.revealGrid.appendChild(characterCard(p, p.found ? index + 1 : null)));
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
@@ -410,6 +451,7 @@
     el.guessInput.value = "";
   }
 
+  el.askedBtn.addEventListener("click", () => send({ type: "askedQuestion" }));
   el.endRoundBtn.addEventListener("click", () => send({ type: "endRound" }));
   el.restartBtn.addEventListener("click", () => send({ type: "restart" }));
 

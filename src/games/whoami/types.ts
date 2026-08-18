@@ -11,6 +11,7 @@ export interface Player {
   wordImage: string | null;
   found: boolean;
   guesses: string[]; // every attempt this player made this round, visible to everyone
+  questionsAsked: number; // yes/no questions asked aloud this round, one per turn
 }
 
 export interface RoomState {
@@ -19,6 +20,7 @@ export interface RoomState {
   phase: Phase;
   players: Record<string, Player>;
   playerOrder: string[];
+  turnId: string | null; // whose turn it is to ask a question during "play"
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -28,5 +30,6 @@ export function createEmptyRoom(code: string): RoomState {
     phase: "lobby",
     players: {},
     playerOrder: [],
+    turnId: null,
   };
 }

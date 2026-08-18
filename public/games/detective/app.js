@@ -57,6 +57,7 @@
     screenEnded: $("screen-ended"),
     endTitle: $("end-title"),
     endRanking: $("end-ranking"),
+    endFoundTally: $("end-found-tally"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
@@ -405,13 +406,33 @@
       name.textContent = s.targetName + (s.target === myPlayerId ? " (toi)" : "");
       row.appendChild(name);
 
+      const questionCount = (state.log ?? []).filter((e) => e.target === s.target).length;
       const detail = document.createElement("span");
       detail.className = "muted small";
-      detail.textContent = `trouvée par ${s.byName}`;
+      detail.textContent = `trouvée en ${questionCount} question${questionCount > 1 ? "s" : ""}`;
       row.appendChild(detail);
 
       el.endRanking.appendChild(row);
     });
+
+    el.endFoundTally.innerHTML = "";
+    for (const p of state.players ?? []) {
+      const count = (state.solved ?? []).filter((s) => s.by === p.id).length;
+      const row = document.createElement("div");
+      row.className = "ranking-row";
+
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = p.name + (p.id === myPlayerId ? " (toi)" : "");
+      row.appendChild(name);
+
+      const detail = document.createElement("span");
+      detail.className = "muted small";
+      detail.textContent = `${count} catégorie${count > 1 ? "s" : ""} trouvée${count > 1 ? "s" : ""}`;
+      row.appendChild(detail);
+
+      el.endFoundTally.appendChild(row);
+    }
 
     const isHost = state.hostId === myPlayerId;
     el.restartBtn.classList.toggle("hidden", !isHost);

@@ -9,6 +9,20 @@
   margin-top: 12px;
 }
 
+.turn-banner {
+  margin: 0;
+  text-align: center;
+}
+
+.turn-banner.my-turn {
+  color: var(--accent);
+}
+
+#asked-btn {
+  display: block;
+  margin: 12px auto 0;
+}
+
 .whoami-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -78,4 +92,20 @@
 .whoami-attempt-chip.correct {
   border-color: var(--success);
   color: var(--success);
+}
+
+.whoami-questions {
+  margin-top: 8px;
+}
+
+.whoami-rank {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--accent-gradient);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
 }

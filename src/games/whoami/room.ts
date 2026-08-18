@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, assignWords, isCorrectGuess } from "./logic";
+import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, assignWords, nextTurn, isCorrectGuess } from "./logic";
 import { fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 
@@ -86,6 +86,9 @@ export class WhoamiRoom {
     const stillConnected = this.sessions.some((s) => s.playerId === session.playerId);
     if (!stillConnected) {
       player.connected = false;
+      if (this.room.phase === "play" && this.room.turnId === player.id) {
+        this.room.turnId = nextTurn(this.room, player.id);
+      }
       await this.saveRoom();
       this.broadcast();
     }
@@ -120,6 +123,9 @@ export class WhoamiRoom {
         break;
       case "submitWord":
         await this.onSubmitWord(session, room, msg);
+        break;
+      case "askedQuestion":
+        await this.onAskedQuestion(session, room);
         break;
       case "guess":
         await this.onGuess(session, room, msg);
@@ -191,6 +197,7 @@ export class WhoamiRoom {
       wordImage: null,
       found: false,
       guesses: [],
+      questionsAsked: 0,
     };
     room.players[id] = player;
     room.playerOrder.push(id);
@@ -231,7 +238,9 @@ export class WhoamiRoom {
       player.wordImage = null;
       player.found = false;
       player.guesses = [];
+      player.questionsAsked = 0;
     }
+    room.turnId = null;
     room.phase = "submit";
 
     await this.saveRoom();
@@ -256,6 +265,7 @@ export class WhoamiRoom {
     if (roundReady) {
       assignWords(room);
       room.phase = "play";
+      room.turnId = ids[0] ?? null;
     }
 
     await this.saveRoom();
@@ -289,6 +299,26 @@ export class WhoamiRoom {
     this.broadcast();
   }
 
+  // Turn order for asking a (verbal) yes/no question aloud, one player at a
+  // time. The actual question isn't captured by the app — this just tracks
+  // whose turn it is and tallies how many each player has asked, so the
+  // group takes turns instead of everyone talking over each other.
+  private async onAskedQuestion(session: Session, room: RoomState) {
+    if (room.phase !== "play") return;
+    const player = room.players[session.playerId];
+    if (!player || !player.connected || player.found) return;
+    if (room.turnId !== player.id) {
+      this.sendError(session.ws, "Ce n'est pas ton tour.");
+      return;
+    }
+
+    player.questionsAsked += 1;
+    room.turnId = nextTurn(room, player.id);
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
   private async onGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "play") return;
     const player = room.players[session.playerId];
@@ -307,6 +337,9 @@ export class WhoamiRoom {
     }
 
     player.found = true;
+    if (room.turnId === player.id) {
+      room.turnId = nextTurn(room, player.id);
+    }
     if (connectedIds(room).every((id) => room.players[id]?.found)) {
       room.phase = "ended";
     }
@@ -332,7 +365,9 @@ export class WhoamiRoom {
       player.wordImage = null;
       player.found = false;
       player.guesses = [];
+      player.questionsAsked = 0;
     }
+    room.turnId = null;
     room.phase = "lobby";
 
     await this.saveRoom();
@@ -396,6 +431,7 @@ export class WhoamiRoom {
         // Attempts never reveal the word themselves (they're just what was
         // typed), so they're always visible to everyone, self included.
         guesses: p.guesses,
+        questionsAsked: p.questionsAsked,
       }));
 
     return {
@@ -403,6 +439,8 @@ export class WhoamiRoom {
       phase: room.phase,
       hostId: room.hostId,
       players,
+      turnId: room.turnId,
+      turnName: room.turnId ? room.players[room.turnId]?.name ?? null : null,
     };
   }
 }

@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Qui suis-je ?</h1>
-      <p class="muted">Chacun écrit un mot ou un personnage. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. 2 à 5 joueurs.</p>
+      <p class="muted">Chacun écrit un mot ou un personnage. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. Chacun son tour pose une question à voix haute, les autres ne répondent que par oui ou non. 2 à 5 joueurs.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -74,14 +74,20 @@
       <div class="card">
         <div class="muted small">Ton mot</div>
         <h2>???</h2>
-        <p class="muted small">Demande aux autres à voix haute pour deviner. Quand tu penses savoir, tape le nom ci-dessous.</p>
+        <p class="muted small">Demande aux autres à voix haute pour deviner. Ils ne répondent que par oui ou non. Quand tu penses savoir, tape le nom ci-dessous.</p>
         <div id="guess-form" class="inline-form">
           <input id="guess-input" type="text" maxlength="40" placeholder="Je pense être..." autocomplete="off" />
           <button id="guess-submit" class="btn">Valider</button>
         </div>
         <p id="found-hint" class="muted small hidden">Trouvé ! 🎉 En attente des autres...</p>
         <div id="my-attempts"></div>
+        <p id="my-questions" class="muted small"></p>
         <p id="play-progress" class="muted small"></p>
+      </div>
+
+      <div class="card">
+        <h3 id="turn-banner" class="turn-banner"></h3>
+        <button id="asked-btn" class="btn secondary small hidden">J'ai posé ma question ✓</button>
       </div>
 
       <div class="card">
@@ -98,6 +104,7 @@
     <section id="screen-ended" class="hidden">
       <div class="card">
         <h2 id="end-title"></h2>
+        <p id="end-best" class="muted hidden"></p>
       </div>
 
       <div class="card">
