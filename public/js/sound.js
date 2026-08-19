@@ -1,9 +1,10 @@
 // Shared audio, loaded on every page before each game's app.js.
 //
 // SFX are synthesized with the Web Audio API rather than shipped as files:
-// nothing to download, nothing to license, no extra requests. The theme music
-// is the one real file (/audio/theme.mp3, royalty-free, see public/audio/README.md);
-// if it's missing the music button hides itself and everything else keeps working.
+// nothing to download, nothing to license, no extra requests. The ambience is
+// real files (public/audio/, royalty-free, see public/audio/README.md): list
+// them in TRACKS below and they play as a shuffled playlist. Missing files are
+// skipped, and if none of them load the music button hides itself.
 
 const Sound = (() => {
   const SFX_KEY = "rasen:sfx";
@@ -13,7 +14,13 @@ const Sound = (() => {
   let sfxOn = localStorage.getItem(SFX_KEY) !== "off";
   let musicOn = localStorage.getItem(MUSIC_KEY) === "on";
   let music = null;
+  let queue = [];
+  let queueIndex = 0;
+  let failures = 0;
   const counters = new Map();
+
+  // Ambience playlist: drop an MP3 in public/audio/ and add its name here.
+  const TRACKS = ["bluelike_8.mp3", "bluelike_9.mp3", "sekuora_piano.mp3"];
 
   // name -> [frequency, start offset in s, duration in s][]
   const RECIPES = {
@@ -69,18 +76,60 @@ const Sound = (() => {
 
   // ---- musique de fond ----
 
+  function shuffled(items) {
+    const result = items.slice();
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  }
+
   function ensureMusic() {
     if (music) return music;
-    music = new Audio("/audio/theme.mp3");
-    music.loop = true;
+    if (TRACKS.length === 0) return null;
+
+    queue = shuffled(TRACKS);
+    queueIndex = 0;
+    music = new Audio();
     music.volume = 0.2;
+    // One <audio> reused for the whole playlist: the src swaps on `ended`, so
+    // nothing is preloaded before its turn. A single track just repeats.
+    music.addEventListener("ended", () => nextTrack());
     music.addEventListener("error", () => {
-      music = null;
-      musicOn = false;
-      const btn = document.getElementById("music-toggle");
-      if (btn) btn.classList.add("hidden");
+      // Missing/undecodable file: skip it. Once every track has failed, the
+      // playlist is empty in practice — hide the button instead of looping.
+      failures += 1;
+      if (failures >= queue.length) {
+        music = null;
+        musicOn = false;
+        const btn = document.getElementById("music-toggle");
+        if (btn) btn.classList.add("hidden");
+        const skip = document.getElementById("music-next");
+        if (skip) skip.classList.add("hidden");
+        return;
+      }
+      nextTrack();
     });
+    music.addEventListener("playing", () => {
+      failures = 0;
+    });
+    loadTrack();
     return music;
+  }
+
+  function loadTrack() {
+    if (!music) return;
+    music.src = `/audio/${queue[queueIndex]}`;
+    const btn = document.getElementById("music-next");
+    if (btn) btn.title = `Piste : ${queue[queueIndex]} — passer à la suivante`;
+  }
+
+  function nextTrack() {
+    if (!music) return;
+    queueIndex = (queueIndex + 1) % queue.length;
+    loadTrack();
+    if (musicOn) music.play().catch(() => {});
   }
 
   function syncMusic() {
@@ -147,8 +196,24 @@ const Sound = (() => {
       syncMusic();
     });
 
+    // Only worth a button when there's somewhere to skip to.
+    const nextBtn = document.createElement("button");
+    nextBtn.id = "music-next";
+    nextBtn.className = "audio-btn";
+    nextBtn.type = "button";
+    nextBtn.textContent = "⏭";
+    nextBtn.title = "Piste suivante";
+    nextBtn.setAttribute("aria-label", "Piste suivante");
+    nextBtn.addEventListener("click", nextTrack);
+    const paintNext = () => {
+      nextBtn.classList.toggle("hidden", !musicOn || TRACKS.length < 2);
+    };
+    paintNext();
+    musicBtn.addEventListener("click", paintNext);
+
     wrap.appendChild(sfxBtn);
     wrap.appendChild(musicBtn);
+    wrap.appendChild(nextBtn);
     header.appendChild(wrap);
 
     // Le fichier n'est chargé que si la musique est activée : tant qu'on ne
@@ -162,5 +227,5 @@ const Sound = (() => {
     mountToggles();
   }
 
-  return { play, onIncrease, onChange };
+  return { play, onIncrease, onChange, nextTrack };
 })();

@@ -4,14 +4,24 @@ Les bruitages (proposition reçue, réponse de l'adversaire, tour de jeu, victoi
 sont **synthétisés** dans `public/js/sound.js` avec la Web Audio API : aucun fichier,
 aucune licence à gérer, aucune requête réseau.
 
-La musique de fond, elle, est un vrai fichier : **`public/audio/theme.mp3`**.
-Il n'est pas versionné pour l'instant — tant qu'il est absent, le bouton 🎵 se cache
-tout seul et le reste du site fonctionne normalement.
+L'ambiance, elle, ce sont de vrais fichiers posés ici. La liste des pistes est
+dans `TRACKS`, en haut de `public/js/sound.js` :
 
-## Ajouter la musique
+```js
+const TRACKS = ["theme.mp3", "chill.mp3", "battle.mp3"];
+```
 
-Dépose un MP3 libre de droits ici sous le nom `theme.mp3` (boucle si possible,
-2-3 Mo max, l'ambiance visée est anime/chill). Sources utilisables :
+Elles sont jouées en playlist mélangée (ordre tiré au sort à chaque page), une
+piste enchaîne sur la suivante, et le bouton ⏭ apparaît dès qu'il y en a
+plusieurs. Un fichier absent ou illisible est simplement sauté ; si aucune piste
+ne charge, le bouton 🎵 se cache tout seul et le reste du site fonctionne
+normalement. Aucun fichier n'est téléchargé tant que la musique n'est pas activée.
+
+## Ajouter une piste
+
+Dépose un MP3 libre de droits ici, ajoute son nom de fichier dans `TRACKS`
+(`public/js/sound.js`), et note-le dans le tableau plus bas. Vise 2-3 Mo par
+piste, l'ambiance recherchée est anime/chill. Sources utilisables :
 
 - [Pixabay Music](https://pixabay.com/music/) — licence Pixabay, usage commercial ok, sans attribution
 - [FreePD](https://freepd.com/) — domaine public (CC0)
@@ -26,3 +36,4 @@ et note la source ci-dessous.
 | Fichier | Titre / auteur | Licence | Source |
 | --- | --- | --- | --- |
 | `theme.mp3` | _(à remplir)_ | | |
+| _(ajoute une ligne par piste)_ | | | |
