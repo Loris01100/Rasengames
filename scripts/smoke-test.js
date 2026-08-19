@@ -9,11 +9,12 @@ const vm = require("vm");
 const assert = require("assert");
 
 const ROOT = path.join(__dirname, "..", "public");
-const GAMES = ["bac", "detective", "hundred", "note", "undercover", "whoami"];
+const GAMES = ["bac", "bomb", "detective", "hundred", "note", "undercover", "whoami"];
 
 // What each game's "start" message must carry beyond its type.
 const START_KEYS = {
   bac: ["type", "categories"],
+  bomb: ["type", "mode"],
   detective: ["type"],
   hundred: ["type", "mode", "theme"],
   note: ["type", "guesserId"],
@@ -358,7 +359,7 @@ function run(slug) {
       // The "changer de jeu" select must offer the five other games, in order,
       // and switch to the one actually selected.
       const options = byId("switch-game-select").children.map((o) => o.value);
-      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note"]; // room-client.js
+      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb"]; // room-client.js
       assert.deepStrictEqual(options, menuOrder.filter((g) => g !== slug), `${slug}: switch-game options`);
       byId("switch-game-select").value = options[2];
       byId("switch-game-btn").dispatch("click");

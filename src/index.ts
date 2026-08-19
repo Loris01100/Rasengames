@@ -5,10 +5,11 @@ import { BacRoom } from "./games/bac/room";
 import { WhoamiRoom } from "./games/whoami/room";
 import { DetectiveRoom } from "./games/detective/room";
 import { NoteRoom } from "./games/note/room";
+import { BombRoom } from "./games/bomb/room";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
 
-export { UndercoverRoom, HundredRoom, BacRoom, WhoamiRoom, DetectiveRoom, NoteRoom, LobbyRegistry };
+export { UndercoverRoom, HundredRoom, BacRoom, WhoamiRoom, DetectiveRoom, NoteRoom, BombRoom, LobbyRegistry };
 
 interface GameRoute {
   slug: string;
@@ -22,6 +23,7 @@ const GAMES: GameRoute[] = [
   { slug: "whoami", namespace: (env) => env.WHOAMI_ROOM },
   { slug: "detective", namespace: (env) => env.DETECTIVE_ROOM },
   { slug: "note", namespace: (env) => env.NOTE_ROOM },
+  { slug: "bomb", namespace: (env) => env.BOMB_ROOM },
 ];
 
 export default {

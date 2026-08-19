@@ -11,6 +11,7 @@
     whoami: { label: "Qui suis-je", icon: "🎭" },
     detective: { label: "Détective Anime", icon: "🔍" },
     note: { label: "Le jeu de la note", icon: "🔟" },
+    bomb: { label: "Alphabombe", icon: "💣" },
   };
 
   function roomRow(room) {
