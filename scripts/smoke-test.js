@@ -153,6 +153,26 @@ const PHASE_CHECKS = {
     tick();
     assert.strictEqual(byId("stop-btn").disabled, false, `${slug}: stop should unlock at 3/4`);
     assert.match(byId("play-timer").textContent, /^\d+:\d\d$/, `${slug}: no countdown shown`);
+
+    // Correction : une case vide ne doit pas être cliquable par l'hôte.
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "review", hostId: "p1", stoppedByName: "Alice",
+        players: [{ id: "p1", name: "Alice", connected: true, isHost: true }],
+        result: {
+          letter: "K", totals: { p1: 2 },
+          byCategory: [{ category: "anime", entries: [
+            { playerId: "p1", answer: "Kenshin", valid: true, points: 2 },
+          ] }, { category: "hero", entries: [
+            { playerId: "p1", answer: "  ", valid: false, points: 0 },
+          ] }],
+        },
+      },
+    });
+    const cells = byId("review-table").children[1].children.map((tr) => tr.children[1]);
+    assert.ok(cells[0].listeners.click?.length, `${slug}: a filled answer must stay editable`);
+    assert.ok(!cells[1].listeners.click?.length, `${slug}: an empty answer must not be validable`);
   },
 
   // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.

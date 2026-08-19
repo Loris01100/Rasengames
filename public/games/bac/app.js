@@ -242,7 +242,8 @@
         const td = document.createElement("td");
         if (entry) {
           td.classList.add(entry.valid ? (entry.points === 2 ? "score-unique" : "score-duplicate") : "score-invalid");
-          if (editable) {
+          // Une case vide n'est jamais validable : pas de clic, comme le serveur.
+          if (editable && entry.answer.trim()) {
             td.classList.add("editable");
             if (!entry.valid && looksValid(entry.answer, result.letter)) td.classList.add("hint-valid");
             td.addEventListener("click", () => {

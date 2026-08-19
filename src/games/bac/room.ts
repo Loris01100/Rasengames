@@ -382,7 +382,8 @@ export class BacRoom {
     const entry = catResult?.entries.find((e) => e.playerId === playerId);
     if (!entry) return;
 
-    entry.valid = msg.valid === true;
+    // Une réponse vide ne rapporte rien, même si l'hôte clique dessus.
+    entry.valid = msg.valid === true && entry.answer.trim() !== "";
     recomputeScores(room.result);
 
     await this.saveRoom();
