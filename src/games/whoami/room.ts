@@ -8,7 +8,6 @@ import {
   assignWords,
   nextTurn,
 } from "./logic";
-import { fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
@@ -279,7 +278,6 @@ export class WhoamiRoom {
       submittedWord: null,
       ready: false,
       word: null,
-      wordImage: null,
       found: false,
       guesses: [],
       pendingGuess: null,
@@ -322,7 +320,6 @@ export class WhoamiRoom {
       player.submittedWord = null;
       player.ready = false;
       player.word = null;
-      player.wordImage = null;
       player.found = false;
       player.guesses = [];
       player.pendingGuess = null;
@@ -360,33 +357,8 @@ export class WhoamiRoom {
     await this.saveRoom();
     this.broadcast();
 
-    if (roundReady) await this.fetchImagesForRound(room);
   }
 
-  // Best-effort illustration per assigned word, fetched once everyone's
-  // submission is in and words are handed out. Runs after the round-start
-  // broadcast so players see their card immediately and the image pops in.
-  private async fetchImagesForRound(room: RoomState) {
-    const snapshot = connectedIds(room)
-      .map((id) => room.players[id])
-      .filter((p): p is Player => !!p?.word)
-      .map((p) => ({ id: p.id, word: p.word as string }));
-
-    await Promise.all(
-      snapshot.map(async ({ id, word }) => {
-        const image = await fetchCharacterOrAnimeImage(word);
-        // The room may have restarted (new words assigned) while this lookup
-        // was in flight; only apply it if it's still the same round.
-        const player = room.players[id];
-        if (room.phase === "play" && player && player.word === word) {
-          player.wordImage = image;
-        }
-      })
-    );
-
-    await this.saveRoom();
-    this.broadcast();
-  }
 
   // Turn order for asking a (verbal) yes/no question aloud, one player at a
   // time. The actual question isn't captured by the app — this just tracks
@@ -487,7 +459,6 @@ export class WhoamiRoom {
       player.submittedWord = null;
       player.ready = false;
       player.word = null;
-      player.wordImage = null;
       player.found = false;
       player.guesses = [];
       player.pendingGuess = null;
@@ -554,7 +525,6 @@ export class WhoamiRoom {
         // Hidden from the assignee while the round is live — everyone else
         // can already see it, that's the whole game — revealed once ended.
         word: p.id !== forPlayerId || revealAll ? p.word : null,
-        wordImage: p.id !== forPlayerId || revealAll ? p.wordImage : null,
         // Attempts never reveal the word themselves (they're just what was
         // typed), so they're always visible to everyone, self included.
         guesses: p.guesses,

@@ -39,7 +39,6 @@ export function assignWords(room: RoomState): void {
     const assignee = room.players[ids[i]];
     const source = room.players[ids[(i + 1) % ids.length]];
     assignee.word = source.submittedWord;
-    assignee.wordImage = null;
     assignee.found = false;
     assignee.guesses = [];
     assignee.pendingGuess = null;

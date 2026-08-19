@@ -10,7 +10,6 @@ import {
   normalizeWord,
 } from "./logic";
 import { CATEGORY_LABELS, type WordCategory } from "./words";
-import { fetchAnimeImage, fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
@@ -21,10 +20,6 @@ const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 // names aren't indexed there), so non-anime categories try the character
 // lookup first and fall back to an anime lookup (also covers Jikan's
 // character search being down while anime search still works).
-async function lookupWordImage(word: string, category: WordCategory): Promise<string | null> {
-  if (category === "anime") return fetchAnimeImage(word);
-  return fetchCharacterOrAnimeImage(word);
-}
 
 const MAX_NAME_LENGTH = 20;
 const MIN_PLAYERS_TO_START = 3;
@@ -329,15 +324,9 @@ export class UndercoverRoom {
     await this.saveRoom();
     this.broadcast();
 
-    const [civilianImage, undercoverImage] = await Promise.all([
-      room.civilianWord ? lookupWordImage(room.civilianWord, room.settings.category) : null,
-      room.undercoverWord ? lookupWordImage(room.undercoverWord, room.settings.category) : null,
-    ]);
     // The room may have moved on (restart, etc.) while these lookups were in
     // flight; only apply them if we're still in the round they were fetched for.
     if (room.civilianWord && room.undercoverWord) {
-      room.civilianImage = civilianImage;
-      room.undercoverImage = undercoverImage;
       await this.saveRoom();
       this.broadcast();
     }
@@ -477,8 +466,6 @@ export class UndercoverRoom {
     room.eliminatedHistory = [];
     room.civilianWord = null;
     room.undercoverWord = null;
-    room.civilianImage = null;
-    room.undercoverImage = null;
     room.pendingGuesserId = null;
     room.winner = null;
 
@@ -544,13 +531,6 @@ export class UndercoverRoom {
       }));
 
     const you = room.players[forPlayerId] ?? null;
-    const yourWordImage = you
-      ? you.role === "civilian"
-        ? room.civilianImage
-        : you.role === "undercover"
-          ? room.undercoverImage
-          : null
-      : null;
 
     return {
       code: room.code,
@@ -559,7 +539,7 @@ export class UndercoverRoom {
       round: room.round,
       hostId: room.hostId,
       players,
-      you: you && { id: you.id, role: ownRole(you), word: you.word, wordImage: yourWordImage, alive: you.alive },
+      you: you && { id: you.id, role: ownRole(you), word: you.word, alive: you.alive },
       turnOrder: room.turnOrder,
       currentTurnPlayerId: room.turnOrder[room.currentTurnIndex] ?? null,
       clues: room.clues,
@@ -575,8 +555,6 @@ export class UndercoverRoom {
       winner: room.winner,
       civilianWord: revealAll ? room.civilianWord : undefined,
       undercoverWord: revealAll ? room.undercoverWord : undefined,
-      civilianImage: revealAll ? room.civilianImage : undefined,
-      undercoverImage: revealAll ? room.undercoverImage : undefined,
       settings: room.settings,
     };
   }

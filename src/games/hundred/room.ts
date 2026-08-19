@@ -2,7 +2,6 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, type Mode, createEmptyRoom } from "./types";
 import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
-import { fetchAnimeOrCharacterImage, fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
@@ -263,7 +262,6 @@ export class HundredRoom {
       connected: true,
       number: null,
       proposal: null,
-      proposalImage: null,
     };
     room.players[id] = player;
     room.playerOrder.push(id);
@@ -322,7 +320,6 @@ export class HundredRoom {
       return;
     }
     player.proposal = text;
-    player.proposalImage = null;
 
     if (allProposed(room)) {
       const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
@@ -332,18 +329,6 @@ export class HundredRoom {
 
     await this.saveRoom();
     this.broadcast();
-
-    const image =
-      room.mode === "anime"
-        ? await fetchAnimeOrCharacterImage(text)
-        : await fetchCharacterOrAnimeImage(text);
-    // The player may have re-proposed (or the room restarted) while this
-    // lookup was in flight; only apply it if it's still the current proposal.
-    if (player.proposal === text) {
-      player.proposalImage = image;
-      await this.saveRoom();
-      this.broadcast();
-    }
   }
 
   private async onMove(session: Session, room: RoomState, msg: Record<string, unknown>) {
@@ -398,7 +383,6 @@ export class HundredRoom {
     for (const player of Object.values(room.players)) {
       player.number = null;
       player.proposal = null;
-      player.proposalImage = null;
     }
     room.phase = "lobby";
     room.theme = null;
@@ -469,7 +453,6 @@ export class HundredRoom {
         isHost: p.id === room.hostId,
         hasProposed: p.proposal !== null,
         proposal: proposalVisibleFor(p.id) ? p.proposal : null,
-        proposalImage: proposalVisibleFor(p.id) ? p.proposalImage : null,
         number: numberVisibleFor(p.id) ? p.number : undefined,
       }));
 
@@ -488,7 +471,6 @@ export class HundredRoom {
         id: you.id,
         number: you.number,
         proposal: you.proposal,
-        proposalImage: you.proposalImage,
       },
       order: room.order,
       revealedCount: room.revealedCount,

@@ -222,13 +222,13 @@
     name.textContent = p ? p.name + (playerId === Room.playerId ? " (toi)" : "") : "?";
     card.appendChild(name);
 
-    if (p?.proposalImage) {
+    if (p?.proposal) {
       const img = document.createElement("img");
-      img.className = "card-image";
-      img.src = p.proposalImage;
+      img.className = "card-image hidden";
       img.alt = "";
       img.referrerPolicy = "no-referrer";
       card.appendChild(img);
+      Anilist.setImage(img, p.proposal, Room.state?.mode === "anime" ? "anime" : "character");
     }
 
     const proposal = document.createElement("div");

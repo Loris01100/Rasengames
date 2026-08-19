@@ -99,6 +99,17 @@ const TYPEAHEAD = {
 
 const SUGGESTIONS = [{ name: "Shouyou Hinata", from: "Haikyuu!!" }];
 
+// What graphql.anilist.co answers to the character search the typeahead runs.
+const ANILIST_RESPONSE = {
+  data: {
+    Page: {
+      characters: [
+        { name: { full: "Shouyou Hinata" }, media: { nodes: [{ title: { romaji: "Haikyuu!!" } }] } },
+      ],
+    },
+  },
+};
+
 function run(slug) {
   const html = fs.readFileSync(path.join(ROOT, "games", slug, "index.html"), "utf8");
   const ids = new Set([...html.matchAll(/id="([\w-]+)"/g)].map((m) => m[1]));
@@ -159,9 +170,15 @@ function run(slug) {
       removeItem: (k) => store.delete(k),
     },
     URLSearchParams,
-    fetch: async (url) => {
-      fetches.push(url);
-      return { ok: true, json: async () => (String(url).startsWith("/api/suggest") ? SUGGESTIONS : { code: "ABCD" }) };
+    AbortController,
+    fetch: async (url, init) => {
+      fetches.push({ url: String(url), body: init?.body ?? "" });
+      const anilist = String(url).includes("graphql.anilist.co");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => (anilist ? ANILIST_RESPONSE : { code: "ABCD" }),
+      };
     },
     alert: () => {},
     confirm: () => true,
@@ -256,10 +273,13 @@ function run(slug) {
         input.dispatch("input");
         timers.splice(0).forEach((fn) => fn());
         setImmediate(() => {
-          const call = fetches.find((u) => String(u).startsWith("/api/suggest"));
-          assert.ok(call, `${slug}: typing did not query /api/suggest`);
-          assert.ok(call.includes(`kind=${typeahead.kind}`), `${slug}: wrong suggest kind in ${call}`);
-          assert.ok(call.includes("q=hin"), `${slug}: query not forwarded (${call})`);
+          // The lookup must go straight to AniList: routing it through the
+          // Worker gets a 403, its egress IPs are blocked.
+          const call = fetches.find((f) => f.url.includes("graphql.anilist.co"));
+          assert.ok(call, `${slug}: typing did not query AniList`);
+          assert.ok(call.body.includes('"search":"hin"'), `${slug}: query not forwarded (${call.body})`);
+          const wantsAnime = typeahead.kind === "anime";
+          assert.strictEqual(call.body.includes("characters(search"), !wantsAnime, `${slug}: wrong AniList query for kind ${typeahead.kind}`);
 
           // The suggestion menu must render and fill the input when picked —
           // a native <datalist> did neither on Firefox-based browsers.

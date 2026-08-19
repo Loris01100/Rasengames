@@ -17,7 +17,6 @@ export function assignNumbers(room: RoomState): void {
     const player = room.players[id];
     player.number = pool[index];
     player.proposal = null;
-    player.proposalImage = null;
   });
 }
 

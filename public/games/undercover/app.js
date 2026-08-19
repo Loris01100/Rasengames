@@ -143,6 +143,12 @@
     renderEnd(state);
   }
 
+  // The "anime" category hands out show titles; every other category is a
+  // character, a place, an object… for which a character search matches best.
+  function wordKind(state) {
+    return state.settings?.category === "anime" ? "anime" : "character";
+  }
+
   function renderRoleCard(state) {
     const you = state.you;
     if (!you) return;
@@ -150,9 +156,8 @@
     el.wordDisplay.textContent = wordHidden ? "•••••" : text;
     el.wordDisplay.classList.toggle("hidden-word", wordHidden);
 
-    if (you.wordImage && !wordHidden) {
-      el.wordImage.src = you.wordImage;
-      el.wordImage.classList.remove("hidden");
+    if (you.word && !wordHidden) {
+      Anilist.setImage(el.wordImage, you.word, wordKind(state));
     } else {
       el.wordImage.classList.add("hidden");
     }
@@ -294,17 +299,18 @@
 
     el.endWordsImages.innerHTML = "";
     const wordCards = [
-      { label: "Civils", word: state.civilianWord, image: state.civilianImage },
-      { label: "Undercover", word: state.undercoverWord, image: state.undercoverImage },
+      { label: "Civils", word: state.civilianWord },
+      { label: "Undercover", word: state.undercoverWord },
     ];
     for (const w of wordCards) {
-      if (!w.image) continue;
+      if (!w.word) continue;
       const fig = document.createElement("figure");
       fig.className = "end-word-figure";
       const img = document.createElement("img");
-      img.src = w.image;
+      img.className = "hidden";
       img.alt = "";
       img.referrerPolicy = "no-referrer";
+      Anilist.setImage(img, w.word, wordKind(state));
       fig.appendChild(img);
       const caption = document.createElement("figcaption");
       caption.textContent = `${w.label} : ${w.word}`;

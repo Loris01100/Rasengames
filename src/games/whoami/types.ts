@@ -8,7 +8,6 @@ export interface Player {
   submittedWord: string | null; // written during "submit", for another player to guess
   ready: boolean; // has submitted a word this round
   word: string | null; // the word assigned to THIS player to guess — hidden from themself
-  wordImage: string | null;
   found: boolean;
   guesses: string[]; // validated attempts this round, visible to everyone
   pendingGuess: string | null; // proposed, waiting for the host to say if it's right

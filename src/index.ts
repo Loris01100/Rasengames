@@ -7,7 +7,6 @@ import { DetectiveRoom } from "./games/detective/room";
 import { NoteRoom } from "./games/note/room";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
-import { SuggestError, suggestNames } from "./lib/images";
 
 export { UndercoverRoom, HundredRoom, BacRoom, WhoamiRoom, DetectiveRoom, NoteRoom, LobbyRegistry };
 
@@ -31,28 +30,6 @@ export default {
 
     if (url.pathname === "/api/rooms") {
       return listRooms(env);
-    }
-
-    // Typeahead for the "write a character" inputs: the player picks a real
-    // AniList spelling instead of guessing it, which also disambiguates
-    // homonyms (Shouyou Hinata vs Hinata Hyuuga) for the image lookup.
-    if (url.pathname === "/api/suggest") {
-      const kindParam = url.searchParams.get("kind");
-      const kind = kindParam === "anime" || kindParam === "character" ? kindParam : "any";
-      try {
-        const results = await suggestNames(kind, url.searchParams.get("q") ?? "");
-        return Response.json(results, {
-          headers: { "Cache-Control": "public, max-age=3600" },
-        });
-      } catch (err) {
-        // Never cached: a failing upstream must not stick for an hour, and the
-        // status is what tells us whether AniList is rate-limiting or blocking.
-        const status = err instanceof SuggestError ? err.status : 0;
-        return Response.json(
-          { error: "upstream", status, detail: err instanceof SuggestError ? err.detail.slice(0, 300) : String(err) },
-          { status: 502, headers: { "Cache-Control": "no-store" } }
-        );
-      }
     }
 
     const createMatch = url.pathname.match(/^\/api\/([a-z]+)\/create$/);

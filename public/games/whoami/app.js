@@ -94,13 +94,13 @@
       card.appendChild(badge);
     }
 
-    if (p.wordImage) {
+    if (p.word) {
       const img = document.createElement("img");
-      img.className = "whoami-image";
-      img.src = p.wordImage;
+      img.className = "whoami-image hidden";
       img.alt = "";
       img.referrerPolicy = "no-referrer";
       card.appendChild(img);
+      Anilist.setImage(img, p.word);
     }
 
     const name = document.createElement("div");

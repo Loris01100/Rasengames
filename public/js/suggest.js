@@ -1,5 +1,6 @@
-// Name typeahead for the "écris un personnage" inputs, backed by /api/suggest
-// (AniList). Picking a suggestion gives the exact AniList spelling, which is
+// Name typeahead for the "écris un personnage" inputs, backed by AniList
+// (see public/js/anilist.js — the lookup runs in the browser because the
+// Worker's IP is blocked by AniList). Picking a suggestion gives the exact AniList spelling, which is
 // what makes the server-side image lookup land on the right character — and on
 // the right homonym (Shouyou Hinata vs Hinata Hyuuga).
 //
@@ -10,7 +11,6 @@
 const Suggest = (() => {
   const MIN_CHARS = 3;
   const DEBOUNCE_MS = 350;
-  const cache = new Map();
 
   // `kindOf()` is a function, not a value: 1 à 100 switches between characters
   // and anime titles depending on the room's mode.
@@ -111,19 +111,8 @@ const Suggest = (() => {
     input.addEventListener("blur", () => setTimeout(close, 100));
 
     async function load(q) {
-      const kind = kindOf() || "any";
-      const key = `${kind}:${q.toLowerCase()}`;
-      let results = cache.get(key);
-      if (!results) {
-        try {
-          const res = await fetch(`/api/suggest?kind=${kind}&q=${encodeURIComponent(q)}`);
-          if (!res.ok) return;
-          results = await res.json();
-        } catch {
-          return; // best effort: a failed lookup just means no suggestions
-        }
-        cache.set(key, results);
-      }
+      // Anilist.suggest caches and fails soft: no suggestions, never an error.
+      const results = await Anilist.suggest(q, kindOf() || "any");
       // Ignore a response that lost the race against newer typing.
       if (input.value.trim() !== q) return;
       show(results);
