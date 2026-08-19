@@ -438,6 +438,17 @@ label {
   width: fit-content;
 }
 
+.game-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-mode {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Shared across mini-game pages: join screen, lobby, player list */
 
 .narrow {

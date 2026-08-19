@@ -19,7 +19,7 @@ const START_KEYS = {
   hundred: ["type", "mode", "theme"],
   note: ["type", "guesserId"],
   undercover: ["type", "settings"],
-  whoami: ["type"],
+  whoami: ["type", "submitMode"],
 };
 
 // Stands in for a checked lobby checkbox/radio (bac categories, note kind…).

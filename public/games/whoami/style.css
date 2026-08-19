@@ -18,6 +18,12 @@
   color: var(--accent);
 }
 
+.submit-category {
+  font-weight: 700;
+  color: var(--accent);
+  margin: 4px 0 0;
+}
+
 .whoami-validate {
   display: flex;
   align-items: center;

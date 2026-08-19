@@ -3,11 +3,16 @@
 
   const el = {
 
+    submitModeSelect: $("submit-mode-select"),
+    categoryField: $("category-field"),
+    categoryInput: $("category-input"),
+
     wordForm: $("word-form"),
     wordInput: $("word-input"),
     wordSubmit: $("word-submit"),
     wordDoneHint: $("word-done-hint"),
     submitProgress: $("submit-progress"),
+    submitCategory: $("submit-category"),
 
     guessForm: $("guess-form"),
     guessInput: $("guess-input"),
@@ -44,6 +49,12 @@
       (state.players ?? []).filter((p) => p.found).length,
       "yes"
     );
+    const myTurn = state.turnId === Room.playerId;
+    Sound.onChange(
+      "whoami:turn",
+      `${state.phase}:${state.turnId}`,
+      state.phase === "play" && myTurn ? "turn" : null
+    );
   }
 
   // ---- rendering ----
@@ -76,6 +87,9 @@
     const ready = !!you?.ready;
     el.wordForm.classList.toggle("hidden", ready);
     el.wordDoneHint.classList.toggle("hidden", !ready);
+
+    el.submitCategory.classList.toggle("hidden", state.submitMode !== "categorie" || !state.category);
+    el.submitCategory.textContent = `Catégorie imposée : ${state.category}`;
 
     const readyCount = state.players.filter((p) => p.connected && p.ready).length;
     const totalCount = state.players.filter((p) => p.connected).length;
@@ -290,6 +304,10 @@
     el.guessInput.value = "";
   }
 
+  el.submitModeSelect.addEventListener("change", () => {
+    el.categoryField.classList.toggle("hidden", el.submitModeSelect.value !== "categorie");
+  });
+
   el.askedBtn.addEventListener("click", () => Room.send({ type: "askedQuestion" }));
   el.endRoundBtn.addEventListener("click", () => Room.send({ type: "endRound" }));
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
@@ -300,6 +318,18 @@
     slug: "whoami",
     minPlayers: 2,
     maxPlayers: 5,
+    onStart: () => {
+      const submitMode = el.submitModeSelect.value;
+      if (submitMode === "categorie") {
+        const category = el.categoryInput.value.trim();
+        if (!category) {
+          Room.toast("Écris une catégorie, ou repasse en mode libre.");
+          return null;
+        }
+        return { submitMode, category };
+      }
+      return { submitMode };
+    },
     onState: (s) => { playSounds(s); render(s); },
   });
 })();

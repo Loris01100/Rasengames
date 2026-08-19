@@ -9,7 +9,7 @@ const MAX_NAME_LENGTH = 20;
 // joueur nommé "toi" se confondait avec le suffixe "(toi)" des rendus).
 const MIN_NAME_LENGTH = 4;
 const MAX_TEXT_LENGTH = 60;
-const VALID_LAST_CHANCE_KINDS: Set<string> = new Set(["arc", "lieu", "pouvoir"]);
+const VALID_LAST_CHANCE_KINDS: Set<string> = new Set(["arc", "lieu", "pouvoir", "groupe", "arme"]);
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 
 interface Session {
@@ -380,7 +380,7 @@ export class NoteRoom {
     if (room.step === "lastChance") {
       const rawKind = String(msg.kind ?? "");
       if (!VALID_LAST_CHANCE_KINDS.has(rawKind)) {
-        this.sendError(session.ws, "Choisis un arc, un lieu ou un pouvoir.");
+        this.sendError(session.ws, "Choisis un arc, un lieu, un pouvoir, un groupe ou une arme.");
         return;
       }
       kind = rawKind as LastChanceKind;

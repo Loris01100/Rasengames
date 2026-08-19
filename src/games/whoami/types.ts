@@ -1,5 +1,10 @@
 export type Phase = "lobby" | "submit" | "play" | "ended";
 
+// "libre": chacun écrit ce qu'il veut. "categorie": l'hôte impose un thème
+// (texte libre, pas une liste prédéfinie) que tout le monde doit respecter en
+// écrivant son mot — non vérifié côté serveur, c'est une consigne affichée.
+export type SubmitMode = "libre" | "categorie";
+
 export interface Player {
   id: string;
   token: string;
@@ -29,6 +34,8 @@ export interface RoomState {
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
   turnId: string | null; // whose turn it is to ask a question during "play"
+  submitMode: SubmitMode;
+  category: string | null; // set only when submitMode === "categorie"
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -41,5 +48,7 @@ export function createEmptyRoom(code: string): RoomState {
     scores: {},
     waiting: [],
     turnId: null,
+    submitMode: "libre",
+    category: null,
   };
 }

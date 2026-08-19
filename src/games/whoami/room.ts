@@ -1,5 +1,5 @@
 import type { Env } from "../../env";
-import { type RoomState, type Player, createEmptyRoom } from "./types";
+import { type RoomState, type Player, type SubmitMode, createEmptyRoom } from "./types";
 import {
   MIN_PLAYERS,
   MAX_PLAYERS,
@@ -26,7 +26,9 @@ const MAX_NAME_LENGTH = 20;
 const MIN_NAME_LENGTH = 4;
 const MAX_WORD_LENGTH = 40;
 const MAX_GUESS_LENGTH = 40;
+const MAX_CATEGORY_LENGTH = 60;
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
+const VALID_SUBMIT_MODES: SubmitMode[] = ["libre", "categorie"];
 
 interface Session {
   ws: WebSocket;
@@ -83,6 +85,10 @@ export class WhoamiRoom {
       this.room.waiting ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
+      this.room.submitMode = VALID_SUBMIT_MODES.includes(this.room.submitMode)
+        ? this.room.submitMode
+        : "libre";
+      this.room.category ??= null;
     }
     return this.room;
   }
@@ -220,7 +226,7 @@ export class WhoamiRoom {
         await this.onJoin(session, room, msg);
         break;
       case "start":
-        await this.onStart(session, room);
+        await this.onStart(session, room, msg);
         break;
       case "submitWord":
         await this.onSubmitWord(session, room, msg);
@@ -367,7 +373,7 @@ export class WhoamiRoom {
     this.broadcast();
   }
 
-  private async onStart(session: Session, room: RoomState) {
+  private async onStart(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
       this.sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
       return;
@@ -379,6 +385,19 @@ export class WhoamiRoom {
       this.sendError(session.ws, `Il faut au moins ${MIN_PLAYERS} joueurs connectés.`);
       return;
     }
+
+    const requestedMode = msg.submitMode as SubmitMode;
+    const submitMode = VALID_SUBMIT_MODES.includes(requestedMode) ? requestedMode : "libre";
+    let category: string | null = null;
+    if (submitMode === "categorie") {
+      category = String(msg.category ?? "").trim().slice(0, MAX_CATEGORY_LENGTH);
+      if (!category) {
+        this.sendError(session.ws, "Écris une catégorie, ou repasse en mode libre.");
+        return;
+      }
+    }
+    room.submitMode = submitMode;
+    room.category = category;
 
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
@@ -628,6 +647,8 @@ export class WhoamiRoom {
       players,
       turnId: room.turnId,
       turnName: room.turnId ? room.players[room.turnId]?.name ?? null : null,
+      submitMode: room.submitMode,
+      category: room.category,
     };
   }
 }

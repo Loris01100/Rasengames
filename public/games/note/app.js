@@ -4,7 +4,7 @@
   const STEP_LABELS = {
     character: "Donne un personnage que tu juges à ce niveau",
     anime: "Donne un anime que tu juges à ce niveau",
-    lastChance: "Dernière chance : un arc, un lieu ou un pouvoir",
+    lastChance: "Dernière chance : un arc, un lieu, un pouvoir, un groupe ou une arme",
   };
 
   const CLUE_COLUMNS = [
@@ -13,7 +13,7 @@
     { key: "lastChance", label: "Dernière chance" },
   ];
 
-  const KIND_LABELS = { arc: "Arc", lieu: "Lieu", pouvoir: "Pouvoir" };
+  const KIND_LABELS = { arc: "Arc", lieu: "Lieu", pouvoir: "Pouvoir", groupe: "Groupe", arme: "Arme" };
 
   const el = {
 

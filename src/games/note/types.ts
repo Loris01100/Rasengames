@@ -1,6 +1,6 @@
 export type Phase = "lobby" | "play" | "ended";
 export type Step = "character" | "anime" | "lastChance";
-export type LastChanceKind = "arc" | "lieu" | "pouvoir";
+export type LastChanceKind = "arc" | "lieu" | "pouvoir" | "groupe" | "arme";
 
 export interface ClueEntry {
   playerId: string;

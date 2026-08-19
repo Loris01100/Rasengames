@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Qui suis-je ?</h1>
-      <p class="muted">Chacun écrit un mot ou un personnage. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. Chacun son tour pose une question à voix haute, les autres ne répondent que par oui ou non. Une proposition de nom est validée par l'hôte, et n'est possible qu'une fois toutes les 2 questions. 2 à 5 joueurs.</p>
+      <p class="muted">Chacun écrit un mot ou un personnage — librement, ou dans une catégorie imposée par l'hôte. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. Chacun son tour pose une question à voix haute, les autres ne répondent que par oui ou non. Une proposition de nom est validée par l'hôte, et n'est possible qu'une fois toutes les 2 questions. 2 à 5 joueurs.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
@@ -57,6 +57,16 @@
           <input id="public-toggle" type="checkbox" />
           <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
         </label>
+        <h3>Réglages</h3>
+        <label for="submit-mode-select">Mode</label>
+        <select id="submit-mode-select">
+          <option value="libre">Libre — chacun écrit ce qu'il veut</option>
+          <option value="categorie">Catégorie imposée — l'hôte l'écrit</option>
+        </select>
+        <div id="category-field" class="hidden">
+          <label for="category-input">Catégorie</label>
+          <input id="category-input" type="text" maxlength="60" placeholder="Ex: Persos de Naruto" autocomplete="off" />
+        </div>
         <button id="start-btn" class="btn">Démarrer la partie</button>
         <p id="start-hint" class="muted small"></p>
       </div>
@@ -68,6 +78,7 @@
       <div class="card narrow">
         <h2>Écris un mot ou un personnage</h2>
         <p class="muted small">Il sera donné à un autre joueur au hasard, sans qu'il sache que ça vient de toi.</p>
+        <p id="submit-category" class="submit-category hidden"></p>
         <div id="word-form" class="inline-form">
           <input id="word-input" type="text" maxlength="40" placeholder="Ex: Naruto Uzumaki" autocomplete="off" />
           <button id="word-submit" class="btn">Envoyer</button>
