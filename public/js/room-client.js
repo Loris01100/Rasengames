@@ -45,6 +45,25 @@ const Room = (() => {
     toastTimer = setTimeout(() => el.toast.classList.add("hidden"), 4000);
   }
 
+  // Le lien d'invitation n'a rien de nouveau côté serveur : ?room=CODE est
+  // déjà lu au chargement (voir readUrl), il suffisait de le donner en un clic
+  // plutôt que de dicter le code à l'oral.
+  function inviteLink() {
+    return `${location.origin}/games/${cfg.slug}/?room=${api.code}`;
+  }
+
+  async function copyInvite() {
+    const link = inviteLink();
+    try {
+      await navigator.clipboard.writeText(link);
+      toast("Lien d'invitation copié !");
+    } catch {
+      // Pas de presse-papier (http hors localhost, vieux navigateur) : au moins
+      // le lien est affiché et sélectionnable.
+      prompt("Copie ce lien et envoie-le :", link);
+    }
+  }
+
   function storageKey(code, suffix) {
     return `${cfg.slug}:${code}:${suffix}`;
   }
@@ -112,6 +131,13 @@ const Room = (() => {
     } else if (msg.type === "state") {
       const previous = api.state;
       api.state = msg.state;
+      renderWaitingBadge(msg.state);
+      // Arrivé en cours de partie : le serveur ne nous envoie rien de la manche
+      // en cours (on n'y est pas), donc le jeu n'a rien à rendre.
+      if ((msg.state.waiting ?? []).some((w) => w.id === api.playerId)) {
+        showWaitingScreen();
+        return;
+      }
       cfg.onState(msg.state, previous);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
@@ -130,6 +156,37 @@ const Room = (() => {
   }
 
   // ---- shared rendering ----
+
+  // Créé à la volée : aucun jeu n'a besoin de connaître cet écran, et les six
+  // index.html n'ont pas à porter une section identique.
+  let waitingScreen = null;
+  function showWaitingScreen() {
+    if (!waitingScreen) {
+      waitingScreen = document.createElement("section");
+      waitingScreen.id = "screen-waiting";
+      waitingScreen.className = "card narrow";
+      const title = document.createElement("h2");
+      title.textContent = "Une partie est en cours";
+      const hint = document.createElement("p");
+      hint.className = "muted";
+      hint.textContent =
+        "Tu gardes ta place : tu entreras automatiquement dans le salon à la fin de la manche, sans rien avoir à refaire.";
+      waitingScreen.appendChild(title);
+      waitingScreen.appendChild(hint);
+      const anchor = $("screen-lobby");
+      (anchor?.parentNode ?? document.body).appendChild(waitingScreen);
+    }
+    showScreen(waitingScreen);
+    waitingScreen.classList.remove("hidden");
+  }
+
+  // Sinon l'hôte n'a aucune raison de relancer une manche : il ne sait pas
+  // qu'on attend derrière la porte.
+  function renderWaitingBadge(state) {
+    const count = (state.waiting ?? []).filter((w) => w.id !== api.playerId).length;
+    el.waitingBadge.textContent = count ? `${count} en attente` : "";
+    el.waitingBadge.classList.toggle("hidden", count === 0);
+  }
 
   // Every game screen is a <section id="screen-*">, so no per-game list needed.
   function showScreen(screen) {
@@ -162,6 +219,14 @@ const Room = (() => {
       const tag = document.createElement("span");
       tag.className = "tag";
       tag.textContent = "Hôte";
+      row.appendChild(tag);
+    }
+
+    const points = api.state?.scores?.[p.id];
+    if (points) {
+      const tag = document.createElement("span");
+      tag.className = "tag score-tag";
+      tag.textContent = `${points} pt${points > 1 ? "s" : ""}`;
       row.appendChild(tag);
     }
 
@@ -235,6 +300,18 @@ const Room = (() => {
       startHint: $("start-hint"),
       waitingHost: $("waiting-host"),
     });
+
+    el.waitingBadge = document.createElement("span");
+    el.waitingBadge.className = "badge hidden";
+    el.waitingBadge.id = "waiting-badge";
+    el.roomBadge.parentNode.appendChild(el.waitingBadge);
+
+    el.inviteBtn = document.createElement("button");
+    el.inviteBtn.className = "btn secondary small";
+    el.inviteBtn.id = "invite-btn";
+    el.inviteBtn.textContent = "Copier le lien";
+    el.inviteBtn.addEventListener("click", copyInvite);
+    el.lobbyCode.parentNode.appendChild(el.inviteBtn);
 
     for (const g of GAMES) {
       if (g.slug === cfg.slug) continue;

@@ -76,6 +76,10 @@ export class UndercoverRoom {
     if (!this.room) {
       const stored = await this.state.storage.get<RoomState>("room");
       this.room = stored ?? createEmptyRoom(code.toUpperCase());
+      // Les salons créés avant ces champs sont relus tels qu'ils ont été
+      // persistés : sans ça, le premier push dans waiting casse la manche.
+      this.room.scores ??= {};
+      this.room.waiting ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -166,11 +170,21 @@ export class UndercoverRoom {
     this.sessions = this.sessions.filter((s) => s !== session);
     if (!this.room || !session.playerId) return;
 
-    const player = this.room.players[session.playerId];
-    if (!player) return;
+    const stillHere = this.sessions.some((s) => s.playerId === session.playerId);
 
-    const stillConnected = this.sessions.some((s) => s.playerId === session.playerId);
-    if (!stillConnected) {
+    const player = this.room.players[session.playerId];
+    if (!player) {
+      // Un joueur en attente n'a pas de ligne dans la partie : il quitte la
+      // file plutôt que d'être marqué déconnecté.
+      if (!stillHere && this.room.waiting.some((p) => p.id === session.playerId)) {
+        this.room.waiting = this.room.waiting.filter((p) => p.id !== session.playerId);
+        await this.saveRoom();
+        this.broadcast();
+      }
+      return;
+    }
+
+    if (!stillHere) {
       player.connected = false;
       await this.saveRoom();
       this.broadcast();
@@ -230,6 +244,26 @@ export class UndercoverRoom {
     }
   }
 
+  // Un joueur neuf, qu'il entre tout de suite ou qu'il patiente (waiting).
+  private makePlayer(id: string, token: string, name: string): Player {
+    return { id, token, name, connected: true, alive: true };
+  }
+
+  private nameTaken(room: RoomState, name: string): boolean {
+    const taken = (p: Player) => p.connected && p.name.toLowerCase() === name.toLowerCase();
+    return Object.values(room.players).some(taken) || room.waiting.some(taken);
+  }
+
+  // Les joueurs arrivés en cours de partie rejoignent la table au retour au
+  // lobby, avec l'id et le token qu'ils ont déjà en localStorage.
+  private promoteWaiting(room: RoomState) {
+    for (const p of room.waiting) {
+      room.players[p.id] = p;
+      room.playerOrder.push(p.id);
+    }
+    room.waiting = [];
+  }
+
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
     if (name.length < MIN_NAME_LENGTH) {
@@ -248,24 +282,43 @@ export class UndercoverRoom {
         this.broadcast();
         return;
       }
+
+      const pending = room.waiting.find((p) => p.token === msg.token);
+      if (pending) {
+        pending.connected = true;
+        pending.name = name;
+        session.playerId = pending.id;
+        session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
+        await this.saveRoom();
+        this.broadcast();
+        return;
+      }
     }
 
     if (room.phase !== "lobby") {
-      this.sendError(session.ws, "La partie a déjà commencé.");
+      // La partie tourne : au lieu de renvoyer le nouveau venu créer son propre
+      // salon, on le met de côté et il entrera à la manche suivante.
+      if (this.nameTaken(room, name)) {
+        this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
+        return;
+      }
+      const pending = this.makePlayer(crypto.randomUUID(), crypto.randomUUID(), name);
+      room.waiting.push(pending);
+      session.playerId = pending.id;
+      session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
+      await this.saveRoom();
+      this.broadcast();
       return;
     }
 
-    const nameTaken = Object.values(room.players).some(
-      (p) => p.connected && p.name.toLowerCase() === name.toLowerCase()
-    );
-    if (nameTaken) {
+    if (this.nameTaken(room, name)) {
       this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
       return;
     }
 
     const id = crypto.randomUUID();
     const token = crypto.randomUUID();
-    const player: Player = { id, token, name, connected: true, alive: true };
+    const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
     // asHost lets the player who triggered a switchGame reclaim host in the
@@ -420,6 +473,7 @@ export class UndercoverRoom {
     if (winner) {
       room.winner = winner;
       room.phase = "ended";
+      this.awardWin(room);
       room.lastVoteResult = result;
       return;
     }
@@ -437,11 +491,13 @@ export class UndercoverRoom {
     if (room.civilianWord && normalizeWord(guess) === normalizeWord(room.civilianWord)) {
       room.winner = "mrwhite";
       room.phase = "ended";
+      this.awardWin(room);
     } else {
       const winner = checkWinCondition(room);
       if (winner) {
         room.winner = winner;
         room.phase = "ended";
+        this.awardWin(room);
       } else {
         startNewRound(room);
       }
@@ -449,6 +505,19 @@ export class UndercoverRoom {
 
     await this.saveRoom();
     this.broadcast();
+  }
+
+  // Un point à chaque membre du camp gagnant, cumulé sur le salon.
+  private awardWin(room: RoomState) {
+    for (const p of Object.values(room.players)) {
+      const won =
+        room.winner === "civilians"
+          ? p.role === "civilian"
+          : room.winner === "undercover"
+            ? p.role === "undercover" || p.role === "mrwhite"
+            : room.winner === "mrwhite" && p.role === "mrwhite";
+      if (won) room.scores[p.id] = (room.scores[p.id] ?? 0) + 1;
+    }
   }
 
   private async onRestart(session: Session, room: RoomState) {
@@ -459,6 +528,9 @@ export class UndercoverRoom {
       player.role = undefined;
       player.word = undefined;
     }
+    this.promoteWaiting(room);
+    // Le nombre d'undercover dépend de l'effectif, qui vient de changer.
+    room.settings = defaultSettings(room.playerOrder.length, room.settings.category);
     room.phase = "lobby";
     room.round = 0;
     room.turnOrder = [];
@@ -539,6 +611,8 @@ export class UndercoverRoom {
       code: room.code,
       phase: room.phase,
       visibility: this.visibility,
+      scores: room.scores,
+      waiting: room.waiting.map((p) => ({ id: p.id, name: p.name })),
       round: room.round,
       hostId: room.hostId,
       players,

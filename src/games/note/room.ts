@@ -61,6 +61,10 @@ export class NoteRoom {
     if (!this.room) {
       const stored = await this.state.storage.get<RoomState>("room");
       this.room = stored ?? createEmptyRoom(code.toUpperCase());
+      // Les salons créés avant ces champs sont relus tels qu'ils ont été
+      // persistés : sans ça, le premier push dans waiting casse la manche.
+      this.room.scores ??= {};
+      this.room.waiting ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -151,11 +155,21 @@ export class NoteRoom {
     this.sessions = this.sessions.filter((s) => s !== session);
     if (!this.room || !session.playerId) return;
 
-    const player = this.room.players[session.playerId];
-    if (!player) return;
+    const stillHere = this.sessions.some((s) => s.playerId === session.playerId);
 
-    const stillConnected = this.sessions.some((s) => s.playerId === session.playerId);
-    if (!stillConnected) {
+    const player = this.room.players[session.playerId];
+    if (!player) {
+      // Un joueur en attente n'a pas de ligne dans la partie : il quitte la
+      // file plutôt que d'être marqué déconnecté.
+      if (!stillHere && this.room.waiting.some((p) => p.id === session.playerId)) {
+        this.room.waiting = this.room.waiting.filter((p) => p.id !== session.playerId);
+        await this.saveRoom();
+        this.broadcast();
+      }
+      return;
+    }
+
+    if (!stillHere) {
       player.connected = false;
       // A disconnect can complete the "everyone answered" set for the current
       // step even though nobody submitted just now — recheck so the round
@@ -216,6 +230,26 @@ export class NoteRoom {
     }
   }
 
+  // Un joueur neuf, qu'il entre tout de suite ou qu'il patiente (waiting).
+  private makePlayer(id: string, token: string, name: string): Player {
+    return { id, token, name, connected: true, submitted: false };
+  }
+
+  private nameTaken(room: RoomState, name: string): boolean {
+    const taken = (p: Player) => p.connected && p.name.toLowerCase() === name.toLowerCase();
+    return Object.values(room.players).some(taken) || room.waiting.some(taken);
+  }
+
+  // Les joueurs arrivés en cours de partie rejoignent la table au retour au
+  // lobby, avec l'id et le token qu'ils ont déjà en localStorage.
+  private promoteWaiting(room: RoomState) {
+    for (const p of room.waiting) {
+      room.players[p.id] = p;
+      room.playerOrder.push(p.id);
+    }
+    room.waiting = [];
+  }
+
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
     if (name.length < MIN_NAME_LENGTH) {
@@ -234,10 +268,36 @@ export class NoteRoom {
         this.broadcast();
         return;
       }
+
+      const pending = room.waiting.find((p) => p.token === msg.token);
+      if (pending) {
+        pending.connected = true;
+        pending.name = name;
+        session.playerId = pending.id;
+        session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
+        await this.saveRoom();
+        this.broadcast();
+        return;
+      }
     }
 
     if (room.phase !== "lobby") {
-      this.sendError(session.ws, "La partie a déjà commencé.");
+      // La partie tourne : au lieu de renvoyer le nouveau venu créer son propre
+      // salon, on le met de côté et il entrera à la manche suivante.
+      if (room.playerOrder.length + room.waiting.length >= MAX_PLAYERS) {
+        this.sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
+        return;
+      }
+      if (this.nameTaken(room, name)) {
+        this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
+        return;
+      }
+      const pending = this.makePlayer(crypto.randomUUID(), crypto.randomUUID(), name);
+      room.waiting.push(pending);
+      session.playerId = pending.id;
+      session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
+      await this.saveRoom();
+      this.broadcast();
       return;
     }
 
@@ -248,17 +308,14 @@ export class NoteRoom {
       return;
     }
 
-    const nameTaken = Object.values(room.players).some(
-      (p) => p.connected && p.name.toLowerCase() === name.toLowerCase()
-    );
-    if (nameTaken) {
+    if (this.nameTaken(room, name)) {
       this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
       return;
     }
 
     const id = crypto.randomUUID();
     const token = crypto.randomUUID();
-    const player: Player = { id, token, name, connected: true, submitted: false };
+    const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
     // asHost lets the player who triggered a switchGame reclaim host in the
@@ -367,6 +424,13 @@ export class NoteRoom {
     }
 
     room.guess = number;
+    // Coopératif : les indices valent autant que la réponse, donc la table
+    // entière marque selon l'écart (pile 2 points, à 1 près 1 point).
+    const gap = room.number == null ? 99 : Math.abs(number - room.number);
+    const points = gap === 0 ? 2 : gap === 1 ? 1 : 0;
+    if (points > 0) {
+      for (const id of room.playerOrder) room.scores[id] = (room.scores[id] ?? 0) + points;
+    }
     room.phase = "ended";
 
     await this.saveRoom();
@@ -382,6 +446,7 @@ export class NoteRoom {
     room.step = null;
     room.clues = [];
     room.guess = null;
+    this.promoteWaiting(room);
     room.phase = "lobby";
 
     await this.saveRoom();
@@ -445,6 +510,8 @@ export class NoteRoom {
       code: room.code,
       phase: room.phase,
       visibility: this.visibility,
+      scores: room.scores,
+      waiting: room.waiting.map((p) => ({ id: p.id, name: p.name })),
       hostId: room.hostId,
       players,
       guesserId: room.guesserId,

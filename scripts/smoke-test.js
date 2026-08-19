@@ -210,6 +210,7 @@ function run(slug) {
 
   const fetches = [];
   const timers = [];
+  const copied = []; // presse-papier bouchon, pour le lien d'invitation
   const intervals = []; // callbacks du chrono, rejoués à la main par tick()
   let socket = null;
   class FakeWebSocket {
@@ -250,7 +251,7 @@ function run(slug) {
     document,
     console,
     WebSocket: FakeWebSocket,
-    location: { protocol: "http:", host: "localhost", search: "", pathname: `/games/${slug}/`, href: "" },
+    location: { protocol: "http:", host: "localhost", origin: "http://localhost", search: "", pathname: `/games/${slug}/`, href: "" },
     history: { replaceState: () => {} },
     localStorage: {
       getItem: (k) => (store.has(k) ? store.get(k) : null),
@@ -279,7 +280,8 @@ function run(slug) {
     setInterval: (fn) => intervals.push(fn),
     clearInterval: () => intervals.splice(0),
     requestAnimationFrame: () => 0,
-    navigator: { userAgent: "node" },
+    navigator: { userAgent: "node", clipboard: { writeText: async (text) => copied.push(text) } },
+    prompt: () => "",
     AudioContext: function () {
       return { createOscillator: () => ({ connect: () => {}, start: () => {}, stop: () => {}, frequency: { setValueAtTime: () => {} } }), createGain: () => ({ connect: () => {}, gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {}, linearRampToValueAtTime: () => {} } }), currentTime: 0, destination: {}, state: "running", resume: () => {} };
     },
@@ -327,7 +329,7 @@ function run(slug) {
       ];
       send({
         type: "state",
-        state: { code: "ABCD", phase: "lobby", hostId: "p1", visibility: "public", players, settings: { undercoverCount: 1, mrWhiteCount: 0, category: "anime" } },
+        state: { code: "ABCD", phase: "lobby", hostId: "p1", visibility: "public", players, scores: { p2: 3 }, settings: { undercoverCount: 1, mrWhiteCount: 0, category: "anime" } },
       });
 
       assert.strictEqual(byId("lobby-code").textContent, "ABCD");
@@ -335,6 +337,13 @@ function run(slug) {
       assert.strictEqual(byId("public-toggle").checked, true);
       assert.strictEqual(byId("start-btn").disabled, false, `${slug}: start should be enabled with 3 players`);
       assert.ok(!byId("screen-lobby").classList.contains("hidden"), `${slug}: lobby screen hidden`);
+
+      // Score cumulé du salon, rendu par le client partagé pour les six jeux.
+      const tags = byId("players-list").children[1].children.map((c) => c.textContent);
+      assert.ok(tags.includes("3 pts"), `${slug}: score cumulé absent de la ligne joueur (${tags})`);
+
+      // Lien d'invitation : ?room=CODE est déjà géré au chargement.
+      byId("lobby-code").parentNode.children.find((c) => c.id === "invite-btn").dispatch("click");
       assert.ok(byId("screen-join").classList.contains("hidden"), `${slug}: join screen still visible`);
 
       // Every static button must be wired: this is what a dropped listener
@@ -366,6 +375,21 @@ function run(slug) {
       // qui brouilleraient les assertions sur la requête du typeahead.
       const extra = PHASE_CHECKS[slug];
       const done = () => {
+        assert.deepStrictEqual(copied, [`http://localhost/games/${slug}/?room=ABCD`], `${slug}: lien d'invitation`);
+
+        // Arrivé en cours de partie : écran d'attente partagé, le jeu ne rend
+        // rien (le serveur ne nous envoie pas la manche en cours).
+        send({ type: "state", state: { code: "ABCD", phase: "play", hostId: "p2", players, waiting: [{ id: "p1", name: "Alice" }] } });
+        assert.ok(byId("screen-lobby").classList.contains("hidden"), `${slug}: un joueur en attente ne doit pas voir le jeu`);
+        // Et l'hôte voit qu'on attend derrière la porte, sinon il n'a aucune
+        // raison de relancer une manche.
+        send({
+          type: "state",
+          state: { code: "ABCD", phase: "lobby", hostId: "p1", visibility: "public", players, waiting: [{ id: "p9", name: "Dave" }], settings: { undercoverCount: 1, mrWhiteCount: 0, category: "anime" } },
+        });
+        const badge = byId("room-badge").parentNode.children.find((c) => c.id === "waiting-badge");
+        assert.strictEqual(badge?.textContent, "1 en attente", `${slug}: badge d'attente`);
+
         if (extra) extra(send, byId, slug, () => intervals.forEach((fn) => fn()));
         resolve();
       };

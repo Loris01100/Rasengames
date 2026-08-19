@@ -43,6 +43,11 @@ export interface RoomState {
   round: number;
   players: Record<string, Player>;
   playerOrder: string[]; // stable join order, for display
+  // Points cumulés sur les manches jouées dans ce salon (playerId -> points).
+  scores: Record<string, number>;
+  // Arrivés en cours de partie : hors de players/playerOrder, donc invisibles
+  // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
+  waiting: Player[];
   turnOrder: string[]; // clue order for the current round (alive players only)
   currentTurnIndex: number;
   clues: Clue[];
@@ -64,6 +69,8 @@ export function createEmptyRoom(code: string): RoomState {
     round: 0,
     players: {},
     playerOrder: [],
+    scores: {},
+    waiting: [],
     turnOrder: [],
     currentTurnIndex: 0,
     clues: [],

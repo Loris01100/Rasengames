@@ -61,6 +61,10 @@ export class DetectiveRoom {
     if (!this.room) {
       const stored = await this.state.storage.get<RoomState>("room");
       this.room = stored ?? createEmptyRoom(code.toUpperCase());
+      // Les salons créés avant ces champs sont relus tels qu'ils ont été
+      // persistés : sans ça, le premier push dans waiting casse la manche.
+      this.room.scores ??= {};
+      this.room.waiting ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
       // rooms stored before multi-solve shipped have no `solved` array
@@ -153,11 +157,21 @@ export class DetectiveRoom {
     this.sessions = this.sessions.filter((s) => s !== session);
     if (!this.room || !session.playerId) return;
 
-    const player = this.room.players[session.playerId];
-    if (!player) return;
+    const stillHere = this.sessions.some((s) => s.playerId === session.playerId);
 
-    const stillConnected = this.sessions.some((s) => s.playerId === session.playerId);
-    if (!stillConnected) {
+    const player = this.room.players[session.playerId];
+    if (!player) {
+      // Un joueur en attente n'a pas de ligne dans la partie : il quitte la
+      // file plutôt que d'être marqué déconnecté.
+      if (!stillHere && this.room.waiting.some((p) => p.id === session.playerId)) {
+        this.room.waiting = this.room.waiting.filter((p) => p.id !== session.playerId);
+        await this.saveRoom();
+        this.broadcast();
+      }
+      return;
+    }
+
+    if (!stillHere) {
       player.connected = false;
       if (this.room.phase === "play" && this.room.turnId === player.id) {
         this.room.turnId = this.advanceTurn(this.room, player.id);
@@ -223,6 +237,34 @@ export class DetectiveRoom {
     }
   }
 
+  // Un joueur neuf, qu'il entre tout de suite ou qu'il patiente (waiting).
+  private makePlayer(id: string, token: string, name: string): Player {
+    return {
+      id,
+      token,
+      name,
+      connected: true,
+      category: null,
+      ready: false,
+      incoming: [],
+    };
+  }
+
+  private nameTaken(room: RoomState, name: string): boolean {
+    const taken = (p: Player) => p.connected && p.name.toLowerCase() === name.toLowerCase();
+    return Object.values(room.players).some(taken) || room.waiting.some(taken);
+  }
+
+  // Les joueurs arrivés en cours de partie rejoignent la table au retour au
+  // lobby, avec l'id et le token qu'ils ont déjà en localStorage.
+  private promoteWaiting(room: RoomState) {
+    for (const p of room.waiting) {
+      room.players[p.id] = p;
+      room.playerOrder.push(p.id);
+    }
+    room.waiting = [];
+  }
+
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
     if (name.length < MIN_NAME_LENGTH) {
@@ -241,10 +283,36 @@ export class DetectiveRoom {
         this.broadcast();
         return;
       }
+
+      const pending = room.waiting.find((p) => p.token === msg.token);
+      if (pending) {
+        pending.connected = true;
+        pending.name = name;
+        session.playerId = pending.id;
+        session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
+        await this.saveRoom();
+        this.broadcast();
+        return;
+      }
     }
 
     if (room.phase !== "lobby") {
-      this.sendError(session.ws, "La partie a déjà commencé.");
+      // La partie tourne : au lieu de renvoyer le nouveau venu créer son propre
+      // salon, on le met de côté et il entrera à la manche suivante.
+      if (room.playerOrder.length + room.waiting.length >= MAX_PLAYERS) {
+        this.sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
+        return;
+      }
+      if (this.nameTaken(room, name)) {
+        this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
+        return;
+      }
+      const pending = this.makePlayer(crypto.randomUUID(), crypto.randomUUID(), name);
+      room.waiting.push(pending);
+      session.playerId = pending.id;
+      session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
+      await this.saveRoom();
+      this.broadcast();
       return;
     }
 
@@ -255,25 +323,14 @@ export class DetectiveRoom {
       return;
     }
 
-    const nameTaken = Object.values(room.players).some(
-      (p) => p.connected && p.name.toLowerCase() === name.toLowerCase()
-    );
-    if (nameTaken) {
+    if (this.nameTaken(room, name)) {
       this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
       return;
     }
 
     const id = crypto.randomUUID();
     const token = crypto.randomUUID();
-    const player: Player = {
-      id,
-      token,
-      name,
-      connected: true,
-      category: null,
-      ready: false,
-      incoming: [],
-    };
+    const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
     // asHost lets the player who triggered a switchGame reclaim host in the
@@ -401,7 +458,13 @@ export class DetectiveRoom {
       room.solved.push({ target: player.id, by: from });
       // Ends only once every connected player's category has been found, not
       // after some fixed count — nobody's secret is left hanging.
-      if (room.solved.length >= connectedIds(room).length) room.phase = "ended";
+      if (room.solved.length >= connectedIds(room).length) {
+        // Trouvée en dernier = a tenu le plus longtemps : c'est le gagnant
+        // affiché sur l'écran de fin, il prend le point de la manche.
+        const winner = room.solved[room.solved.length - 1]?.target;
+        if (winner) room.scores[winner] = (room.scores[winner] ?? 0) + 1;
+        room.phase = "ended";
+      }
     }
     if (room.phase === "play" && room.turnId && this.openTargets(room, room.turnId).length === 0) {
       room.turnId = this.advanceTurn(room, room.turnId);
@@ -441,6 +504,7 @@ export class DetectiveRoom {
     room.log = [];
     room.solved = [];
     room.turnId = null;
+    this.promoteWaiting(room);
     room.phase = "lobby";
 
     await this.saveRoom();
@@ -493,6 +557,8 @@ export class DetectiveRoom {
       code: room.code,
       phase: room.phase,
       visibility: this.visibility,
+      scores: room.scores,
+      waiting: room.waiting.map((p) => ({ id: p.id, name: p.name })),
       hostId: room.hostId,
       players: room.playerOrder
         .map((id) => room.players[id])

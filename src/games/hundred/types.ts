@@ -28,6 +28,11 @@ export interface RoomState {
   mode: Mode;
   players: Record<string, Player>;
   playerOrder: string[];
+  // Points cumulés sur les manches jouées dans ce salon (playerId -> points).
+  scores: Record<string, number>;
+  // Arrivés en cours de partie : hors de players/playerOrder, donc invisibles
+  // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
+  waiting: Player[];
   theme: string | null;
   order: string[];
   revealedCount: number;
@@ -42,6 +47,8 @@ export function createEmptyRoom(code: string): RoomState {
     mode: "perso",
     players: {},
     playerOrder: [],
+    scores: {},
+    waiting: [],
     theme: null,
     order: [],
     revealedCount: 0,

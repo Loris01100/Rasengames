@@ -661,6 +661,12 @@ label {
   letter-spacing: 0.05em;
 }
 
+/* Points cumulés sur les manches du salon, rendus par room-client.js. */
+.player-row .score-tag {
+  font-weight: 700;
+  color: var(--accent);
+}
+
 .player-row .role-tag {
   font-size: 0.75rem;
   font-weight: 700;
@@ -786,4 +792,10 @@ label {
 
 .suggest-item.suggest-anime .suggest-from {
   font-style: italic;
+}
+
+/* Bouton "copier le lien", collé au code du salon dans le titre du lobby. */
+#invite-btn {
+  margin-left: 12px;
+  vertical-align: middle;
 }
