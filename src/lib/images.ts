@@ -44,7 +44,13 @@ function anilistRequest(body: string): Promise<Response | null> {
     try {
       return await fetch(ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          // Workers' fetch sends no User-Agent by default and public APIs
+          // (AniList included) tend to reject anonymous clients.
+          "User-Agent": "RasenGames/1.0 (+https://rasengames.reesch.com)",
+        },
         body,
         signal: controller.signal,
       });
@@ -133,6 +139,15 @@ export async function fetchAnimeOrCharacterImage(name: string): Promise<string |
 const SUGGEST_CHARACTERS = `query ($search: String) { Page(perPage: 8) { characters(search: $search) { name { full } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } }`;
 const SUGGEST_ANIME = `query ($search: String) { Page(perPage: 8) { media(search: $search, type: ANIME) { title { romaji } startDate { year } } } }`;
 
+export class SuggestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: string
+  ) {
+    super(`AniList responded ${status}`);
+  }
+}
+
 export interface Suggestion {
   name: string;
   from: string;
@@ -163,9 +178,11 @@ async function suggestOne(kind: "character" | "anime", query: string): Promise<S
       variables: { search: query },
     })
   );
-  // A miss is an empty list, not an error: the caller is a typeahead and a
-  // half-typed name legitimately matches nothing yet.
-  if (!res || (res.status !== 404 && !res.ok)) return [];
+  // A 404 is a miss (the caller is a typeahead; a half-typed name legitimately
+  // matches nothing). Anything else is an upstream failure and must surface —
+  // silently returning [] is what hid the outbound calls failing in production.
+  if (!res) throw new SuggestError(0, "no response from AniList");
+  if (res.status !== 404 && !res.ok) throw new SuggestError(res.status, await res.text().catch(() => ""));
   if (res.status === 404) {
     suggestCache.set(cacheKey, []);
     return [];
