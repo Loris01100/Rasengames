@@ -13,7 +13,7 @@ npm install          # install deps
 npm run dev           # wrangler dev — local server with Durable Objects + static assets
 npm run deploy         # wrangler deploy — manual deploy to Cloudflare
 npm run typecheck      # tsc --noEmit
-npm test               # scripts/smoke-test.js — boots all 6 game frontends against a stub DOM
+npm test               # scripts/words-test.mts (règle "même mot") + scripts/smoke-test.js (les 6 frontends contre un DOM bouchon)
 ```
 
 There is no test suite. Game logic and the WebSocket protocol were validated during development with throwaway Node scripts (native `WebSocket`, simulating multiple players against `wrangler dev`) and a Playwright script for the drag-and-drop UI — neither is checked into the repo. When changing game logic, the fastest way to verify correctness is the same approach: run `npm run dev` and drive a couple of WebSocket clients through a full game.

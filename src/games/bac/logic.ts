@@ -1,4 +1,5 @@
 import type { RoomState, RoundResult } from "./types";
+import { normalizeWord, sameWord } from "../../lib/words";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -6,16 +7,6 @@ export function pickRandomLetter(): string {
   return LETTERS[Math.floor(Math.random() * LETTERS.length)];
 }
 
-// U+0300 (combining grave accent) to U+036F (combining latin small letter x),
-// built from char codes to avoid embedding raw combining marks in source.
-const COMBINING_MARKS = new RegExp(
-  `[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`,
-  "g"
-);
-
-export function normalizeWord(word: string): string {
-  return word.trim().toLowerCase().normalize("NFD").replace(COMBINING_MARKS, "");
-}
 
 // Only used as a soft hint in the review UI — the host is always the one
 // who decides validity, nothing is auto-accepted.
@@ -51,19 +42,14 @@ export function recomputeScores(result: RoundResult): void {
   for (const id of Object.keys(result.totals)) result.totals[id] = 0;
 
   for (const cat of result.byCategory) {
-    const counts = new Map<string, number>();
+    const validated = cat.entries.filter((e) => e.valid);
     for (const e of cat.entries) {
       if (!e.valid) {
         e.points = 0;
         continue;
       }
-      const key = normalizeWord(e.answer);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    for (const e of cat.entries) {
-      if (!e.valid) continue;
-      const key = normalizeWord(e.answer);
-      e.points = counts.get(key) === 1 ? 2 : 1;
+      const shared = validated.some((o) => o !== e && sameWord(o.answer, e.answer));
+      e.points = shared ? 1 : 2;
       result.totals[e.playerId] = (result.totals[e.playerId] ?? 0) + e.points;
     }
   }

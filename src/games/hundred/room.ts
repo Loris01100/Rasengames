@@ -4,6 +4,7 @@ import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { sameWord } from "../../lib/words";
 
 // "character:417" / "anime:20" — the exact AniList entry a player picked from
 // the suggestions. Relayed as-is to every client so they all show the same
@@ -332,6 +333,16 @@ export class HundredRoom {
       this.sendError(session.ws, "Proposition vide.");
       return;
     }
+    // Deux cartes identiques sur la ligne, c'est un débat sans réponse : on
+    // refuse le doublon (et les quasi-doublons, cf. sameWord).
+    const taken = Object.values(room.players).find(
+      (p) => p.id !== player.id && p.connected && p.proposal && sameWord(p.proposal, text)
+    );
+    if (taken) {
+      this.sendError(session.ws, `"${taken.proposal}" est déjà pris, trouve autre chose.`);
+      return;
+    }
+
     player.proposal = text;
     player.proposalRef = parseAnilistRef(msg.anilistRef);
 

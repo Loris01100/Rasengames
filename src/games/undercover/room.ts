@@ -7,8 +7,8 @@ import {
   checkWinCondition,
   defaultSettings,
   validateSettings,
-  normalizeWord,
 } from "./logic";
+import { normalizeWord } from "../../lib/words";
 import { CATEGORY_LABELS, type WordCategory } from "./words";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
