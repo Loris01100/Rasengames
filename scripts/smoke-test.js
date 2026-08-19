@@ -114,7 +114,7 @@ const ANILIST_SEARCH = {
   data: {
     chars: {
       characters: [
-        { name: { full: "Shouyou Hinata" }, media: { nodes: [{ title: { romaji: "Haikyuu!!" } }] } },
+        { id: 1, name: { full: "Shouyou Hinata" }, media: { nodes: [{ title: { romaji: "Haikyuu!!" } }] } },
       ],
     },
     animes: { media: [{ id: 20, title: { romaji: "Haikyuu!!" }, startDate: { year: 2014 } }] },
@@ -125,7 +125,7 @@ const ANILIST_CAST = {
   data: {
     Media: {
       title: { romaji: "Haikyuu!!" },
-      characters: { nodes: [{ name: { full: "Tobio Kageyama" } }, { name: { full: "Shouyou Hinata" } }] },
+      characters: { nodes: [{ id: 2, name: { full: "Tobio Kageyama" } }, { id: 1, name: { full: "Shouyou Hinata" } }] },
     },
   },
 };
@@ -327,6 +327,11 @@ function run(slug) {
             // And picking one of those fills the input with the exact spelling.
             menu.children[3].dispatch("mousedown", { preventDefault() {} });
             assert.strictEqual(input.value, "Tobio Kageyama", `${slug}: picking from the cast did not fill the input`);
+            // The exact AniList entry travels with the word, so every player
+            // sees the character that was picked and not a same-named other.
+            assert.strictEqual(input.dataset.anilistRef, "character:2", `${slug}: picked entry not remembered`);
+            input.dispatch("input");
+            assert.strictEqual(input.dataset.anilistRef, undefined, `${slug}: editing should forget the picked entry`);
             assert.ok(menu.classes.has("hidden"), `${slug}: menu stayed open after picking`);
             resolve();
           });

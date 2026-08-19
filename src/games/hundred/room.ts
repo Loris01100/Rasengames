@@ -5,6 +5,15 @@ import { pickRandomTheme } from "./themes";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
+// "character:417" / "anime:20" — the exact AniList entry a player picked from
+// the suggestions. Relayed as-is to every client so they all show the same
+// picture; a name search can't tell King of Nanatsu no Taizai from Lelouch,
+// whose aliases include "Black King". Validated because it comes from a client.
+function parseAnilistRef(value: unknown): string | null {
+  const ref = String(value ?? "");
+  return /^(character|anime):[0-9]{1,9}$/.test(ref) ? ref : null;
+}
+
 const MAX_NAME_LENGTH = 20;
 const MAX_PROPOSAL_LENGTH = 40;
 const MAX_THEME_LENGTH = 60;
@@ -262,6 +271,7 @@ export class HundredRoom {
       connected: true,
       number: null,
       proposal: null,
+      proposalRef: null,
     };
     room.players[id] = player;
     room.playerOrder.push(id);
@@ -320,6 +330,7 @@ export class HundredRoom {
       return;
     }
     player.proposal = text;
+    player.proposalRef = parseAnilistRef(msg.anilistRef);
 
     if (allProposed(room)) {
       const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
@@ -383,6 +394,7 @@ export class HundredRoom {
     for (const player of Object.values(room.players)) {
       player.number = null;
       player.proposal = null;
+      player.proposalRef = null;
     }
     room.phase = "lobby";
     room.theme = null;
@@ -453,6 +465,7 @@ export class HundredRoom {
         isHost: p.id === room.hostId,
         hasProposed: p.proposal !== null,
         proposal: proposalVisibleFor(p.id) ? p.proposal : null,
+        proposalRef: proposalVisibleFor(p.id) ? p.proposalRef : null,
         number: numberVisibleFor(p.id) ? p.number : undefined,
       }));
 
@@ -471,6 +484,7 @@ export class HundredRoom {
         id: you.id,
         number: you.number,
         proposal: you.proposal,
+        proposalRef: you.proposalRef,
       },
       order: room.order,
       revealedCount: room.revealedCount,

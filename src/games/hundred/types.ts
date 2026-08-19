@@ -12,6 +12,7 @@ export interface Player {
   connected: boolean;
   number: number | null;
   proposal: string | null;
+  proposalRef: string | null;
 }
 
 export interface Score {

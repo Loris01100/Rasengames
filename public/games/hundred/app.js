@@ -228,7 +228,7 @@
       img.alt = "";
       img.referrerPolicy = "no-referrer";
       card.appendChild(img);
-      Anilist.setImage(img, p.proposal, Room.state?.mode === "anime" ? "anime" : "character");
+      Anilist.setImage(img, p.proposal, Room.state?.mode === "anime" ? "anime" : "character", p.proposalRef);
     }
 
     const proposal = document.createElement("div");
@@ -367,7 +367,7 @@
   function submitProposal() {
     const text = el.proposalInput.value.trim();
     if (!text) return;
-    Room.send({ type: "propose", text });
+    Room.send({ type: "propose", text, anilistRef: el.proposalInput.dataset.anilistRef });
   }
 
   el.revealBtn.addEventListener("click", () => Room.send({ type: "reveal" }));

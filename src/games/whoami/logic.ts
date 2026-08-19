@@ -39,6 +39,7 @@ export function assignWords(room: RoomState): void {
     const assignee = room.players[ids[i]];
     const source = room.players[ids[(i + 1) % ids.length]];
     assignee.word = source.submittedWord;
+    assignee.wordRef = source.submittedRef;
     assignee.found = false;
     assignee.guesses = [];
     assignee.pendingGuess = null;
@@ -46,6 +47,7 @@ export function assignWords(room: RoomState): void {
   }
   for (const id of ids) {
     room.players[id].submittedWord = null;
+    room.players[id].submittedRef = null;
     room.players[id].ready = false;
   }
 }

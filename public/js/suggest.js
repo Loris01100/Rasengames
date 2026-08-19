@@ -43,6 +43,8 @@ const Suggest = (() => {
       if (chosen.mediaId) return openAnime(chosen);
       if (chosen.back) return show(back.items, back.title);
       input.value = chosen.name;
+      if (chosen.ref) input.dataset.anilistRef = chosen.ref;
+      else delete input.dataset.anilistRef;
       close();
       input.focus();
     }
@@ -54,7 +56,7 @@ const Suggest = (() => {
         [
           { name: "‹ Retour", from: "", back: true },
           // The title itself stays pickable: a word can legitimately be a show.
-          { name: anime.name, from: "Le titre de l'anime" },
+          { name: anime.name, from: "Le titre de l'anime", ref: anime.ref },
         ].concat(cast),
         anime.name
       );
@@ -111,6 +113,8 @@ const Suggest = (() => {
     }
 
     input.addEventListener("input", () => {
+      // Typing again invalidates the entry that was picked before.
+      delete input.dataset.anilistRef;
       const q = input.value.trim();
       clearTimeout(timer);
       if (q.length < MIN_CHARS) return close();

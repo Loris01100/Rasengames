@@ -11,6 +11,15 @@ import {
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
+// "character:417" / "anime:20" — the exact AniList entry a player picked from
+// the suggestions. Relayed as-is to every client so they all show the same
+// picture; a name search can't tell King of Nanatsu no Taizai from Lelouch,
+// whose aliases include "Black King". Validated because it comes from a client.
+function parseAnilistRef(value: unknown): string | null {
+  const ref = String(value ?? "");
+  return /^(character|anime):[0-9]{1,9}$/.test(ref) ? ref : null;
+}
+
 const MAX_NAME_LENGTH = 20;
 const MAX_WORD_LENGTH = 40;
 const MAX_GUESS_LENGTH = 40;
@@ -278,6 +287,8 @@ export class WhoamiRoom {
       submittedWord: null,
       ready: false,
       word: null,
+      wordRef: null,
+      submittedRef: null,
       found: false,
       guesses: [],
       pendingGuess: null,
@@ -320,6 +331,7 @@ export class WhoamiRoom {
       player.submittedWord = null;
       player.ready = false;
       player.word = null;
+      player.wordRef = null;
       player.found = false;
       player.guesses = [];
       player.pendingGuess = null;
@@ -344,6 +356,7 @@ export class WhoamiRoom {
       return;
     }
     player.submittedWord = text;
+    player.submittedRef = parseAnilistRef(msg.anilistRef);
     player.ready = true;
 
     const ids = connectedIds(room);
@@ -459,6 +472,7 @@ export class WhoamiRoom {
       player.submittedWord = null;
       player.ready = false;
       player.word = null;
+      player.wordRef = null;
       player.found = false;
       player.guesses = [];
       player.pendingGuess = null;
@@ -525,6 +539,7 @@ export class WhoamiRoom {
         // Hidden from the assignee while the round is live — everyone else
         // can already see it, that's the whole game — revealed once ended.
         word: p.id !== forPlayerId || revealAll ? p.word : null,
+        wordRef: p.id !== forPlayerId || revealAll ? p.wordRef : null,
         // Attempts never reveal the word themselves (they're just what was
         // typed), so they're always visible to everyone, self included.
         guesses: p.guesses,

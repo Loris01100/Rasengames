@@ -48,10 +48,30 @@ const Anilist = (() => {
 
   const IMAGE_CHARACTER = `query ($search: String) { Character(search: $search) { image { large } } }`;
   const IMAGE_ANIME = `query ($search: String) { Media(search: $search, type: ANIME) { coverImage { large } } }`;
+  const IMAGE_BY_CHARACTER_ID = `query ($id: Int) { Character(id: $id) { image { large } } }`;
+  const IMAGE_BY_ANIME_ID = `query ($id: Int) { Media(id: $id) { coverImage { large } } }`;
+
+  // A `ref` ("character:417", "anime:20") is the exact entry the player picked
+  // from the suggestions, and beats any name search: searching "King" returns
+  // Lelouch, whose aliases include "Black King", not King of Nanatsu no Taizai.
+  // Words typed by hand have no ref and still fall back to the name search.
+  async function imageByRef(ref) {
+    const [type, rawId] = String(ref).split(":");
+    const id = Number(rawId);
+    if (!id || (type !== "character" && type !== "anime")) return null;
+    return cached(`ref:${type}:${id}`, async () => {
+      const data = await query(type === "anime" ? IMAGE_BY_ANIME_ID : IMAGE_BY_CHARACTER_ID, { id });
+      return (type === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large) ?? null;
+    });
+  }
 
   // `kind` picks which lookup runs first; the other one is the fallback, since
   // a "word" is often a character but sometimes a show title (and vice versa).
-  async function image(name, kind = "character") {
+  async function image(name, kind = "character", ref = null) {
+    if (ref) {
+      const url = await imageByRef(ref);
+      if (url) return url;
+    }
     const trimmed = (name || "").trim();
     if (!trimmed) return null;
     return cached(`image:${kind}:${trimmed.toLowerCase()}`, async () => {
@@ -69,11 +89,11 @@ const Anilist = (() => {
   // Sets an <img> once the picture is known, and leaves it hidden otherwise —
   // callers don't have to care that the lookup is asynchronous, and a render
   // that happened in the meantime can't be overwritten by a stale answer.
-  async function setImage(img, name, kind) {
+  async function setImage(img, name, kind, ref) {
     img.classList.add("hidden");
-    img.dataset.for = name || "";
-    const url = await image(name, kind);
-    if (!url || img.dataset.for !== (name || "")) return;
+    img.dataset.for = `${ref || ""}|${name || ""}`;
+    const url = await image(name, kind, ref);
+    if (!url || img.dataset.for !== `${ref || ""}|${name || ""}`) return;
     img.src = url;
     img.classList.remove("hidden");
   }
@@ -83,9 +103,9 @@ const Anilist = (() => {
   // Characters and anime in one request: AniList allows several root fields,
   // and its rate limit counts requests, so the anime rows that open the
   // per-anime character list are free.
-  const SUGGEST_CHARACTERS = `query ($search: String) { chars: Page(perPage: 12) { characters(search: $search) { name { full native alternative } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } animes: Page(perPage: 3) { media(search: $search, type: ANIME) { id title { romaji } startDate { year } } } }`;
-  const MEDIA_CHARACTERS = `query ($id: Int) { Media(id: $id) { title { romaji } characters(sort: [ROLE, FAVOURITES_DESC], perPage: 25) { nodes { name { full } } } } }`;
-  const SUGGEST_ANIME = `query ($search: String) { Page(perPage: 8) { media(search: $search, type: ANIME) { title { romaji } startDate { year } } } }`;
+  const SUGGEST_CHARACTERS = `query ($search: String) { chars: Page(perPage: 12) { characters(search: $search) { id name { full native alternative } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } animes: Page(perPage: 3) { media(search: $search, type: ANIME) { id title { romaji } startDate { year } } } }`;
+  const MEDIA_CHARACTERS = `query ($id: Int) { Media(id: $id) { title { romaji } characters(sort: [ROLE, FAVOURITES_DESC], perPage: 25) { nodes { id name { full } } } } }`;
+  const SUGGEST_ANIME = `query ($search: String) { Page(perPage: 8) { media(search: $search, type: ANIME) { id title { romaji } startDate { year } } } }`;
 
   // "any" = characters, falling back to anime titles only when no character
   // matches, so a normal keystroke costs a single request.
@@ -99,7 +119,7 @@ const Anilist = (() => {
       }
       const data = await query(SUGGEST_ANIME, { search: trimmed });
       return (data?.Page?.media ?? [])
-        .map((m) => ({ name: m.title?.romaji ?? "", from: m.startDate?.year ? String(m.startDate.year) : "" }))
+        .map((m) => ({ name: m.title?.romaji ?? "", ref: `anime:${m.id}`, from: m.startDate?.year ? String(m.startDate.year) : "" }))
         .filter((s) => s.name);
     });
   }
@@ -114,16 +134,18 @@ const Anilist = (() => {
     const rows = (data?.chars?.characters ?? [])
       .map((c) => {
         const name = c.name?.full ?? "";
+        const id = c.id;
         const anime = c.media?.nodes?.[0]?.title?.romaji ?? "";
         const alias = (c.name?.alternative ?? []).find((a) => a.toLowerCase().includes(search));
         const byName = `${name} ${c.name?.native ?? ""}`.toLowerCase().includes(search);
-        return { name, anime, alias, byName };
+        return { name, id, anime, alias, byName };
       })
       .filter((r) => r.name);
 
     const direct = rows.filter((r) => r.byName);
     const characters = (direct.length > 0 ? direct : rows).slice(0, 6).map((r) => ({
       name: r.name,
+      ref: `character:${r.id}`,
       from: r.byName || !r.alias ? r.anime : `alias : ${r.alias}${r.anime ? ` — ${r.anime}` : ""}`,
     }));
 
@@ -145,7 +167,7 @@ const Anilist = (() => {
       const data = await query(MEDIA_CHARACTERS, { id: mediaId });
       const from = data?.Media?.title?.romaji ?? "";
       return (data?.Media?.characters?.nodes ?? [])
-        .map((c) => ({ name: c.name?.full ?? "", from }))
+        .map((c) => ({ name: c.name?.full ?? "", ref: `character:${c.id}`, from }))
         .filter((c) => c.name);
     });
   }

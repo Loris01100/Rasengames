@@ -100,7 +100,7 @@
       img.alt = "";
       img.referrerPolicy = "no-referrer";
       card.appendChild(img);
-      Anilist.setImage(img, p.word);
+      Anilist.setImage(img, p.word, "character", p.wordRef);
     }
 
     const name = document.createElement("div");
@@ -276,7 +276,7 @@
   function submitWord() {
     const text = el.wordInput.value.trim();
     if (!text) return;
-    Room.send({ type: "submitWord", text });
+    Room.send({ type: "submitWord", text, anilistRef: el.wordInput.dataset.anilistRef });
   }
 
   el.guessSubmit.addEventListener("click", submitGuess);
