@@ -80,7 +80,7 @@ const Anilist = (() => {
 
   // Left on AniList's default relevance sort on purpose — FAVOURITES_DESC
   // ranks popular-but-weak matches above the name actually being typed.
-  const SUGGEST_CHARACTERS = `query ($search: String) { Page(perPage: 8) { characters(search: $search) { name { full } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } }`;
+  const SUGGEST_CHARACTERS = `query ($search: String) { Page(perPage: 12) { characters(search: $search) { name { full native alternative } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } }`;
   const SUGGEST_ANIME = `query ($search: String) { Page(perPage: 8) { media(search: $search, type: ANIME) { title { romaji } startDate { year } } } }`;
 
   // "any" = characters, falling back to anime titles only when no character
@@ -100,11 +100,28 @@ const Anilist = (() => {
     });
   }
 
+  // AniList searches aliases too, as a substring: "reme" matches Momonga,
+  // Kokichi Ouma and Judai Yuki because each is a "Supreme" something. Those
+  // are noise when a real name matches, so they only show up when nothing
+  // else does — and then they say which alias they matched on, otherwise the
+  // row looks like it has nothing to do with what was typed.
   async function suggestCharacters(search) {
     const data = await query(SUGGEST_CHARACTERS, { search });
-    return (data?.Page?.characters ?? [])
-      .map((c) => ({ name: c.name?.full ?? "", from: c.media?.nodes?.[0]?.title?.romaji ?? "" }))
-      .filter((s) => s.name);
+    const rows = (data?.Page?.characters ?? [])
+      .map((c) => {
+        const name = c.name?.full ?? "";
+        const anime = c.media?.nodes?.[0]?.title?.romaji ?? "";
+        const alias = (c.name?.alternative ?? []).find((a) => a.toLowerCase().includes(search));
+        const byName = `${name} ${c.name?.native ?? ""}`.toLowerCase().includes(search);
+        return { name, anime, alias, byName };
+      })
+      .filter((r) => r.name);
+
+    const direct = rows.filter((r) => r.byName);
+    return (direct.length > 0 ? direct : rows).slice(0, 8).map((r) => ({
+      name: r.name,
+      from: r.byName || !r.alias ? r.anime : `alias : ${r.alias}${r.anime ? ` — ${r.anime}` : ""}`,
+    }));
   }
 
   return { image, setImage, suggest };
