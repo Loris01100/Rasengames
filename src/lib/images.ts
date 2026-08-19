@@ -14,21 +14,21 @@ const TIMEOUT_MS = 4000;
 // this one-at-a-time queue to keep well under the limit regardless of how
 // many games are asking at once.
 const MIN_SPACING_MS = 700;
-let requestQueueTail: Promise<void> = Promise.resolve();
 
-function throttled<T>(fn: () => Promise<T>): Promise<T> {
-  const previous = requestQueueTail;
-  let release: () => void;
-  requestQueueTail = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  return previous.then(async () => {
-    try {
-      return await fn();
-    } finally {
-      setTimeout(release, MIN_SPACING_MS);
-    }
-  });
+// Spacing is a timestamp reservation, not a promise chain: a chain has to
+// release its successor from a setTimeout, and a timer scheduled after the
+// response was returned gets cancelled with the request context — which
+// deadlocked every later lookup in the isolate. Here the wait happens before
+// the call, awaited by the caller, so a cancelled timer only affects its own
+// request.
+let nextSlot = 0;
+
+async function throttled<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const start = Math.max(now, nextSlot);
+  nextSlot = start + MIN_SPACING_MS;
+  if (start > now) await new Promise((resolve) => setTimeout(resolve, start - now));
+  return fn();
 }
 
 // In-memory only, scoped to this Worker isolate's lifetime. Only successful
@@ -121,4 +121,78 @@ export async function fetchCharacterOrAnimeImage(name: string): Promise<string |
 // otherwise win the lookup and show the wrong picture).
 export async function fetchAnimeOrCharacterImage(name: string): Promise<string | null> {
   return (await fetchAnimeImage(name)) ?? (await fetchCharacterImage(name));
+}
+
+// ---- name suggestions (typeahead) ----
+
+// Same API, but a list instead of a single best match, so the client can
+// offer spellings to pick from: typing "hin" is enough to get the exact
+// "Shouyou Hinata", which then makes the image lookup above unambiguous.
+// Left on AniList's default relevance sort on purpose — FAVOURITES_DESC
+// ranks popular-but-weak matches above the name actually being typed.
+const SUGGEST_CHARACTERS = `query ($search: String) { Page(perPage: 8) { characters(search: $search) { name { full } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } }`;
+const SUGGEST_ANIME = `query ($search: String) { Page(perPage: 8) { media(search: $search, type: ANIME) { title { romaji } startDate { year } } } }`;
+
+export interface Suggestion {
+  name: string;
+  from: string;
+}
+
+interface SuggestResponse {
+  data?: {
+    Page?: {
+      characters?: {
+        name?: { full?: string };
+        media?: { nodes?: { title?: { romaji?: string } }[] };
+      }[];
+      media?: { title?: { romaji?: string }; startDate?: { year?: number } }[];
+    } | null;
+  };
+}
+
+const suggestCache = new Map<string, Suggestion[]>();
+
+async function suggestOne(kind: "character" | "anime", query: string): Promise<Suggestion[]> {
+  const cacheKey = `${kind}:${query}`;
+  const cached = suggestCache.get(cacheKey);
+  if (cached) return cached;
+
+  const res = await anilistRequest(
+    JSON.stringify({
+      query: kind === "anime" ? SUGGEST_ANIME : SUGGEST_CHARACTERS,
+      variables: { search: query },
+    })
+  );
+  // A miss is an empty list, not an error: the caller is a typeahead and a
+  // half-typed name legitimately matches nothing yet.
+  if (!res || (res.status !== 404 && !res.ok)) return [];
+  if (res.status === 404) {
+    suggestCache.set(cacheKey, []);
+    return [];
+  }
+
+  const json = (await res.json()) as SuggestResponse;
+  const page = json.data?.Page;
+  const out: Suggestion[] =
+    kind === "anime"
+      ? (page?.media ?? [])
+          .map((m) => ({ name: m.title?.romaji ?? "", from: m.startDate?.year ? String(m.startDate.year) : "" }))
+          .filter((s) => s.name)
+      : (page?.characters ?? [])
+          .map((c) => ({ name: c.name?.full ?? "", from: c.media?.nodes?.[0]?.title?.romaji ?? "" }))
+          .filter((s) => s.name);
+
+  suggestCache.set(cacheKey, out);
+  return out;
+}
+
+// "any" = characters, falling back to anime titles only when no character
+// matches, so a normal keystroke costs a single upstream request.
+export async function suggestNames(kind: "character" | "anime" | "any", query: string): Promise<Suggestion[]> {
+  const trimmed = query.trim().toLowerCase();
+  if (trimmed.length < 3) return [];
+  if (kind === "anime") return suggestOne("anime", trimmed);
+  const characters = await suggestOne("character", trimmed);
+  if (characters.length > 0 || kind === "character") return characters;
+  return suggestOne("anime", trimmed);
 }

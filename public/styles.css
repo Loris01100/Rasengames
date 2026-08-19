@@ -714,3 +714,57 @@ label {
 .inline-form input {
   flex: 1;
 }
+
+/* Name typeahead (public/js/suggest.js) — anchored under the text input it
+   completes, so it overlays whatever follows instead of pushing it down. */
+.suggest-anchor {
+  position: relative;
+}
+
+.suggest-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.suggest-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggest-item:hover,
+.suggest-item.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.suggest-name {
+  font-weight: 600;
+}
+
+.suggest-from {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.suggest-item:hover .suggest-from,
+.suggest-item.active .suggest-from {
+  color: rgba(255, 255, 255, 0.75);
+}
