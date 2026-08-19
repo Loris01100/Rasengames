@@ -82,6 +82,7 @@
     nameInput: $("name-input"),
     codeInput: $("code-input"),
     createBtn: $("create-btn"),
+    createPublic: $("create-public"),
     joinBtn: $("join-btn"),
 
     screenLobby: $("screen-lobby"),
@@ -134,6 +135,7 @@
   let reconnectTimer = null;
   let latestState = null;
   let toastTimer = null;
+  let wantPublic = false;
   let dragState = null; // { playerId, cardEl } while the local user is dragging a card
 
   function showToast(message) {
@@ -208,6 +210,10 @@
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
       el.roomBadge.textContent = roomCode;
       el.roomBadge.classList.remove("hidden");
+      if (wantPublic) {
+        wantPublic = false;
+        send({ type: "setVisibility", visibility: "public" });
+      }
     } else if (msg.type === "state") {
       latestState = msg.state;
       playSounds(latestState);
@@ -589,6 +595,7 @@
     const name = el.nameInput.value.trim();
     if (!name) return showToast("Entre un pseudo d'abord.");
     el.createBtn.disabled = true;
+    wantPublic = el.createPublic.checked;
     try {
       const res = await fetch("/api/hundred/create", { method: "POST" });
       if (!res.ok) throw new Error("Erreur serveur");
