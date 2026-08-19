@@ -41,6 +41,7 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
+    publicToggle: $("public-toggle"),
     categoryCheckboxes: $("category-checkboxes"),
     startBtn: $("start-btn"),
     startHint: $("start-hint"),
@@ -296,6 +297,7 @@
 
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
+      el.publicToggle.checked = state.visibility === "public";
       el.waitingHost.classList.add("hidden");
       const canStart = connectedCount >= 2;
       el.startBtn.disabled = !canStart;
@@ -489,6 +491,10 @@
   el.codeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") el.joinBtn.click();
   });
+
+  el.publicToggle.addEventListener("change", () =>
+    send({ type: "setVisibility", visibility: el.publicToggle.checked ? "public" : "private" })
+  );
 
   el.startBtn.addEventListener("click", () => {
     const categories = Array.from(el.categoryCheckboxes.querySelectorAll("input:checked")).map(

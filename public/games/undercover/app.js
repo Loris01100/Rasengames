@@ -18,6 +18,7 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
+    publicToggle: $("public-toggle"),
     categorySelect: $("category-select"),
     undercoverCount: $("undercover-count"),
     mrwhiteCount: $("mrwhite-count"),
@@ -302,6 +303,7 @@
 
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
+      el.publicToggle.checked = state.visibility === "public";
       el.waitingHost.classList.add("hidden");
       if (document.activeElement !== el.undercoverCount) {
         el.undercoverCount.value = state.settings.undercoverCount;
@@ -561,6 +563,10 @@
     el.toggleWord.textContent = wordHidden ? "Afficher" : "Cacher";
     if (latestState) renderRoleCard(latestState);
   });
+
+  el.publicToggle.addEventListener("change", () =>
+    send({ type: "setVisibility", visibility: el.publicToggle.checked ? "public" : "private" })
+  );
 
   el.startBtn.addEventListener("click", () => {
     send({

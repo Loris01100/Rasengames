@@ -88,6 +88,7 @@
     lobbyCode: $("lobby-code"),
     playersList: $("players-list"),
     hostSettings: $("host-settings"),
+    publicToggle: $("public-toggle"),
     modeSelect: $("mode-select"),
     themeSelect: $("theme-select"),
     startBtn: $("start-btn"),
@@ -369,6 +370,7 @@
 
     if (isHost) {
       el.hostSettings.classList.remove("hidden");
+      el.publicToggle.checked = state.visibility === "public";
       el.waitingHost.classList.add("hidden");
       const canStart = connectedCount >= 3;
       el.startBtn.disabled = !canStart;
@@ -610,6 +612,10 @@
   el.codeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") el.joinBtn.click();
   });
+
+  el.publicToggle.addEventListener("change", () =>
+    send({ type: "setVisibility", visibility: el.publicToggle.checked ? "public" : "private" })
+  );
 
   el.startBtn.addEventListener("click", () => {
     send({ type: "start", mode: el.modeSelect.value, theme: el.themeSelect.value });

@@ -9,10 +9,14 @@
 const Sound = (() => {
   const SFX_KEY = "rasen:sfx";
   const MUSIC_KEY = "rasen:music";
+  const VOLUME_KEY = "rasen:volume";
 
   let ctx = null;
   let sfxOn = localStorage.getItem(SFX_KEY) !== "off";
   let musicOn = localStorage.getItem(MUSIC_KEY) === "on";
+  // 0..1, shared by the music and the synthesized SFX. 0.4 reproduces the
+  // levels the game shipped with before the slider existed.
+  let volume = clampVolume(parseFloat(localStorage.getItem(VOLUME_KEY)), 0.4);
   let music = null;
   let queue = [];
   let queueIndex = 0;
@@ -21,6 +25,10 @@ const Sound = (() => {
 
   // Ambience playlist: drop an MP3 in public/audio/ and add its name here.
   const TRACKS = ["bluelike_8.mp3", "bluelike_9.mp3", "sekuora_piano.mp3"];
+
+  function clampVolume(value, fallback) {
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+  }
 
   // name -> [frequency, start offset in s, duration in s][]
   const RECIPES = {
@@ -35,7 +43,7 @@ const Sound = (() => {
 
   function play(name) {
     const recipe = RECIPES[name];
-    if (!sfxOn || !recipe) return;
+    if (!sfxOn || !recipe || volume === 0) return;
     try {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
       if (ctx.state === "suspended") ctx.resume();
@@ -46,7 +54,7 @@ const Sound = (() => {
         osc.type = "triangle";
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, now + offset);
-        gain.gain.exponentialRampToValueAtTime(0.18, now + offset + 0.015);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.45 * volume), now + offset + 0.015);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + duration);
         osc.connect(gain).connect(ctx.destination);
         osc.start(now + offset);
@@ -92,7 +100,7 @@ const Sound = (() => {
     queue = shuffled(TRACKS);
     queueIndex = 0;
     music = new Audio();
-    music.volume = 0.2;
+    music.volume = volume * 0.5;
     // One <audio> reused for the whole playlist: the src swaps on `ended`, so
     // nothing is preloaded before its turn. A single track just repeats.
     music.addEventListener("ended", () => nextTrack());
@@ -152,6 +160,12 @@ const Sound = (() => {
     }
   }
 
+  function setVolume(value) {
+    volume = clampVolume(value, volume);
+    localStorage.setItem(VOLUME_KEY, String(volume));
+    if (music) music.volume = volume * 0.5;
+  }
+
   // ---- boutons dans l'entête ----
 
   function mountToggles() {
@@ -183,9 +197,11 @@ const Sound = (() => {
     musicBtn.className = "audio-btn";
     musicBtn.type = "button";
     const paintMusic = () => {
-      musicBtn.textContent = musicOn ? "🎵" : "🎶";
+      // Pause, not stop: the <audio> keeps its position, so resuming picks the
+      // track back up where it was.
+      musicBtn.textContent = musicOn ? "⏸" : "🎵";
       musicBtn.classList.toggle("off", !musicOn);
-      musicBtn.title = musicOn ? "Couper la musique" : "Lancer la musique";
+      musicBtn.title = musicOn ? "Mettre la musique en pause" : "Lancer la musique";
       musicBtn.setAttribute("aria-label", musicBtn.title);
     };
     paintMusic();
@@ -211,9 +227,27 @@ const Sound = (() => {
     paintNext();
     musicBtn.addEventListener("click", paintNext);
 
+    const slider = document.createElement("input");
+    slider.id = "volume-slider";
+    slider.className = "audio-range";
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "100";
+    slider.step = "5";
+    slider.value = String(Math.round(volume * 100));
+    slider.title = "Volume";
+    slider.setAttribute("aria-label", "Volume");
+    slider.addEventListener("input", () => {
+      setVolume(Number(slider.value) / 100);
+      slider.title = `Volume : ${slider.value}%`;
+    });
+    // One bip on release so the new level is audible while dragging silently.
+    slider.addEventListener("change", () => play("tick"));
+
     wrap.appendChild(sfxBtn);
     wrap.appendChild(musicBtn);
     wrap.appendChild(nextBtn);
+    wrap.appendChild(slider);
     header.appendChild(wrap);
 
     // Le fichier n'est chargé que si la musique est activée : tant qu'on ne
@@ -227,5 +261,5 @@ const Sound = (() => {
     mountToggles();
   }
 
-  return { play, onIncrease, onChange, nextTrack };
+  return { play, onIncrease, onChange, nextTrack, setVolume, getVolume: () => volume };
 })();

@@ -159,6 +159,18 @@ h3 {
   opacity: 0.45;
 }
 
+.audio-range {
+  width: 80px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .audio-range {
+    width: 56px;
+  }
+}
+
 .site-footer {
   text-align: center;
   padding: 24px 20px 40px;
@@ -502,6 +514,23 @@ label {
   border-radius: 10px;
   border: 1px solid transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.visibility-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.visibility-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .rooms-panel {

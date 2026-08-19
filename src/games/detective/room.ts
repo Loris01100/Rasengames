@@ -20,6 +20,10 @@ export class DetectiveRoom {
   private room: RoomState | null = null;
   private env: Env;
   private lastReport = "";
+  // Kept out of RoomState (and its own storage key) so it survives a restart
+  // and doesn't need a migration in every game's room shape. Private by
+  // default: a salon shows up in the public list only if the host says so.
+  private visibility: "public" | "private" = "private";
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -54,6 +58,8 @@ export class DetectiveRoom {
     if (!this.room) {
       const stored = await this.state.storage.get<RoomState>("room");
       this.room = stored ?? createEmptyRoom(code.toUpperCase());
+      this.visibility =
+        (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
       // rooms stored before multi-solve shipped have no `solved` array
       this.room.solved ??= [];
     }
@@ -76,11 +82,23 @@ export class DetectiveRoom {
       code: this.room.code,
       phase: this.room.phase,
       players: Object.values(this.room.players).filter((p) => p.connected).length,
+      visibility: this.visibility,
     };
     const fingerprint = JSON.stringify(summary);
     if (fingerprint === this.lastReport) return;
     this.lastReport = fingerprint;
     await reportRoom(this.env, summary);
+  }
+
+  private async onSetVisibility(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (session.playerId !== room.hostId) {
+      this.sendError(session.ws, "Seul l'hôte peut changer la visibilité du salon.");
+      return;
+    }
+    this.visibility = msg.visibility === "public" ? "public" : "private";
+    await this.state.storage.put("visibility", this.visibility);
+    await this.saveRoom();
+    this.broadcast();
   }
 
   // Host-only, lobby-only: mid-game removal would need per-game turn/vote
@@ -190,6 +208,9 @@ export class DetectiveRoom {
         break;
       case "kick":
         await this.onKick(session, room, msg);
+        break;
+      case "setVisibility":
+        await this.onSetVisibility(session, room, msg);
         break;
       case "switchGame":
         this.onSwitchGame(session, room, msg);
@@ -468,6 +489,7 @@ export class DetectiveRoom {
     return {
       code: room.code,
       phase: room.phase,
+      visibility: this.visibility,
       hostId: room.hostId,
       players: room.playerOrder
         .map((id) => room.players[id])

@@ -11,6 +11,7 @@ export interface RoomSummary {
   code: string;
   phase: string;
   players: number;
+  visibility: "public" | "private";
   updatedAt: number;
 }
 
@@ -49,7 +50,9 @@ export class LobbyRegistry {
     if (url.pathname === "/report") {
       const summary = (await request.json()) as Omit<RoomSummary, "updatedAt">;
       const key = `${summary.slug}:${summary.code}`;
-      if (summary.players <= 0) {
+      // Private rooms report too, so that flipping a listed room to private
+      // takes it straight back off the list.
+      if (summary.players <= 0 || summary.visibility !== "public") {
         await this.state.storage.delete(key);
       } else {
         await this.state.storage.put(key, { ...summary, updatedAt: Date.now() });
