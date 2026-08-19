@@ -80,7 +80,11 @@ const Anilist = (() => {
 
   // Left on AniList's default relevance sort on purpose — FAVOURITES_DESC
   // ranks popular-but-weak matches above the name actually being typed.
-  const SUGGEST_CHARACTERS = `query ($search: String) { Page(perPage: 12) { characters(search: $search) { name { full native alternative } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } }`;
+  // Characters and anime in one request: AniList allows several root fields,
+  // and its rate limit counts requests, so the anime rows that open the
+  // per-anime character list are free.
+  const SUGGEST_CHARACTERS = `query ($search: String) { chars: Page(perPage: 12) { characters(search: $search) { name { full native alternative } media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } } animes: Page(perPage: 3) { media(search: $search, type: ANIME) { id title { romaji } startDate { year } } } }`;
+  const MEDIA_CHARACTERS = `query ($id: Int) { Media(id: $id) { title { romaji } characters(sort: [ROLE, FAVOURITES_DESC], perPage: 25) { nodes { name { full } } } } }`;
   const SUGGEST_ANIME = `query ($search: String) { Page(perPage: 8) { media(search: $search, type: ANIME) { title { romaji } startDate { year } } } }`;
 
   // "any" = characters, falling back to anime titles only when no character
@@ -107,7 +111,7 @@ const Anilist = (() => {
   // row looks like it has nothing to do with what was typed.
   async function suggestCharacters(search) {
     const data = await query(SUGGEST_CHARACTERS, { search });
-    const rows = (data?.Page?.characters ?? [])
+    const rows = (data?.chars?.characters ?? [])
       .map((c) => {
         const name = c.name?.full ?? "";
         const anime = c.media?.nodes?.[0]?.title?.romaji ?? "";
@@ -118,11 +122,33 @@ const Anilist = (() => {
       .filter((r) => r.name);
 
     const direct = rows.filter((r) => r.byName);
-    return (direct.length > 0 ? direct : rows).slice(0, 8).map((r) => ({
+    const characters = (direct.length > 0 ? direct : rows).slice(0, 6).map((r) => ({
       name: r.name,
       from: r.byName || !r.alias ? r.anime : `alias : ${r.alias}${r.anime ? ` — ${r.anime}` : ""}`,
     }));
+
+    // Rows that open an anime's cast instead of filling the input, for when
+    // you know the show but not how the character's name is spelled.
+    const animes = (data?.animes?.media ?? []).map((m) => ({
+      name: m.title?.romaji ?? "",
+      from: `Voir les personnages${m.startDate?.year ? ` — ${m.startDate.year}` : ""}`,
+      mediaId: m.id,
+    }));
+
+    return characters.concat(animes.filter((a) => a.name));
   }
 
-  return { image, setImage, suggest };
+  // The cast of one anime, used when a suggestion row is opened rather than
+  // picked. Main roles first, then by popularity.
+  async function charactersOf(mediaId) {
+    return cached(`media:${mediaId}`, async () => {
+      const data = await query(MEDIA_CHARACTERS, { id: mediaId });
+      const from = data?.Media?.title?.romaji ?? "";
+      return (data?.Media?.characters?.nodes ?? [])
+        .map((c) => ({ name: c.name?.full ?? "", from }))
+        .filter((c) => c.name);
+    });
+  }
+
+  return { image, setImage, suggest, charactersOf };
 })();

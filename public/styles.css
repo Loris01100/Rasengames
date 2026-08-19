@@ -768,3 +768,22 @@ label {
 .suggest-item.active .suggest-from {
   color: rgba(255, 255, 255, 0.75);
 }
+
+/* Header of the "personnages de <anime>" view, and the rows that open it. */
+.suggest-head {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.suggest-item.suggest-anime .suggest-name::after {
+  content: " ›";
+  color: var(--accent);
+}
+
+.suggest-item.suggest-anime .suggest-from {
+  font-style: italic;
+}

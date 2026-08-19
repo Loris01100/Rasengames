@@ -38,7 +38,6 @@ function makeEl(id) {
     style: {},
     dataset: {},
     textContent: "",
-    innerHTML: "",
     value: "",
     disabled: false,
     checked: false,
@@ -67,6 +66,16 @@ function makeEl(id) {
     scrollIntoView: () => {},
     cloneNode: () => makeEl(id),
   };
+  // Setting innerHTML to "" clears the children, like the real thing.
+  let html = "";
+  Object.defineProperty(el, "innerHTML", {
+    get: () => html,
+    set: (v) => {
+      html = String(v);
+      if (html === "") el.children.length = 0;
+    },
+  });
+
   // className and classList are the same set here, as in a real element.
   Object.defineProperty(el, "className", {
     get: () => [...el.classes].join(" "),
@@ -99,13 +108,24 @@ const TYPEAHEAD = {
 
 const SUGGESTIONS = [{ name: "Shouyou Hinata", from: "Haikyuu!!" }];
 
-// What graphql.anilist.co answers to the character search the typeahead runs.
-const ANILIST_RESPONSE = {
+// What graphql.anilist.co answers: the combined character+anime search, and
+// the cast of one anime once a "Voir les personnages" row is opened.
+const ANILIST_SEARCH = {
   data: {
-    Page: {
+    chars: {
       characters: [
         { name: { full: "Shouyou Hinata" }, media: { nodes: [{ title: { romaji: "Haikyuu!!" } }] } },
       ],
+    },
+    animes: { media: [{ id: 20, title: { romaji: "Haikyuu!!" }, startDate: { year: 2014 } }] },
+  },
+};
+
+const ANILIST_CAST = {
+  data: {
+    Media: {
+      title: { romaji: "Haikyuu!!" },
+      characters: { nodes: [{ name: { full: "Tobio Kageyama" } }, { name: { full: "Shouyou Hinata" } }] },
     },
   },
 };
@@ -173,11 +193,15 @@ function run(slug) {
     AbortController,
     fetch: async (url, init) => {
       fetches.push({ url: String(url), body: init?.body ?? "" });
+      const body = String(init?.body ?? "");
       const anilist = String(url).includes("graphql.anilist.co");
       return {
         ok: true,
         status: 200,
-        json: async () => (anilist ? ANILIST_RESPONSE : { code: "ABCD" }),
+        json: async () => {
+          if (!anilist) return { code: "ABCD" };
+          return body.includes("Media(id") ? ANILIST_CAST : ANILIST_SEARCH;
+        },
       };
     },
     alert: () => {},
@@ -286,11 +310,26 @@ function run(slug) {
           const menu = input.parentNode.children.find((c) => c.classes.has("suggest-menu"));
           assert.ok(menu, `${slug}: no suggestion menu created`);
           assert.ok(!menu.classes.has("hidden"), `${slug}: suggestion menu stayed hidden`);
-          assert.strictEqual(menu.children.length, SUGGESTIONS.length, `${slug}: wrong number of suggestions`);
-          menu.children[0].dispatch("mousedown", { preventDefault() {} });
-          assert.strictEqual(input.value, SUGGESTIONS[0].name, `${slug}: picking a suggestion did not fill the input`);
-          assert.ok(menu.classes.has("hidden"), `${slug}: menu stayed open after picking`);
-          resolve();
+          // One character match + one "Voir les personnages" row for the anime.
+          assert.strictEqual(menu.children.length, 2, `${slug}: wrong number of suggestions`);
+
+          // Opening the anime row lists its cast instead of filling the input.
+          menu.children[1].dispatch("mousedown", { preventDefault() {} });
+          setImmediate(() => {
+            assert.strictEqual(input.value, "hin", `${slug}: opening an anime should not fill the input`);
+            const names = menu.children.map((c) => c.children[0]?.textContent ?? c.textContent);
+            assert.deepStrictEqual(
+              names,
+              ["Personnages de Haikyuu!!", "‹ Retour", "Haikyuu!!", "Tobio Kageyama", "Shouyou Hinata"],
+              `${slug}: unexpected cast list ${JSON.stringify(names)}`
+            );
+
+            // And picking one of those fills the input with the exact spelling.
+            menu.children[3].dispatch("mousedown", { preventDefault() {} });
+            assert.strictEqual(input.value, "Tobio Kageyama", `${slug}: picking from the cast did not fill the input`);
+            assert.ok(menu.classes.has("hidden"), `${slug}: menu stayed open after picking`);
+            resolve();
+          });
         });
         return;
       }

@@ -25,6 +25,7 @@ const Suggest = (() => {
 
     let timer = null;
     let items = [];
+    let rowEls = []; // one per item, so the optional header doesn't shift indexes
     let active = -1;
 
     function close() {
@@ -32,30 +33,58 @@ const Suggest = (() => {
       active = -1;
     }
 
+    // A row either fills the input, or opens an anime's cast (see anilist.js);
+    // `back` lets the cast view return to the results it came from.
+    let back = null;
+
     function pick(index) {
       const chosen = items[index];
       if (!chosen) return;
+      if (chosen.mediaId) return openAnime(chosen);
+      if (chosen.back) return show(back.items, back.title);
       input.value = chosen.name;
       close();
       input.focus();
     }
 
+    async function openAnime(anime) {
+      back = { items: items.filter((i) => !i.back), title: null };
+      const cast = await Anilist.charactersOf(anime.mediaId);
+      show(
+        [
+          { name: "‹ Retour", from: "", back: true },
+          // The title itself stays pickable: a word can legitimately be a show.
+          { name: anime.name, from: "Le titre de l'anime" },
+        ].concat(cast),
+        anime.name
+      );
+      input.focus();
+    }
+
     function highlight(index) {
       active = index;
-      for (const [i, row] of [...menu.children].entries()) {
+      for (const [i, row] of rowEls.entries()) {
         row.classList.toggle("active", i === active);
       }
     }
 
-    function show(results) {
+    function show(results, title) {
       items = results;
+      rowEls = [];
       menu.innerHTML = "";
       if (results.length === 0) return close();
+
+      if (title) {
+        const head = document.createElement("div");
+        head.className = "suggest-head";
+        head.textContent = `Personnages de ${title}`;
+        menu.appendChild(head);
+      }
 
       for (const [i, s] of results.entries()) {
         const row = document.createElement("button");
         row.type = "button";
-        row.className = "suggest-item";
+        row.className = s.mediaId ? "suggest-item suggest-anime" : "suggest-item";
 
         const name = document.createElement("span");
         name.className = "suggest-name";
@@ -75,6 +104,7 @@ const Suggest = (() => {
           pick(i);
         });
         menu.appendChild(row);
+        rowEls.push(row);
       }
       active = -1;
       menu.classList.remove("hidden");
