@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Alphabombe</h1>
-      <p class="muted">Une bombe à la mèche invisible circule entre vous. Reçois-la, dis à voix haute un personnage (ou un anime, selon la variante) qui commence par la lettre imposée, puis passe-la au suivant avec une nouvelle lettre. Si elle t'explose entre les mains, tu perds une vie — 2 vies, la 3e explosion t'élimine. Le dernier en vie gagne. 2 joueurs minimum.</p>
+      <p class="muted">Une bombe à la mèche invisible circule entre vous. Reçois-la, tape un personnage (ou un anime, selon la variante) qui commence par la lettre imposée, puis elle passe au suivant avec une nouvelle lettre. Si elle t'explose entre les mains, tu perds une vie — 2 vies, la 3e explosion t'élimine. Le dernier en vie gagne. 2 joueurs minimum.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
@@ -76,13 +76,21 @@
         <div class="bomb-icon">💣</div>
         <div id="letter-display" class="bomb-letter-display">—</div>
         <h3 id="turn-banner" class="turn-banner"></h3>
-        <button id="pass-btn" class="btn hidden">J'ai dit mon mot, je passe la bombe !</button>
-        <p id="pass-hint" class="muted small hidden"></p>
+        <div id="word-form" class="inline-form hidden">
+          <input id="word-input" type="text" maxlength="40" placeholder="Ta réponse" autocomplete="off" />
+          <button id="word-submit" class="btn">Envoyer</button>
+        </div>
+        <p id="wait-hint" class="muted small hidden"></p>
       </div>
 
       <div class="card">
         <h3>Joueurs</h3>
         <div id="players-list-play" class="players-list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Réponses données</h3>
+        <div id="answers-log" class="bomb-log"></div>
       </div>
     </section>
 

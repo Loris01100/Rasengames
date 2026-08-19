@@ -7,9 +7,12 @@
     playInstructions: $("play-instructions"),
     letterDisplay: $("letter-display"),
     turnBanner: $("turn-banner"),
-    passBtn: $("pass-btn"),
-    passHint: $("pass-hint"),
+    wordForm: $("word-form"),
+    wordInput: $("word-input"),
+    wordSubmit: $("word-submit"),
+    waitHint: $("wait-hint"),
     playersListPlay: $("players-list-play"),
+    answersLog: $("answers-log"),
 
     endTitle: $("end-title"),
     endRanking: $("end-ranking"),
@@ -26,6 +29,15 @@
     Sound.onChange("bomb:turn", `${state.phase}:${state.turnId}`, state.phase === "play" && myTurn ? "turn" : null);
 
     if (previous && previous.phase === "play" && state.phase === "play") {
+      // La bombe a explosé chez quelqu'un si les vies/l'élimination de
+      // n'importe qui ont changé depuis le dernier state — tout le monde
+      // entend le "boom", pas seulement la victime.
+      const exploded = state.players.some((p) => {
+        const before = previous.players.find((b) => b.id === p.id);
+        return before && (before.lives !== p.lives || before.eliminated !== p.eliminated);
+      });
+      if (exploded) Sound.play("explode");
+
       const me = state.players.find((p) => p.id === Room.playerId);
       const prevMe = previous.players.find((p) => p.id === Room.playerId);
       if (me && prevMe) {
@@ -73,8 +85,8 @@
 
     el.playInstructions.textContent =
       state.mode === "anime"
-        ? "Dis un anime qui commence par cette lettre, puis passe la bombe."
-        : "Dis un personnage qui commence par cette lettre, puis passe la bombe.";
+        ? "Tape un anime qui commence par cette lettre, puis envoie."
+        : "Tape un personnage qui commence par cette lettre, puis envoie.";
     el.letterDisplay.textContent = state.letter ?? "—";
 
     el.turnBanner.textContent = !state.turnId
@@ -84,12 +96,49 @@
         : `Au tour de ${state.turnName ?? "..."}`;
     el.turnBanner.classList.toggle("my-turn", myTurn);
 
-    el.passBtn.classList.toggle("hidden", !myTurn);
-    el.passHint.classList.toggle("hidden", myTurn || !state.turnId);
-    if (!myTurn && state.turnId) el.passHint.textContent = `En attente que ${state.turnName} passe la bombe...`;
+    el.wordForm.classList.toggle("hidden", !myTurn);
+    el.waitHint.classList.toggle("hidden", myTurn || !state.turnId);
+    if (!myTurn && state.turnId) el.waitHint.textContent = `En attente que ${state.turnName} réponde...`;
 
     el.playersListPlay.innerHTML = "";
     for (const p of state.players) el.playersListPlay.appendChild(Room.playerRow(withAlive(p), decorateLives));
+
+    renderAnswersLog(state);
+  }
+
+  // Le plus récent en haut : c'est ce qui vient de se passer qui intéresse le
+  // plus, pas de scroll à faire pour le retrouver à chaque nouvelle réponse.
+  function renderAnswersLog(state) {
+    el.answersLog.innerHTML = "";
+    const answers = state.answers ?? [];
+    if (answers.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "muted small";
+      empty.textContent = "Rien pour l'instant.";
+      el.answersLog.appendChild(empty);
+      return;
+    }
+    for (const a of answers.slice().reverse()) {
+      const row = document.createElement("div");
+      row.className = "bomb-log-row";
+
+      const letter = document.createElement("span");
+      letter.className = "bomb-log-letter";
+      letter.textContent = a.letter;
+      row.appendChild(letter);
+
+      const text = document.createElement("span");
+      text.className = "bomb-log-text";
+      text.textContent = a.text;
+      row.appendChild(text);
+
+      const author = document.createElement("span");
+      author.className = "muted small bomb-log-author";
+      author.textContent = a.name + (a.playerId === Room.playerId ? " (toi)" : "");
+      row.appendChild(author);
+
+      el.answersLog.appendChild(row);
+    }
   }
 
   function renderEnded(state) {
@@ -131,7 +180,17 @@
 
   // ---- events ----
 
-  el.passBtn.addEventListener("click", () => Room.send({ type: "pass" }));
+  el.wordSubmit.addEventListener("click", submitWord);
+  el.wordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitWord();
+  });
+  function submitWord() {
+    const text = el.wordInput.value.trim();
+    if (!text) return;
+    Room.send({ type: "submitWord", text });
+    el.wordInput.value = "";
+  }
+
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
 
   Room.init({

@@ -19,6 +19,17 @@ export function randomBombDelay(): number {
   return BOMB_MIN_MS + Math.floor(Math.random() * (BOMB_MAX_MS - BOMB_MIN_MS));
 }
 
+// Insensible aux accents/majuscules ("Éren" doit compter pour la lettre E).
+export function startsWithLetter(text: string, letter: string): boolean {
+  const first = text
+    .trim()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .charAt(0)
+    .toUpperCase();
+  return first === letter.toUpperCase();
+}
+
 export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
 }

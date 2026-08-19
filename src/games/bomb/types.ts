@@ -15,6 +15,12 @@ export interface Player {
   eliminated: boolean;
 }
 
+export interface WordEntry {
+  playerId: string;
+  letter: string;
+  text: string;
+}
+
 export interface RoomState {
   code: string;
   hostId: string | null;
@@ -29,6 +35,9 @@ export interface RoomState {
   waiting: Player[];
   turnId: string | null;
   letter: string | null;
+  // Ce que chacun a tapé, dans l'ordre — c'est un jeu écrit, donc ça reste
+  // affiché à tous plutôt que de disparaître une fois le tour passé.
+  answers: WordEntry[];
   // Ordre d'élimination (premier éliminé en premier) : sert au classement final.
   eliminationOrder: string[];
   winnerId: string | null;
@@ -46,6 +55,7 @@ export function createEmptyRoom(code: string): RoomState {
     waiting: [],
     turnId: null,
     letter: null,
+    answers: [],
     eliminationOrder: [],
     winnerId: null,
   };

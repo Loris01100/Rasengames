@@ -9,6 +9,7 @@ import {
   nextTurn,
   randomLetter,
   randomBombDelay,
+  startsWithLetter,
 } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
@@ -17,6 +18,7 @@ const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
 // joueur nommé "toi" se confondait avec le suffixe "(toi)" des rendus).
 const MIN_NAME_LENGTH = 4;
+const MAX_WORD_LENGTH = 40;
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 const VALID_MODES: Mode[] = ["perso", "anime"];
 
@@ -219,8 +221,8 @@ export class BombRoom {
       case "start":
         await this.onStart(session, room, msg);
         break;
-      case "pass":
-        await this.onPass(session, room);
+      case "submitWord":
+        await this.onSubmitWord(session, room, msg);
         break;
       case "restart":
         await this.onRestart(session, room);
@@ -364,6 +366,7 @@ export class BombRoom {
       player.lives = 2;
       player.eliminated = false;
     }
+    room.answers = [];
     room.eliminationOrder = [];
     room.winnerId = null;
 
@@ -377,15 +380,29 @@ export class BombRoom {
     this.broadcast();
   }
 
-  // Le joueur dont c'est le tour vient de dire son mot à voix haute : la
-  // bombe passe au suivant avec une nouvelle lettre. La mèche, elle, continue
-  // de courir sans être touchée — ce n'est pas elle qu'on relance ici.
-  private async onPass(session: Session, room: RoomState) {
+  // Le joueur dont c'est le tour tape son mot : validé contre la lettre
+  // imposée (pas plus — le jeu ne peut pas vérifier qu'un perso/anime existe
+  // vraiment), il rejoint le journal et la bombe passe au suivant avec une
+  // nouvelle lettre. La mèche, elle, continue de courir sans être touchée —
+  // ce n'est pas elle qu'on relance ici.
+  private async onSubmitWord(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "play") return;
     if (room.turnId !== session.playerId) {
       this.sendError(session.ws, "Ce n'est pas ton tour.");
       return;
     }
+
+    const text = String(msg.text ?? "").trim().slice(0, MAX_WORD_LENGTH);
+    if (!text) {
+      this.sendError(session.ws, "Réponse vide.");
+      return;
+    }
+    if (!room.letter || !startsWithLetter(text, room.letter)) {
+      this.sendError(session.ws, `Ta réponse doit commencer par la lettre ${room.letter ?? "?"}.`);
+      return;
+    }
+
+    room.answers.push({ playerId: session.playerId, letter: room.letter, text });
     this.advanceTurn(room);
     await this.saveRoom();
     this.broadcast();
@@ -451,6 +468,7 @@ export class BombRoom {
       player.lives = 2;
       player.eliminated = false;
     }
+    room.answers = [];
     room.eliminationOrder = [];
     room.winnerId = null;
     room.turnId = null;
@@ -528,6 +546,7 @@ export class BombRoom {
       turnId: room.turnId,
       turnName: room.turnId ? nameOf(room.turnId) : null,
       letter: room.letter,
+      answers: room.answers.map((a) => ({ ...a, name: nameOf(a.playerId) })),
       eliminationOrder: room.eliminationOrder.map((id) => ({ id, name: nameOf(id) })),
       winnerId: room.winnerId,
       winnerName: room.winnerId ? nameOf(room.winnerId) : null,
