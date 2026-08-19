@@ -525,9 +525,10 @@ export class WhoamiRoom {
 
     if (msg.correct === true) {
       target.found = true;
-      if (room.turnId === target.id) {
-        room.turnId = nextTurn(room, target.id);
-      }
+      // Une bonne réponse "coûte" le tour suivant : la personne qui aurait
+      // dû parler après passe le sien, pas seulement quand ça tombait déjà
+      // sur le tour du trouveur — donc deux pas, pas un.
+      room.turnId = nextTurn(room, nextTurn(room, room.turnId));
       if (connectedIds(room).every((id) => room.players[id]?.found)) {
         this.awardFound(room);
         room.phase = "ended";

@@ -603,6 +603,9 @@ export class UndercoverRoom {
         alive: p.alive,
         isHost: p.id === room.hostId,
         role: revealAll ? p.role : p.id === forPlayerId ? ownRole(p) : undefined,
+        // Le mot de chacun, en clair, une fois la manche finie — "résumé
+        // des mots" : plus besoin de recouper rôle + les deux mots globaux.
+        word: revealAll ? p.word : undefined,
       }));
 
     const you = room.players[forPlayerId] ?? null;

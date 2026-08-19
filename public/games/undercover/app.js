@@ -97,6 +97,13 @@
     tag.className = `role-tag role-${p.role}`;
     tag.textContent = roleLabel(p.role);
     row.appendChild(tag);
+
+    // Résumé des mots : le mot de chacun, en clair, à côté de son rôle —
+    // Mr. White n'en a pas, sa ligne le dit plutôt que de rester vide.
+    const word = document.createElement("span");
+    word.className = "tag";
+    word.textContent = p.word ?? (p.role === "mrwhite" ? "pas de mot" : "");
+    if (word.textContent) row.appendChild(word);
   }
 
   function roleLabel(role) {

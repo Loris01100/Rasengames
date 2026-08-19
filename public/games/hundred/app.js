@@ -374,10 +374,36 @@
   el.proposalInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitProposal();
   });
-  function submitProposal() {
+
+  async function submitProposal() {
     const text = el.proposalInput.value.trim();
     if (!text) return;
-    Room.send({ type: "propose", text, anilistRef: el.proposalInput.dataset.anilistRef });
+    const mode = Room.state?.mode === "anime" ? "anime" : "perso";
+    const kind = mode === "anime" ? "anime" : "character";
+
+    el.proposalSubmit.disabled = true;
+    const originalLabel = el.proposalSubmit.textContent;
+    el.proposalSubmit.textContent = "Vérification...";
+    try {
+      const check = await Anilist.exists(text, kind, true);
+      if (check === "notfound") {
+        Room.toast(
+          mode === "anime"
+            ? `"${text}" ne correspond à aucun anime connu sur AniList.`
+            : `"${text}" ne correspond à aucun personnage connu sur AniList (c'est peut-être un titre d'anime ?).`
+        );
+        return;
+      }
+      if (check === "unknown") {
+        Room.toast("Vérification AniList indisponible, proposition envoyée sans validation.");
+      }
+      Room.send({ type: "propose", text, anilistRef: el.proposalInput.dataset.anilistRef });
+      el.proposalInput.value = "";
+      delete el.proposalInput.dataset.anilistRef;
+    } finally {
+      el.proposalSubmit.disabled = false;
+      el.proposalSubmit.textContent = originalLabel;
+    }
   }
 
   el.revealBtn.addEventListener("click", () => Room.send({ type: "reveal" }));

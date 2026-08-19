@@ -89,6 +89,10 @@
   font-size: 0.95rem;
 }
 
+.whoami-from {
+  margin-top: 2px;
+}
+
 .whoami-found-badge {
   margin-top: 6px;
   font-size: 0.7rem;

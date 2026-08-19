@@ -396,8 +396,21 @@ export class HundredRoom {
       return;
     }
 
+    const ref = parseAnilistRef(msg.anilistRef);
+    // The client already checks this against AniList before sending, but a
+    // ref specifically also tells us its own kind for free (no lookup
+    // needed) — this catches picking an anime's own title while browsing its
+    // cast in "perso" mode, which the suggestion UI otherwise allows.
+    if (ref && !ref.startsWith(room.mode === "anime" ? "anime:" : "character:")) {
+      this.sendError(
+        session.ws,
+        room.mode === "anime" ? "Ça, c'est un personnage, pas un anime." : "Ça, c'est un anime, pas un personnage."
+      );
+      return;
+    }
+
     player.proposal = text;
-    player.proposalRef = parseAnilistRef(msg.anilistRef);
+    player.proposalRef = ref;
 
     if (allProposed(room)) {
       const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);

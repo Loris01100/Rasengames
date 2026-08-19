@@ -40,8 +40,15 @@
   color: var(--accent);
 }
 
-#pass-btn {
-  margin-top: 4px;
+.bomb-last-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
 }
 
 .lives-tag {

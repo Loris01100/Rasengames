@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Alphabombe</h1>
-      <p class="muted">Une bombe à la mèche invisible circule entre vous. Reçois-la, tape un personnage (ou un anime, selon la variante) qui commence par la lettre imposée, puis elle passe au suivant avec une nouvelle lettre. Si elle t'explose entre les mains, tu perds une vie — 2 vies, la 3e explosion t'élimine. Le dernier en vie gagne. 2 joueurs minimum.</p>
+      <p class="muted">Une bombe à la mèche invisible circule entre vous. Reçois-la, tape un personnage (ou un anime, selon la variante) qui commence par la lettre imposée — vérifié sur AniList, pas de nom inventé — puis elle passe au suivant avec une nouvelle lettre. Si elle t'explose entre les mains, tu perds une vie — 2 vies, la 3e explosion t'élimine. Le dernier en vie gagne. 2 joueurs minimum.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
@@ -76,6 +76,7 @@
         <div class="bomb-icon">💣</div>
         <div id="letter-display" class="bomb-letter-display">—</div>
         <h3 id="turn-banner" class="turn-banner"></h3>
+        <div id="last-answer" class="bomb-last-answer hidden"></div>
         <div id="word-form" class="inline-form hidden">
           <input id="word-input" type="text" maxlength="40" placeholder="Ta réponse" autocomplete="off" />
           <button id="word-submit" class="btn">Envoyer</button>
@@ -107,7 +108,9 @@
 
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
+  <script src="/js/anilist.js"></script>
   <script src="/js/room-client.js"></script>
+  <script src="/js/suggest.js"></script>
   <script src="/games/bomb/app.js"></script>
 </body>
 </html>

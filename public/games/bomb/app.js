@@ -7,6 +7,7 @@
     playInstructions: $("play-instructions"),
     letterDisplay: $("letter-display"),
     turnBanner: $("turn-banner"),
+    lastAnswer: $("last-answer"),
     wordForm: $("word-form"),
     wordInput: $("word-input"),
     wordSubmit: $("word-submit"),
@@ -96,6 +97,8 @@
         : `Au tour de ${state.turnName ?? "..."}`;
     el.turnBanner.classList.toggle("my-turn", myTurn);
 
+    renderLastAnswer(state);
+
     el.wordForm.classList.toggle("hidden", !myTurn);
     el.waitHint.classList.toggle("hidden", myTurn || !state.turnId);
     if (!myTurn && state.turnId) el.waitHint.textContent = `En attente que ${state.turnName} réponde...`;
@@ -104,6 +107,31 @@
     for (const p of state.players) el.playersListPlay.appendChild(Room.playerRow(withAlive(p), decorateLives));
 
     renderAnswersLog(state);
+  }
+
+  // L'historique complet reste tout en bas de l'écran, mais la dernière
+  // réponse est aussi affichée ici, au milieu, à côté de la lettre — pas
+  // besoin de scroller pour voir ce que la personne précédente vient de dire.
+  function renderLastAnswer(state) {
+    const last = (state.answers ?? []).at(-1);
+    el.lastAnswer.classList.toggle("hidden", !last);
+    if (!last) return;
+    el.lastAnswer.textContent = "";
+
+    const letter = document.createElement("span");
+    letter.className = "bomb-log-letter";
+    letter.textContent = last.letter;
+    el.lastAnswer.appendChild(letter);
+
+    const text = document.createElement("span");
+    text.className = "bomb-log-text";
+    text.textContent = last.text;
+    el.lastAnswer.appendChild(text);
+
+    const author = document.createElement("span");
+    author.className = "muted small bomb-log-author";
+    author.textContent = `— ${last.name}${last.playerId === Room.playerId ? " (toi)" : ""}`;
+    el.lastAnswer.appendChild(author);
   }
 
   // Le plus récent en haut : c'est ce qui vient de se passer qui intéresse le
@@ -180,18 +208,52 @@
 
   // ---- events ----
 
+  // Insensible aux accents/majuscules, comme la vérification côté serveur —
+  // pas la peine d'attendre AniList pour rejeter une lettre déjà fausse.
+  function startsWithLetter(text, letter) {
+    const first = text.trim().normalize("NFD").replace(/\p{Diacritic}/gu, "").charAt(0).toUpperCase();
+    return first === (letter || "").toUpperCase();
+  }
+
   el.wordSubmit.addEventListener("click", submitWord);
   el.wordInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitWord();
   });
-  function submitWord() {
+
+  async function submitWord() {
     const text = el.wordInput.value.trim();
     if (!text) return;
-    Room.send({ type: "submitWord", text });
-    el.wordInput.value = "";
+    const letter = Room.state?.letter;
+    if (letter && !startsWithLetter(text, letter)) {
+      Room.toast(`Ta réponse doit commencer par la lettre ${letter}.`);
+      return;
+    }
+
+    const kind = Room.state?.mode === "anime" ? "anime" : "any";
+    el.wordSubmit.disabled = true;
+    const originalLabel = el.wordSubmit.textContent;
+    el.wordSubmit.textContent = "Vérification...";
+    try {
+      const check = await Anilist.exists(text, kind === "any" ? "character" : kind);
+      if (check === "notfound") {
+        Room.toast(`"${text}" ne correspond à rien de connu sur AniList — vérifie l'orthographe.`);
+        return;
+      }
+      if (check === "unknown") {
+        Room.toast("Vérification AniList indisponible, réponse envoyée sans validation.");
+      }
+      Room.send({ type: "submitWord", text });
+      el.wordInput.value = "";
+      delete el.wordInput.dataset.anilistRef;
+    } finally {
+      el.wordSubmit.disabled = false;
+      el.wordSubmit.textContent = originalLabel;
+    }
   }
 
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
+
+  Suggest.attach(el.wordInput, () => (Room.state?.mode === "anime" ? "anime" : "any"));
 
   Room.init({
     slug: "bomb",

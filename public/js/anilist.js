@@ -65,6 +65,32 @@ const Anilist = (() => {
     });
   }
 
+  const ANIME_OF_CHARACTER_BY_ID = `query ($id: Int) { Character(id: $id) { media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } }`;
+  const ANIME_OF_CHARACTER_BY_NAME = `query ($search: String) { Character(search: $search) { media(perPage: 1, sort: POPULARITY_DESC) { nodes { title { romaji } } } } }`;
+
+  // The show a character is best known from, shown under their name in Qui
+  // suis-je's reveal cards. Only meaningful for characters — an `anime:` ref
+  // is already the show itself, nothing to look up underneath it.
+  async function animeOf(name, ref) {
+    if (ref) {
+      const [type, rawId] = String(ref).split(":");
+      if (type === "anime") return null;
+      const id = Number(rawId);
+      if (type === "character" && id) {
+        return cached(`animeOf:character:${id}`, async () => {
+          const data = await query(ANIME_OF_CHARACTER_BY_ID, { id });
+          return data?.Character?.media?.nodes?.[0]?.title?.romaji ?? null;
+        });
+      }
+    }
+    const trimmed = (name || "").trim();
+    if (!trimmed) return null;
+    return cached(`animeOf:name:${trimmed.toLowerCase()}`, async () => {
+      const data = await query(ANIME_OF_CHARACTER_BY_NAME, { search: trimmed });
+      return data?.Character?.media?.nodes?.[0]?.title?.romaji ?? null;
+    });
+  }
+
   // `kind` picks which lookup runs first; the other one is the fallback, since
   // a "word" is often a character but sometimes a show title (and vice versa).
   async function image(name, kind = "character", ref = null) {
@@ -172,5 +198,88 @@ const Anilist = (() => {
     });
   }
 
-  return { image, setImage, suggest, charactersOf };
+  // Page-based, like SUGGEST_CHARACTERS/SUGGEST_ANIME above: a no-match search
+  // answers with an empty array (200 OK), not the 404 that the singular
+  // Character(search:)/Media(search:) fields use.
+  const NAMES_CHARACTER = `query ($search: String) { Page(perPage: 10) { characters(search: $search) { name { full native alternative } } } }`;
+  const NAMES_ANIME = `query ($search: String) { Page(perPage: 10) { media(search: $search, type: ANIME) { title { romaji english native } } } }`;
+
+  function normalizeForMatch(s) {
+    return (s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  // 0 = unrelated, 1 = one name's words are all contained in the other's
+  // (handles "Luffy" vs "Monkey D. Luffy", either order), 2 = the same name.
+  // Word-set containment rather than raw substring: a plain substring check
+  // would let "One Piece" match a character alias like "The Man closest to
+  // One Piece" — real, but not what typing "One Piece" as a personnage means.
+  function matchScore(typed, candidate) {
+    const a = normalizeForMatch(typed);
+    const b = normalizeForMatch(candidate);
+    if (!a || !b) return 0;
+    if (a === b) return 2;
+    const aTok = new Set(a.split(" ").filter((t) => t.length > 1));
+    const bTok = new Set(b.split(" ").filter((t) => t.length > 1));
+    if (aTok.size === 0 || bTok.size === 0) return 0;
+    const subsetOf = (small, big) => [...small].every((t) => big.has(t));
+    return subsetOf(aTok, bTok) || subsetOf(bTok, aTok) ? 1 : 0;
+  }
+
+  function bestScore(typed, candidates) {
+    return candidates.reduce((max, c) => Math.max(max, matchScore(typed, c)), 0);
+  }
+
+  async function candidateNames(search, kind) {
+    const data = await query(kind === "anime" ? NAMES_ANIME : NAMES_CHARACTER, { search });
+    if (data === null) return null; // request failed — distinct from a clean "nothing found"
+    if (kind === "anime") {
+      return (data.Page?.media ?? []).flatMap((m) => [m.title?.romaji, m.title?.english, m.title?.native].filter(Boolean));
+    }
+    return (data.Page?.characters ?? []).flatMap((c) =>
+      [c.name?.full, c.name?.native, ...(c.name?.alternative ?? [])].filter(Boolean)
+    );
+  }
+
+  // Used by Alphabombe to reject made-up names, and by 1 à 100 to keep an
+  // anime title out of the "personnage" category (and vice versa). Returns
+  // "found" / "notfound" / "unknown" rather than a boolean because the
+  // caller needs to fail closed on a clean no-match but fail *open* when the
+  // check itself couldn't run (offline, timeout, blocked) — freezing the
+  // game over an AniList hiccup would be worse than trusting the answer.
+  //
+  // Always fetches both character and anime candidates and compares the two
+  // scores, rather than just checking whether `kind` has any match at all:
+  // AniList's search is generous enough that "One Piece" still turns up a
+  // character (an obscure one, but real) even though it plainly means the
+  // show. Only a genuinely exact match on the *other* kind overrides `kind`
+  // — a same-strength partial match (like "Luffy" faintly matching an
+  // episode title) isn't enough to reject the obvious reading.
+  async function exists(name, kind = "character", strict = false) {
+    const trimmed = (name || "").trim();
+    if (!trimmed) return "notfound";
+    return cached(`exists:${kind}:${strict ? "strict" : "any"}:${trimmed.toLowerCase()}`, async () => {
+      const [charCandidates, animeCandidates] = await Promise.all([
+        candidateNames(trimmed, "character"),
+        candidateNames(trimmed, "anime"),
+      ]);
+      if (charCandidates === null || animeCandidates === null) return "unknown";
+
+      const charScore = bestScore(trimmed, charCandidates);
+      const animeScore = bestScore(trimmed, animeCandidates);
+      if (!strict) return Math.max(charScore, animeScore) > 0 ? "found" : "notfound";
+
+      const ownScore = kind === "anime" ? animeScore : charScore;
+      const otherScore = kind === "anime" ? charScore : animeScore;
+      if (ownScore === 0) return "notfound";
+      if (otherScore >= 2 && otherScore > ownScore) return "notfound";
+      return "found";
+    });
+  }
+
+  return { image, setImage, suggest, charactersOf, exists, animeOf };
 })();

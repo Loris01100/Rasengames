@@ -11,12 +11,24 @@ export function connectedIds(room: RoomState): string[] {
 }
 
 // Turn rotates only among players still guessing — someone who already found
-// their word has no reason to keep asking questions.
+// their word has no reason to keep asking questions. Anchored on afterId's
+// position in playerOrder (not on an index into the already-filtered list),
+// so it stays correct even when afterId itself just became ineligible —
+// which happens every time this is chained twice for the "find skips the
+// next person" rule below.
 export function nextTurn(room: RoomState, afterId: string | null): string | null {
-  const ids = connectedIds(room).filter((id) => !room.players[id]?.found);
-  if (ids.length === 0) return null;
-  const index = afterId ? ids.indexOf(afterId) : -1;
-  return ids[(index + 1) % ids.length];
+  const order = room.playerOrder;
+  if (order.length === 0) return null;
+  const eligible = (id: string) => {
+    const p = room.players[id];
+    return !!p && p.connected && !p.found;
+  };
+  const startIndex = afterId ? order.indexOf(afterId) : -1;
+  for (let step = 1; step <= order.length; step++) {
+    const id = order[(startIndex + step + order.length) % order.length];
+    if (eligible(id)) return id;
+  }
+  return null;
 }
 
 function shuffled<T>(items: T[]): T[] {

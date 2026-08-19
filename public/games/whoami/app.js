@@ -127,6 +127,13 @@
     word.textContent = p.word ?? "?";
     card.appendChild(word);
 
+    if (p.word) {
+      const from = document.createElement("div");
+      from.className = "whoami-from muted small";
+      card.appendChild(from);
+      setFromLabel(from, p.word, p.wordRef);
+    }
+
     if (p.found) {
       const badge = document.createElement("div");
       badge.className = "whoami-found-badge";
@@ -153,6 +160,16 @@
     }
 
     return card;
+  }
+
+  // `dataset.for` guards against a stale answer landing after a re-render
+  // moved on to a different word — same trick as Anilist.setImage.
+  async function setFromLabel(el, name, ref) {
+    const marker = `${ref || ""}|${name || ""}`;
+    el.dataset.for = marker;
+    const title = await Anilist.animeOf(name, ref);
+    if (!title || el.dataset.for !== marker) return;
+    el.textContent = `De ${title}`;
   }
 
   function attemptsList(guesses, found) {
