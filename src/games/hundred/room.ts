@@ -15,6 +15,9 @@ function parseAnilistRef(value: unknown): string | null {
 }
 
 const MAX_NAME_LENGTH = 20;
+// 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
+// joueur nommé "toi" se confondait avec le suffixe "(toi)" des rendus).
+const MIN_NAME_LENGTH = 4;
 const MAX_PROPOSAL_LENGTH = 40;
 const MAX_THEME_LENGTH = 60;
 const MIN_PLAYERS_TO_START = 3;
@@ -231,8 +234,8 @@ export class HundredRoom {
 
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
-    if (!name) {
-      this.sendError(session.ws, "Nom invalide.");
+    if (name.length < MIN_NAME_LENGTH) {
+      this.sendError(session.ws, `Le pseudo doit faire au moins ${MIN_NAME_LENGTH} caractères.`);
       return;
     }
 

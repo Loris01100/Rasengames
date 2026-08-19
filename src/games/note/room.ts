@@ -5,6 +5,9 @@ import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
 const MAX_NAME_LENGTH = 20;
+// 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
+// joueur nommé "toi" se confondait avec le suffixe "(toi)" des rendus).
+const MIN_NAME_LENGTH = 4;
 const MAX_TEXT_LENGTH = 60;
 const VALID_LAST_CHANCE_KINDS: Set<string> = new Set(["arc", "lieu", "pouvoir"]);
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
@@ -215,8 +218,8 @@ export class NoteRoom {
 
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
-    if (!name) {
-      this.sendError(session.ws, "Nom invalide.");
+    if (name.length < MIN_NAME_LENGTH) {
+      this.sendError(session.ws, `Le pseudo doit faire au moins ${MIN_NAME_LENGTH} caractères.`);
       return;
     }
 

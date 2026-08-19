@@ -127,3 +127,15 @@
   font-weight: 800;
   font-size: 1.05rem;
 }
+
+.play-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.play-timer.urgent {
+  color: var(--danger);
+}

@@ -21,7 +21,9 @@
     categoryCheckboxes: $("category-checkboxes"),
 
     playLetter: $("play-letter"),
+    playTimer: $("play-timer"),
     stopBtn: $("stop-btn"),
+    stopHint: $("stop-hint"),
     answersForm: $("answers-form"),
 
     reviewTitle: $("review-title"),
@@ -103,6 +105,38 @@
   // (another player disconnecting, etc.) don't wipe out what you're typing.
   let answersFormLetter = null;
   const answerDebounce = {};
+  let answerInputs = []; // les <input> de la manche en cours, pour compter les cases remplies
+
+  // Chrono et verrou du bouton stop : ils dépendent du temps qui passe et de ce
+  // qui est tapé localement (les réponses ne partent au serveur qu'après un
+  // debounce), donc un timer local les rafraîchit sans attendre un state.
+  let playTicker = null;
+
+  function stopPlayTicker() {
+    clearInterval(playTicker);
+    playTicker = null;
+  }
+
+  function startPlayTicker(state) {
+    stopPlayTicker();
+    const needed = state.stopMinFilled ?? 0;
+    const tick = () => {
+      if (state.endsAt) {
+        const left = Math.max(0, Math.round((state.endsAt - Date.now()) / 1000));
+        el.playTimer.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+        el.playTimer.classList.toggle("urgent", left <= 60);
+      } else {
+        el.playTimer.textContent = "";
+      }
+      const filled = answerInputs.filter((i) => i.value.trim()).length;
+      const missing = needed - filled;
+      el.stopBtn.disabled = missing > 0;
+      el.stopHint.textContent =
+        missing > 0 ? `Encore ${missing} réponse(s) avant de pouvoir crier stop.` : "";
+    };
+    tick();
+    playTicker = setInterval(tick, 1000);
+  }
 
   function renderPlay(state) {
     el.playLetter.textContent = state.letter;
@@ -111,6 +145,7 @@
     answersFormLetter = state.letter;
 
     el.answersForm.innerHTML = "";
+    answerInputs = [];
     for (const catId of state.categories) {
       const row = document.createElement("div");
       row.className = "answer-row";
@@ -132,18 +167,22 @@
         }, 250);
       });
       row.appendChild(input);
+      answerInputs.push(input);
 
       el.answersForm.appendChild(row);
     }
+
+    startPlayTicker(state);
   }
 
   function renderReview(state) {
     answersFormLetter = null;
+    stopPlayTicker();
 
-    el.reviewTitle.textContent = `Stop ! Lettre ${state.result?.letter ?? ""}`;
+    el.reviewTitle.textContent = `${state.stoppedByName ? "Stop" : "Temps écoulé"} ! Lettre ${state.result?.letter ?? ""}`;
     el.reviewStoppedBy.textContent = state.stoppedByName
       ? `${state.stoppedByName} a crié stop en premier.`
-      : "";
+      : "Temps écoulé — la manche s'est arrêtée toute seule.";
 
     const isHost = state.hostId === Room.playerId;
     el.reviewHint.textContent = isHost
@@ -158,11 +197,12 @@
 
   function renderEnded(state) {
     answersFormLetter = null;
+    stopPlayTicker();
 
     el.endTitle.textContent = `Résultats — Lettre ${state.result?.letter ?? ""}`;
     el.endStoppedBy.textContent = state.stoppedByName
       ? `${state.stoppedByName} a crié stop en premier.`
-      : "";
+      : "Temps écoulé — la manche s'est arrêtée toute seule.";
 
     renderResultsTable(state, el.resultsTable, false);
 

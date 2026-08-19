@@ -35,7 +35,8 @@ export interface RoomState {
   playerOrder: string[];
   categories: string[]; // selected category ids, kept across rounds
   letter: string | null;
-  stoppedBy: string | null; // playerId who called stop this round
+  stoppedBy: string | null; // playerId who called stop this round, null if the round timed out
+  endsAt: number | null; // epoch ms of the automatic end of the round
   result: RoundResult | null;
 }
 
@@ -49,6 +50,7 @@ export function createEmptyRoom(code: string): RoomState {
     categories: [],
     letter: null,
     stoppedBy: null,
+    endsAt: null,
     result: null,
   };
 }

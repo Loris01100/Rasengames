@@ -29,7 +29,7 @@
       <p class="muted">Une lettre tombe, remplissez vos catégories, le premier qui a fini crie stop. 2 joueurs minimum.</p>
 
       <label for="name-input">Ton pseudo</label>
-      <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
+      <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
 
       <div class="join-actions">
         <label class="visibility-toggle">
@@ -71,7 +71,9 @@
       <div class="card">
         <div class="muted small">Lettre</div>
         <div id="play-letter" class="play-letter">—</div>
+        <div id="play-timer" class="play-timer"></div>
         <button id="stop-btn" class="btn danger">Stop !</button>
+        <p id="stop-hint" class="muted small"></p>
         <p class="muted small">N'importe qui peut crier stop : la manche s'arrête aussitôt pour tout le monde.</p>
       </div>
 

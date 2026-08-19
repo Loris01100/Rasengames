@@ -318,6 +318,22 @@
     }
   }
 
+  // Colore les deux cartes de chaque paire déjà révélée : vert si l'ordre est
+  // respecté, rouge sinon. Une carte coincée entre une bonne et une mauvaise
+  // paire reçoit les deux classes — .incorrect est déclarée après .correct dans
+  // le CSS, donc le rouge l'emporte, ce qui est bien le message à faire passer.
+  function markPairs(state, cards, upTo) {
+    const numberOf = (index) => state.players.find((p) => p.id === state.order[index])?.number;
+    for (let i = 1; i < upTo; i++) {
+      const prev = numberOf(i - 1);
+      const cur = numberOf(i);
+      if (prev == null || cur == null) continue;
+      const klass = prev < cur ? "correct" : "incorrect";
+      cards[i - 1].classList.add(klass);
+      cards[i].classList.add(klass);
+    }
+  }
+
   function renderReveal(state) {
     el.revealTheme.textContent = state.theme;
 
@@ -325,13 +341,7 @@
     const cards = state.order.map((playerId) => makeCard(state, playerId));
     for (const card of cards) el.lineReveal.appendChild(card);
 
-    for (let i = 1; i < state.revealedCount; i++) {
-      const prev = state.players.find((p) => p.id === state.order[i - 1]);
-      const cur = state.players.find((p) => p.id === state.order[i]);
-      if (prev?.number != null && cur?.number != null) {
-        cards[i].classList.add(prev.number < cur.number ? "correct" : "incorrect");
-      }
-    }
+    markPairs(state, cards, state.revealedCount);
 
     el.revealProgress.textContent = `${state.revealedCount}/${state.order.length} cartes révélées`;
 
@@ -349,9 +359,9 @@
       : "";
 
     el.lineFinal.innerHTML = "";
-    for (const playerId of state.order) {
-      el.lineFinal.appendChild(makeCard(state, playerId));
-    }
+    const cards = state.order.map((playerId) => makeCard(state, playerId));
+    markPairs(state, cards, cards.length);
+    for (const card of cards) el.lineFinal.appendChild(card);
 
     const isHost = state.hostId === Room.playerId;
     el.restartBtn.classList.toggle("hidden", !isHost);

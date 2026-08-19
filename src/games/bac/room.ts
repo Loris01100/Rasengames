@@ -6,9 +6,23 @@ import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 
 const MAX_NAME_LENGTH = 20;
+// 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
+// joueur nommé "toi" se confondait avec le suffixe "(toi)" des rendus).
+const MIN_NAME_LENGTH = 4;
 const MAX_ANSWER_LENGTH = 40;
+// Une manche ne peut pas durer indéfiniment : si personne ne crie stop (joueur
+// parti manger, table bloquée sur une catégorie), l'alarme du Durable Object la
+// termine toute seule.
+const ROUND_MS = 10 * 60 * 1000;
+// Crier stop fige la manche pour tout le monde, donc on l'interdit tant qu'on
+// n'a pas soi-même rempli l'essentiel de sa grille.
+const STOP_MIN_FILLED_RATIO = 0.75;
 const MIN_PLAYERS_TO_START = 2;
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
+
+function requiredFilled(categoryCount: number): number {
+  return Math.ceil(categoryCount * STOP_MIN_FILLED_RATIO);
+}
 
 interface Session {
   ws: WebSocket;
@@ -218,8 +232,8 @@ export class BacRoom {
 
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
-    if (!name) {
-      this.sendError(session.ws, "Nom invalide.");
+    if (name.length < MIN_NAME_LENGTH) {
+      this.sendError(session.ws, `Le pseudo doit faire au moins ${MIN_NAME_LENGTH} caractères.`);
       return;
     }
 
@@ -294,12 +308,14 @@ export class BacRoom {
     room.categories = categories;
     room.letter = pickRandomLetter();
     room.stoppedBy = null;
+    room.endsAt = Date.now() + ROUND_MS;
     room.result = null;
     for (const player of Object.values(room.players)) {
       player.answers = {};
     }
     room.phase = "play";
 
+    await this.state.storage.setAlarm(room.endsAt);
     await this.saveRoom();
     this.broadcast();
   }
@@ -323,12 +339,34 @@ export class BacRoom {
     const player = room.players[session.playerId];
     if (!player || !player.connected) return;
 
-    room.stoppedBy = session.playerId;
+    const filled = room.categories.filter((c) => (player.answers[c] ?? "").trim()).length;
+    if (filled < requiredFilled(room.categories.length)) {
+      this.sendError(
+        session.ws,
+        `Remplis au moins ${requiredFilled(room.categories.length)} catégories sur ${room.categories.length} avant de crier stop.`
+      );
+      return;
+    }
+
+    await this.endRound(room, session.playerId);
+  }
+
+  // Fin de manche, criée ou expirée (stoppedBy null = le temps est écoulé).
+  private async endRound(room: RoomState, stoppedBy: string | null) {
+    room.stoppedBy = stoppedBy;
+    room.endsAt = null;
     room.result = buildRoundResult(room);
     room.phase = "review";
-
+    await this.state.storage.deleteAlarm();
     await this.saveRoom();
     this.broadcast();
+  }
+
+  // Déclenchée par le storage même si plus personne n'est connecté au moment T.
+  async alarm() {
+    const room = await this.loadRoom("");
+    if (room.phase !== "play") return;
+    await this.endRound(room, null);
   }
 
   private async onSetValid(session: Session, room: RoomState, msg: Record<string, unknown>) {
@@ -367,6 +405,7 @@ export class BacRoom {
     room.phase = "lobby";
     room.letter = null;
     room.stoppedBy = null;
+    room.endsAt = null;
     room.result = null;
     // room.categories is kept so the host doesn't have to re-pick them.
 
@@ -432,6 +471,8 @@ export class BacRoom {
       players,
       categories: room.categories,
       letter: room.phase === "lobby" ? null : room.letter,
+      endsAt: room.phase === "play" ? room.endsAt : null,
+      stopMinFilled: requiredFilled(room.categories.length),
       you: you && { id: you.id, answers: you.answers },
       stoppedByName: room.stoppedBy ? room.players[room.stoppedBy]?.name ?? null : null,
       result: room.phase === "review" || room.phase === "ended" ? room.result : null,

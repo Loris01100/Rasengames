@@ -130,6 +130,53 @@ const ANILIST_CAST = {
   },
 };
 
+// Vérifications propres à une phase de jeu, jouées après le lobby.
+const PHASE_CHECKS = {
+  // Petit Bac : stop verrouillé tant que 75 % des cases ne sont pas remplies.
+  bac(send, byId, slug, tick) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "play", hostId: "p1", players: [], letter: "K",
+        categories: ["anime", "hero", "villain", "item"], // 4 cases -> 3 requises
+        stopMinFilled: 3, endsAt: Date.now() + 600000, you: { id: "p1", answers: {} },
+      },
+    });
+    const inputs = byId("answers-form").children.map((row) => row.children[1]);
+    assert.strictEqual(inputs.length, 4, `${slug}: wrong number of answer inputs`);
+    assert.strictEqual(byId("stop-btn").disabled, true, `${slug}: stop should be locked with 0 answers`);
+    inputs[0].value = "Kenshin";
+    inputs[1].value = "Kirito";
+    tick();
+    assert.strictEqual(byId("stop-btn").disabled, true, `${slug}: stop should stay locked at 2/4`);
+    inputs[2].value = "Kabuto";
+    tick();
+    assert.strictEqual(byId("stop-btn").disabled, false, `${slug}: stop should unlock at 3/4`);
+    assert.match(byId("play-timer").textContent, /^\d+:\d\d$/, `${slug}: no countdown shown`);
+  },
+
+  // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.
+  hundred(send, byId, slug) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "ended", hostId: "p1", mode: "character", theme: "Puissance",
+        order: ["p1", "p2", "p3"],
+        players: [
+          { id: "p1", name: "Alice", proposal: "Yuki", number: 33 },
+          { id: "p2", name: "Bob", proposal: "Rem", number: 100 },
+          { id: "p3", name: "Carl", proposal: "Hinata", number: 69 },
+        ],
+        score: { correctPairs: 1, total: 2, sortedFully: false },
+      },
+    });
+    const classes = byId("line-final").children.map((c) =>
+      c.classes.has("incorrect") ? "incorrect" : c.classes.has("correct") ? "correct" : "none"
+    );
+    assert.deepStrictEqual(classes, ["correct", "incorrect", "incorrect"], `${slug}: pair colors ${classes}`);
+  },
+};
+
 function run(slug) {
   const html = fs.readFileSync(path.join(ROOT, "games", slug, "index.html"), "utf8");
   const ids = new Set([...html.matchAll(/id="([\w-]+)"/g)].map((m) => m[1]));
@@ -143,6 +190,7 @@ function run(slug) {
 
   const fetches = [];
   const timers = [];
+  const intervals = []; // callbacks du chrono, rejoués à la main par tick()
   let socket = null;
   class FakeWebSocket {
     constructor(url) {
@@ -208,8 +256,8 @@ function run(slug) {
     confirm: () => true,
     setTimeout: (fn) => timers.push(fn),
     clearTimeout: () => {},
-    setInterval: () => 0,
-    clearInterval: () => {},
+    setInterval: (fn) => intervals.push(fn),
+    clearInterval: () => intervals.splice(0),
     requestAnimationFrame: () => 0,
     navigator: { userAgent: "node" },
     AudioContext: function () {
@@ -226,6 +274,12 @@ function run(slug) {
   for (const [, src] of html.matchAll(/<script src="\/([^"]+)"><\/script>/g)) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, src), "utf8"), sandbox, { filename: src });
   }
+
+  // Un pseudo trop court ne doit même pas ouvrir de socket (le serveur le
+  // refuse aussi, mais l'écran de join doit le dire tout de suite).
+  byId("name-input").value = "Bob";
+  byId("create-btn").dispatch("click");
+  assert.ok(!socket, `${slug}: a 3-letter name should not create a room`);
 
   // Create a room the way a host does, then walk the server messages.
   byId("name-input").value = "Alice";
@@ -288,6 +342,14 @@ function run(slug) {
       const start = socket.sent.find((m) => m.type === "start");
       assert.ok(start, `${slug}: start button sent nothing`);
       assert.deepStrictEqual(Object.keys(start).sort(), START_KEYS[slug].sort(), `${slug}: start payload`);
+      // Joué en dernier : ces phases déclenchent leurs propres fetch (images),
+      // qui brouilleraient les assertions sur la requête du typeahead.
+      const extra = PHASE_CHECKS[slug];
+      const done = () => {
+        if (extra) extra(send, byId, slug, () => intervals.forEach((fn) => fn()));
+        resolve();
+      };
+
       // Typeahead: inputs that expect a character name must query /api/suggest
       // once enough letters are typed, and expose the result as a <datalist>.
       const typeahead = TYPEAHEAD[slug];
@@ -333,12 +395,12 @@ function run(slug) {
             input.dispatch("input");
             assert.strictEqual(input.dataset.anilistRef, undefined, `${slug}: editing should forget the picked entry`);
             assert.ok(menu.classes.has("hidden"), `${slug}: menu stayed open after picking`);
-            resolve();
+            done();
           });
         });
         return;
       }
-      resolve();
+      done();
     });
   });
 }

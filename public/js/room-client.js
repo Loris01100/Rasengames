@@ -12,6 +12,10 @@
 const Room = (() => {
   const $ = (id) => document.getElementById(id);
 
+  // Gardé en phase avec MIN_NAME_LENGTH côté serveur (src/games/*/room.ts).
+  const MIN_NAME_LENGTH = 4;
+  const NAME_TOO_SHORT = `Entre un pseudo d'au moins ${MIN_NAME_LENGTH} caractères.`;
+
   const GAMES = [
     { slug: "undercover", label: "Undercover" },
     { slug: "hundred", label: "1 à 100" },
@@ -242,7 +246,7 @@ const Room = (() => {
 
     el.createBtn.addEventListener("click", async () => {
       const name = el.nameInput.value.trim();
-      if (!name) return toast("Entre un pseudo d'abord.");
+      if (name.length < MIN_NAME_LENGTH) return toast(NAME_TOO_SHORT);
       el.createBtn.disabled = true;
       wantPublic = el.createPublic.checked;
       try {
@@ -260,7 +264,7 @@ const Room = (() => {
     el.joinBtn.addEventListener("click", () => {
       const name = el.nameInput.value.trim();
       const code = el.codeInput.value.trim();
-      if (!name) return toast("Entre un pseudo d'abord.");
+      if (name.length < MIN_NAME_LENGTH) return toast(NAME_TOO_SHORT);
       if (!code) return toast("Entre un code de salon.");
       connect(code, name);
     });
