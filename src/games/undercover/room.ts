@@ -1,5 +1,5 @@
 import type { Env } from "../../env";
-import { type RoomState, type Player, createEmptyRoom } from "./types";
+import { type RoomState, type Player, type Role, createEmptyRoom } from "./types";
 import {
   assignRoles,
   startNewRound,
@@ -12,6 +12,7 @@ import {
 import { CATEGORY_LABELS, type WordCategory } from "./words";
 import { fetchAnimeImage, fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
+import { reportRoom } from "../../lib/registry";
 
 const VALID_CATEGORIES = new Set(Object.keys(CATEGORY_LABELS));
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
@@ -37,9 +38,12 @@ export class UndercoverRoom {
   private state: DurableObjectState;
   private sessions: Session[] = [];
   private room: RoomState | null = null;
+  private env: Env;
+  private lastReport = "";
 
-  constructor(state: DurableObjectState, _env: Env) {
+  constructor(state: DurableObjectState, env: Env) {
     this.state = state;
+    this.env = env;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -77,7 +81,54 @@ export class UndercoverRoom {
   private async saveRoom(): Promise<void> {
     if (this.room) {
       await this.state.storage.put("room", this.room);
+      await this.reportToRegistry();
     }
+  }
+
+  // Feeds the landing page's "parties en cours" list. Skipped when nothing
+  // visible from outside changed, so a room doesn't hammer the registry DO.
+  private async reportToRegistry(): Promise<void> {
+    if (!this.room) return;
+    const summary = {
+      slug: "undercover",
+      code: this.room.code,
+      phase: this.room.phase,
+      players: Object.values(this.room.players).filter((p) => p.connected).length,
+    };
+    const fingerprint = JSON.stringify(summary);
+    if (fingerprint === this.lastReport) return;
+    this.lastReport = fingerprint;
+    await reportRoom(this.env, summary);
+  }
+
+  // Host-only, lobby-only: mid-game removal would need per-game turn/vote
+  // fixups, and a disconnect already covers someone who just leaves.
+  private async onKick(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (session.playerId !== room.hostId) {
+      this.sendError(session.ws, "Seul l'hôte peut exclure un joueur.");
+      return;
+    }
+    if (room.phase !== "lobby") {
+      this.sendError(session.ws, "Impossible d'exclure quelqu'un en pleine partie.");
+      return;
+    }
+    const targetId = String(msg.playerId ?? "");
+    if (!targetId || targetId === room.hostId || !room.players[targetId]) return;
+
+    delete room.players[targetId];
+    room.playerOrder = room.playerOrder.filter((id) => id !== targetId);
+
+    for (const s of this.sessions.filter((s) => s.playerId === targetId)) {
+      try {
+        s.ws.send(JSON.stringify({ type: "kicked" }));
+        s.ws.close(1000, "kicked");
+      } catch {
+        // socket already gone
+      }
+    }
+
+    await this.saveRoom();
+    this.broadcast();
   }
 
   private attachSession(ws: WebSocket) {
@@ -148,6 +199,9 @@ export class UndercoverRoom {
         break;
       case "restart":
         await this.onRestart(session, room);
+        break;
+      case "kick":
+        await this.onKick(session, room, msg);
         break;
       case "switchGame":
         this.onSwitchGame(session, room, msg);
@@ -450,6 +504,12 @@ export class UndercoverRoom {
 
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
+    // An undercover must not know they're the undercover — their own role
+    // reads as "civilian" until the reveal, so the app never tells them and
+    // they only have their (slightly off) word to go on. Mr White inevitably
+    // knows, having no word at all.
+    const ownRole = (p: Player): Role | undefined =>
+      !revealAll && p.role === "undercover" ? "civilian" : p.role;
     const players = room.playerOrder
       .map((id) => room.players[id])
       .filter((p): p is Player => !!p)
@@ -459,7 +519,7 @@ export class UndercoverRoom {
         connected: p.connected,
         alive: p.alive,
         isHost: p.id === room.hostId,
-        role: revealAll || p.id === forPlayerId ? p.role : undefined,
+        role: revealAll ? p.role : p.id === forPlayerId ? ownRole(p) : undefined,
       }));
 
     const you = room.players[forPlayerId] ?? null;
@@ -477,7 +537,7 @@ export class UndercoverRoom {
       round: room.round,
       hostId: room.hostId,
       players,
-      you: you && { id: you.id, role: you.role, word: you.word, wordImage: yourWordImage, alive: you.alive },
+      you: you && { id: you.id, role: ownRole(you), word: you.word, wordImage: yourWordImage, alive: you.alive },
       turnOrder: room.turnOrder,
       currentTurnPlayerId: room.turnOrder[room.currentTurnIndex] ?? null,
       clues: room.clues,

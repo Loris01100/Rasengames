@@ -60,21 +60,24 @@
 
 .note-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(70px, auto) repeat(3, minmax(120px, 1fr));
+  gap: 8px 12px;
   margin-top: 12px;
+  align-items: stretch;
 }
 
-.note-column h4 {
-  margin: 0 0 10px;
+.note-head {
   font-size: 0.9rem;
+  font-weight: 700;
   color: var(--text-muted);
 }
 
-.note-chips {
+.note-row-name {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .note-chip {
@@ -89,4 +92,21 @@
   font-size: 0.8rem;
   display: block;
   margin-bottom: 2px;
+}
+
+.note-chip.empty {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+@media (max-width: 560px) {
+  .note-columns {
+    grid-template-columns: minmax(52px, auto) repeat(3, minmax(70px, 1fr));
+    gap: 6px;
+    font-size: 0.8rem;
+  }
+
+  .note-chip {
+    padding: 6px 8px;
+  }
 }

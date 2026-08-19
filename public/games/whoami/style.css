@@ -18,6 +18,24 @@
   color: var(--accent);
 }
 
+.whoami-validate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  margin-top: 8px;
+}
+
+.whoami-validate-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 140px;
+}
+
 #asked-btn {
   display: block;
   margin: 12px auto 0;
@@ -70,6 +88,13 @@
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--success);
+}
+
+.whoami-pending {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .whoami-attempts {

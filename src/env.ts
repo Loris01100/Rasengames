@@ -6,4 +6,5 @@ export interface Env {
   WHOAMI_ROOM: DurableObjectNamespace;
   DETECTIVE_ROOM: DurableObjectNamespace;
   NOTE_ROOM: DurableObjectNamespace;
+  LOBBY_REGISTRY: DurableObjectNamespace;
 }

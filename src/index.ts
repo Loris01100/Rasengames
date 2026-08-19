@@ -6,8 +6,9 @@ import { WhoamiRoom } from "./games/whoami/room";
 import { DetectiveRoom } from "./games/detective/room";
 import { NoteRoom } from "./games/note/room";
 import { createRoomCode } from "./lib/rooms";
+import { LobbyRegistry, listRooms } from "./lib/registry";
 
-export { UndercoverRoom, HundredRoom, BacRoom, WhoamiRoom, DetectiveRoom, NoteRoom };
+export { UndercoverRoom, HundredRoom, BacRoom, WhoamiRoom, DetectiveRoom, NoteRoom, LobbyRegistry };
 
 interface GameRoute {
   slug: string;
@@ -26,6 +27,10 @@ const GAMES: GameRoute[] = [
 export default {
   async fetch(request, env, _ctx): Promise<Response> {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/rooms") {
+      return listRooms(env);
+    }
 
     const createMatch = url.pathname.match(/^\/api\/([a-z]+)\/create$/);
     if (createMatch && request.method === "POST") {

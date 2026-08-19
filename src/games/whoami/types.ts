@@ -10,7 +10,9 @@ export interface Player {
   word: string | null; // the word assigned to THIS player to guess — hidden from themself
   wordImage: string | null;
   found: boolean;
-  guesses: string[]; // every attempt this player made this round, visible to everyone
+  guesses: string[]; // validated attempts this round, visible to everyone
+  pendingGuess: string | null; // proposed, waiting for the host to say if it's right
+  nextGuessAt: number; // questionsAsked value this player must reach to propose again
   questionsAsked: number; // yes/no questions asked aloud this round, one per turn
 }
 

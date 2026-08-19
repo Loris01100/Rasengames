@@ -26,7 +26,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Qui suis-je ?</h1>
-      <p class="muted">Chacun écrit un mot ou un personnage. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. Chacun son tour pose une question à voix haute, les autres ne répondent que par oui ou non. 2 à 5 joueurs.</p>
+      <p class="muted">Chacun écrit un mot ou un personnage. Le jeu le distribue en secret à un autre joueur au hasard, qui doit le deviner sans savoir qui l'a écrit. Chacun son tour pose une question à voix haute, les autres ne répondent que par oui ou non. Une proposition de nom est validée par l'hôte, et n'est possible qu'une fois toutes les 2 questions. 2 à 5 joueurs.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" maxlength="20" placeholder="Ex: Loris" autocomplete="off" />
@@ -79,6 +79,8 @@
           <input id="guess-input" type="text" maxlength="40" placeholder="Je pense être..." autocomplete="off" />
           <button id="guess-submit" class="btn">Valider</button>
         </div>
+        <p id="pending-hint" class="muted small hidden"></p>
+        <p id="cooldown-hint" class="muted small hidden"></p>
         <p id="found-hint" class="muted small hidden">Trouvé ! 🎉 En attente des autres...</p>
         <div id="my-attempts"></div>
         <p id="my-questions" class="muted small"></p>
@@ -88,6 +90,12 @@
       <div class="card">
         <h3 id="turn-banner" class="turn-banner"></h3>
         <button id="asked-btn" class="btn secondary small hidden">J'ai posé ma question ✓</button>
+      </div>
+
+      <div id="validate-panel" class="card hidden">
+        <h3>Propositions à valider</h3>
+        <p class="muted small">Dis si le nom proposé est le bon — le jeu ne tranche pas tout seul.</p>
+        <div id="validate-list"></div>
       </div>
 
       <div class="card">

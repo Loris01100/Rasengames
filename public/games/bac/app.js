@@ -166,6 +166,13 @@
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
       const asHostParam = msg.asHost ? "&asHost=1" : "";
       location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
+    } else if (msg.type === "kicked") {
+      // Token dropped so the auto-reconnect on the next page load doesn't
+      // silently walk back into the salon we were just thrown out of.
+      localStorage.removeItem(storageKey(roomCode, "token"));
+      myPlayerId = null;
+      alert("Tu as été exclu du salon par l'hôte.");
+      location.href = "/";
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -255,6 +262,22 @@
       tag.className = "tag";
       tag.textContent = "Hôte";
       row.appendChild(tag);
+    }
+
+
+    if (
+      latestState &&
+      latestState.phase === "lobby" &&
+      latestState.hostId === myPlayerId &&
+      p.id !== myPlayerId
+    ) {
+      const kick = document.createElement("button");
+      kick.className = "btn secondary small kick-btn";
+      kick.textContent = "Exclure";
+      kick.addEventListener("click", () => {
+        if (confirm(`Exclure ${p.name} du salon ?`)) send({ type: "kick", playerId: p.id });
+      });
+      row.appendChild(kick);
     }
 
     return row;

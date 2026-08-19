@@ -1,18 +1,10 @@
 import type { RoomState } from "./types";
 
 export const MIN_PLAYERS = 2;
+// A proposal costs two of your own turns: you must ask two more questions
+// before you're allowed to name another character.
+export const GUESS_COOLDOWN_QUESTIONS = 2;
 export const MAX_PLAYERS = 5;
-
-// U+0300 (combining grave accent) to U+036F (combining latin small letter x),
-// built from char codes to avoid embedding raw combining marks in source.
-const COMBINING_MARKS = new RegExp(
-  `[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`,
-  "g"
-);
-
-export function normalizeGuess(word: string): string {
-  return word.trim().toLowerCase().normalize("NFD").replace(COMBINING_MARKS, "");
-}
 
 export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
@@ -50,6 +42,8 @@ export function assignWords(room: RoomState): void {
     assignee.wordImage = null;
     assignee.found = false;
     assignee.guesses = [];
+    assignee.pendingGuess = null;
+    assignee.nextGuessAt = 0;
   }
   for (const id of ids) {
     room.players[id].submittedWord = null;
@@ -57,12 +51,3 @@ export function assignWords(room: RoomState): void {
   }
 }
 
-// Flexible on purpose: a compound name ("Eren Yeager") is accepted from any
-// single word of it ("Eren" alone passes), not just the exact full name.
-export function isCorrectGuess(guess: string, word: string): boolean {
-  const normGuess = normalizeGuess(guess);
-  if (!normGuess) return false;
-  if (normGuess === normalizeGuess(word)) return true;
-  const tokens = word.split(/\s+/).map(normalizeGuess).filter(Boolean);
-  return tokens.includes(normGuess);
-}

@@ -1,8 +1,16 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, assignWords, nextTurn, isCorrectGuess } from "./logic";
+import {
+  MIN_PLAYERS,
+  MAX_PLAYERS,
+  GUESS_COOLDOWN_QUESTIONS,
+  connectedIds,
+  assignWords,
+  nextTurn,
+} from "./logic";
 import { fetchCharacterOrAnimeImage } from "../../lib/images";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
+import { reportRoom } from "../../lib/registry";
 
 const MAX_NAME_LENGTH = 20;
 const MAX_WORD_LENGTH = 40;
@@ -18,9 +26,12 @@ export class WhoamiRoom {
   private state: DurableObjectState;
   private sessions: Session[] = [];
   private room: RoomState | null = null;
+  private env: Env;
+  private lastReport = "";
 
-  constructor(state: DurableObjectState, _env: Env) {
+  constructor(state: DurableObjectState, env: Env) {
     this.state = state;
+    this.env = env;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -58,7 +69,54 @@ export class WhoamiRoom {
   private async saveRoom(): Promise<void> {
     if (this.room) {
       await this.state.storage.put("room", this.room);
+      await this.reportToRegistry();
     }
+  }
+
+  // Feeds the landing page's "parties en cours" list. Skipped when nothing
+  // visible from outside changed, so a room doesn't hammer the registry DO.
+  private async reportToRegistry(): Promise<void> {
+    if (!this.room) return;
+    const summary = {
+      slug: "whoami",
+      code: this.room.code,
+      phase: this.room.phase,
+      players: Object.values(this.room.players).filter((p) => p.connected).length,
+    };
+    const fingerprint = JSON.stringify(summary);
+    if (fingerprint === this.lastReport) return;
+    this.lastReport = fingerprint;
+    await reportRoom(this.env, summary);
+  }
+
+  // Host-only, lobby-only: mid-game removal would need per-game turn/vote
+  // fixups, and a disconnect already covers someone who just leaves.
+  private async onKick(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (session.playerId !== room.hostId) {
+      this.sendError(session.ws, "Seul l'hôte peut exclure un joueur.");
+      return;
+    }
+    if (room.phase !== "lobby") {
+      this.sendError(session.ws, "Impossible d'exclure quelqu'un en pleine partie.");
+      return;
+    }
+    const targetId = String(msg.playerId ?? "");
+    if (!targetId || targetId === room.hostId || !room.players[targetId]) return;
+
+    delete room.players[targetId];
+    room.playerOrder = room.playerOrder.filter((id) => id !== targetId);
+
+    for (const s of this.sessions.filter((s) => s.playerId === targetId)) {
+      try {
+        s.ws.send(JSON.stringify({ type: "kicked" }));
+        s.ws.close(1000, "kicked");
+      } catch {
+        // socket already gone
+      }
+    }
+
+    await this.saveRoom();
+    this.broadcast();
   }
 
   private attachSession(ws: WebSocket) {
@@ -130,11 +188,17 @@ export class WhoamiRoom {
       case "guess":
         await this.onGuess(session, room, msg);
         break;
+      case "validateGuess":
+        await this.onValidateGuess(session, room, msg);
+        break;
       case "endRound":
         await this.onEndRound(session, room);
         break;
       case "restart":
         await this.onRestart(session, room);
+        break;
+      case "kick":
+        await this.onKick(session, room, msg);
         break;
       case "switchGame":
         this.onSwitchGame(session, room, msg);
@@ -197,6 +261,8 @@ export class WhoamiRoom {
       wordImage: null,
       found: false,
       guesses: [],
+      pendingGuess: null,
+      nextGuessAt: 0,
       questionsAsked: 0,
     };
     room.players[id] = player;
@@ -238,6 +304,8 @@ export class WhoamiRoom {
       player.wordImage = null;
       player.found = false;
       player.guesses = [];
+      player.pendingGuess = null;
+      player.nextGuessAt = 0;
       player.questionsAsked = 0;
     }
     room.turnId = null;
@@ -319,29 +387,65 @@ export class WhoamiRoom {
     this.broadcast();
   }
 
+  // A proposal is never auto-checked: the app can't tell "Naruto" from
+  // "Naruto Uzumaki" the way the table can, so it queues the name and the
+  // host rules on it.
   private async onGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "play") return;
     const player = room.players[session.playerId];
     if (!player || !player.connected || player.found || !player.word) return;
 
-    const guess = String(msg.text ?? "").trim().slice(0, MAX_GUESS_LENGTH);
-    if (!guess) return;
-
-    player.guesses.push(guess);
-
-    if (!isCorrectGuess(guess, player.word)) {
-      await this.saveRoom();
-      this.broadcast();
-      this.sendError(session.ws, "Pas encore, retente !");
+    if (player.pendingGuess) {
+      this.sendError(session.ws, "Ta proposition attend encore la validation.");
+      return;
+    }
+    const remaining = player.nextGuessAt - player.questionsAsked;
+    if (remaining > 0) {
+      this.sendError(
+        session.ws,
+        `Encore ${remaining} question${remaining > 1 ? "s" : ""} avant ta prochaine proposition.`
+      );
       return;
     }
 
-    player.found = true;
-    if (room.turnId === player.id) {
-      room.turnId = nextTurn(room, player.id);
+    const guess = String(msg.text ?? "").trim().slice(0, MAX_GUESS_LENGTH);
+    if (!guess) return;
+
+    player.pendingGuess = guess;
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // The host rules on proposals — except on their own, which anyone else can
+  // settle (the host must not be told whether their own word is right).
+  private canValidate(room: RoomState, voterId: string, targetId: string): boolean {
+    if (voterId === targetId) return false;
+    return voterId === room.hostId || targetId === room.hostId;
+  }
+
+  private async onValidateGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (room.phase !== "play") return;
+    const targetId = String(msg.playerId ?? "");
+    const target = room.players[targetId];
+    if (!target?.pendingGuess) return;
+    if (!this.canValidate(room, session.playerId, targetId)) {
+      this.sendError(session.ws, "Seul l'hôte valide les propositions.");
+      return;
     }
-    if (connectedIds(room).every((id) => room.players[id]?.found)) {
-      room.phase = "ended";
+
+    target.guesses.push(target.pendingGuess);
+    target.pendingGuess = null;
+    target.nextGuessAt = target.questionsAsked + GUESS_COOLDOWN_QUESTIONS;
+
+    if (msg.correct === true) {
+      target.found = true;
+      if (room.turnId === target.id) {
+        room.turnId = nextTurn(room, target.id);
+      }
+      if (connectedIds(room).every((id) => room.players[id]?.found)) {
+        room.phase = "ended";
+      }
     }
 
     await this.saveRoom();
@@ -365,6 +469,8 @@ export class WhoamiRoom {
       player.wordImage = null;
       player.found = false;
       player.guesses = [];
+      player.pendingGuess = null;
+      player.nextGuessAt = 0;
       player.questionsAsked = 0;
     }
     room.turnId = null;
@@ -431,6 +537,8 @@ export class WhoamiRoom {
         // Attempts never reveal the word themselves (they're just what was
         // typed), so they're always visible to everyone, self included.
         guesses: p.guesses,
+        pendingGuess: p.pendingGuess,
+        nextGuessAt: p.nextGuessAt,
         questionsAsked: p.questionsAsked,
       }));
 

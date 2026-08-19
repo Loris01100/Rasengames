@@ -504,6 +504,48 @@ label {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
+.rooms-panel {
+  margin-bottom: 28px;
+}
+
+.rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.room-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.room-row:hover {
+  border-color: var(--accent);
+}
+
+.room-icon {
+  font-size: 1.4rem;
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.player-row .kick-btn {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
 .player-row:hover {
   background: #262a35;
 }

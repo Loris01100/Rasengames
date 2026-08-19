@@ -42,6 +42,10 @@
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
     foundHint: $("found-hint"),
+    pendingHint: $("pending-hint"),
+    cooldownHint: $("cooldown-hint"),
+    validatePanel: $("validate-panel"),
+    validateList: $("validate-list"),
     myAttempts: $("my-attempts"),
     myQuestions: $("my-questions"),
     playProgress: $("play-progress"),
@@ -146,6 +150,13 @@
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
       const asHostParam = msg.asHost ? "&asHost=1" : "";
       location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
+    } else if (msg.type === "kicked") {
+      // Token dropped so the auto-reconnect on the next page load doesn't
+      // silently walk back into the salon we were just thrown out of.
+      localStorage.removeItem(storageKey(roomCode, "token"));
+      myPlayerId = null;
+      alert("Tu as été exclu du salon par l'hôte.");
+      location.href = "/";
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -223,6 +234,22 @@
       tag.className = "tag";
       tag.textContent = "Hôte";
       row.appendChild(tag);
+    }
+
+
+    if (
+      latestState &&
+      latestState.phase === "lobby" &&
+      latestState.hostId === myPlayerId &&
+      p.id !== myPlayerId
+    ) {
+      const kick = document.createElement("button");
+      kick.className = "btn secondary small kick-btn";
+      kick.textContent = "Exclure";
+      kick.addEventListener("click", () => {
+        if (confirm(`Exclure ${p.name} du salon ?`)) send({ type: "kick", playerId: p.id });
+      });
+      row.appendChild(kick);
     }
 
     return row;
@@ -305,6 +332,13 @@
       card.appendChild(badge);
     }
 
+    if (p.pendingGuess) {
+      const pending = document.createElement("div");
+      pending.className = "whoami-pending";
+      pending.textContent = `propose "${p.pendingGuess}"...`;
+      card.appendChild(pending);
+    }
+
     if (typeof p.questionsAsked === "number") {
       const q = document.createElement("div");
       q.className = "whoami-questions muted small";
@@ -332,6 +366,35 @@
     return wrap;
   }
 
+  function validateRow(p) {
+    const row = document.createElement("div");
+    row.className = "whoami-validate";
+
+    const text = document.createElement("div");
+    text.className = "whoami-validate-text";
+    const who = document.createElement("span");
+    who.className = "muted small";
+    who.textContent = `${p.name} propose · son mot : ${p.word ?? "?"}`;
+    const guess = document.createElement("strong");
+    guess.textContent = p.pendingGuess;
+    text.appendChild(who);
+    text.appendChild(guess);
+    row.appendChild(text);
+
+    const yes = document.createElement("button");
+    yes.className = "btn small";
+    yes.textContent = "C'est ça ✓";
+    yes.addEventListener("click", () => send({ type: "validateGuess", playerId: p.id, correct: true }));
+    const no = document.createElement("button");
+    no.className = "btn secondary small";
+    no.textContent = "Raté ✗";
+    no.addEventListener("click", () => send({ type: "validateGuess", playerId: p.id, correct: false }));
+    row.appendChild(yes);
+    row.appendChild(no);
+
+    return row;
+  }
+
   function renderPlay(state) {
     el.roomBadge.textContent = state.code;
     el.roomBadge.classList.remove("hidden");
@@ -340,7 +403,13 @@
     const isHost = state.hostId === myPlayerId;
     const myTurn = state.turnId === myPlayerId;
 
-    el.guessForm.classList.toggle("hidden", !!you?.found);
+    const pending = you?.pendingGuess ?? null;
+    const cooldown = Math.max(0, (you?.nextGuessAt ?? 0) - (you?.questionsAsked ?? 0));
+    el.guessForm.classList.toggle("hidden", !!you?.found || !!pending || cooldown > 0);
+    el.pendingHint.classList.toggle("hidden", !pending);
+    el.pendingHint.textContent = pending ? `"${pending}" — en attente de validation...` : "";
+    el.cooldownHint.classList.toggle("hidden", !!pending || !!you?.found || cooldown === 0);
+    el.cooldownHint.textContent = `Encore ${cooldown} question${cooldown > 1 ? "s" : ""} avant de pouvoir proposer un nom.`;
     el.foundHint.classList.toggle("hidden", !you?.found);
     el.myAttempts.innerHTML = "";
     if (you?.guesses?.length) el.myAttempts.appendChild(attemptsList(you.guesses, you.found));
@@ -353,6 +422,18 @@
         : `Au tour de ${state.turnName ?? "..."}`;
     el.turnBanner.classList.toggle("my-turn", myTurn);
     el.askedBtn.classList.toggle("hidden", !myTurn);
+
+    // The host rules on every proposal, except their own — anyone else settles
+    // that one, so the host is never told whether their own word is right.
+    const toValidate = state.players.filter(
+      (p) =>
+        p.pendingGuess &&
+        p.id !== myPlayerId &&
+        (isHost || p.id === state.hostId)
+    );
+    el.validatePanel.classList.toggle("hidden", toValidate.length === 0);
+    el.validateList.innerHTML = "";
+    for (const p of toValidate) el.validateList.appendChild(validateRow(p));
 
     el.hostRoundActions.classList.toggle("hidden", !isHost);
 
@@ -378,17 +459,20 @@
       ? `Manche terminée — tu as trouvé ! (${foundCount}/${total}) 🎉`
       : `Manche terminée (${foundCount}/${total} ont trouvé)`;
 
-    // Ranked by fewest guesses among those who found their word — the best
-    // detective of the round — with anyone who didn't find it trailing after.
+    // Ranked by total cost — questions asked plus names proposed — among
+    // those who found their word, so a lucky first guess after ten questions
+    // doesn't beat someone who got there on two.
+    const cost = (p) => (p.guesses?.length ?? 0) + (p.questionsAsked ?? 0);
     const ranked = state.players.slice().sort((a, b) => {
       if (a.found !== b.found) return a.found ? -1 : 1;
-      return (a.guesses?.length ?? Infinity) - (b.guesses?.length ?? Infinity);
+      return cost(a) - cost(b);
     });
     const best = ranked.find((p) => p.found);
     el.endBest.classList.toggle("hidden", !best);
     if (best) {
       const tries = best.guesses.length;
-      el.endBest.textContent = `🏆 ${best.name}${best.id === myPlayerId ? " (toi)" : ""} a trouvé le plus vite, en ${tries} essai${tries > 1 ? "s" : ""} !`;
+      const questions = best.questionsAsked ?? 0;
+      el.endBest.textContent = `🏆 ${best.name}${best.id === myPlayerId ? " (toi)" : ""} a trouvé avec ${questions} question${questions > 1 ? "s" : ""} et ${tries} proposition${tries > 1 ? "s" : ""} (score ${cost(best)}) !`;
     }
 
     el.revealGrid.innerHTML = "";

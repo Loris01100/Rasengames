@@ -156,6 +156,13 @@
       const name = localStorage.getItem(storageKey(roomCode, "name")) || "Joueur";
       const asHostParam = msg.asHost ? "&asHost=1" : "";
       location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
+    } else if (msg.type === "kicked") {
+      // Token dropped so the auto-reconnect on the next page load doesn't
+      // silently walk back into the salon we were just thrown out of.
+      localStorage.removeItem(storageKey(roomCode, "token"));
+      myPlayerId = null;
+      alert("Tu as été exclu du salon par l'hôte.");
+      location.href = "/";
     } else if (msg.type === "error") {
       showToast(msg.message);
     }
@@ -244,6 +251,22 @@
       row.appendChild(tag);
     }
 
+
+    if (
+      latestState &&
+      latestState.phase === "lobby" &&
+      latestState.hostId === myPlayerId &&
+      p.id !== myPlayerId
+    ) {
+      const kick = document.createElement("button");
+      kick.className = "btn secondary small kick-btn";
+      kick.textContent = "Exclure";
+      kick.addEventListener("click", () => {
+        if (confirm(`Exclure ${p.name} du salon ?`)) send({ type: "kick", playerId: p.id });
+      });
+      row.appendChild(kick);
+    }
+
     return row;
   }
 
@@ -295,33 +318,45 @@
     if (options.some((o) => o.value === keep)) select.value = keep;
   }
 
+  // One row per player rather than per answer: everyone's clues stay lined up
+  // under the same three columns, in player order, whoever answered first.
   function renderClueLog(state, container) {
     container.innerHTML = "";
-    const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? "?";
-    for (const col of CLUE_COLUMNS) {
-      const entries = (state.clues ?? []).filter((c) => c.step === col.key);
-      if (entries.length === 0) continue;
+    const clues = state.clues ?? [];
+    const authors = state.players.filter(
+      (p) => p.id !== state.guesserId && clues.some((c) => c.playerId === p.id)
+    );
+    if (authors.length === 0) return;
 
-      const column = document.createElement("div");
-      column.className = "note-column";
-      const h = document.createElement("h4");
-      h.textContent = col.label;
-      column.appendChild(h);
+    const cell = (text, className) => {
+      const div = document.createElement("div");
+      div.className = className;
+      div.textContent = text;
+      return div;
+    };
 
-      const chips = document.createElement("div");
-      chips.className = "note-chips";
-      for (const entry of entries) {
+    container.appendChild(cell("", "note-head"));
+    for (const col of CLUE_COLUMNS) container.appendChild(cell(col.label, "note-head"));
+
+    for (const player of authors) {
+      container.appendChild(cell(player.name, "note-row-name"));
+      for (const col of CLUE_COLUMNS) {
+        const entry = clues.find((c) => c.playerId === player.id && c.step === col.key);
+        if (!entry) {
+          container.appendChild(cell("—", "note-chip empty"));
+          continue;
+        }
         const chip = document.createElement("div");
         chip.className = "note-chip";
-        const author = document.createElement("span");
-        author.className = "note-author";
-        author.textContent = nameOf(entry.playerId) + (entry.kind ? ` · ${KIND_LABELS[entry.kind] ?? entry.kind}` : "");
-        chip.appendChild(author);
+        if (entry.kind) {
+          const kind = document.createElement("span");
+          kind.className = "note-author";
+          kind.textContent = KIND_LABELS[entry.kind] ?? entry.kind;
+          chip.appendChild(kind);
+        }
         chip.appendChild(document.createTextNode(entry.text));
-        chips.appendChild(chip);
+        container.appendChild(chip);
       }
-      column.appendChild(chips);
-      container.appendChild(column);
     }
   }
 

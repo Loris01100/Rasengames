@@ -48,7 +48,7 @@ export const ANIME_THEMES: string[] = [
   "Popularité",
   "Les émotions (ça fait pleurer)",
   "Quantité de fanservice",
-  "Rythme",
+  "Qualité du rythme",
   "Sous-coté",
   "Sur-coté",
   "Worldbuilding",
