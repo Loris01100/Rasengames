@@ -1,0 +1,25 @@
+name: CI
+
+# Le déploiement, lui, est géré par Workers Builds côté Cloudflare (push sur
+# main). Cette CI ne déploie rien : elle vérifie seulement que ce qui part en
+# prod compile et passe les tests.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # scripts/words-test.mts s'exécute sans build (type stripping)
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # scripts/disconnect-test.mjs n'est pas ici : il lui faut un `npm run dev`
+      # vivant en face. À ajouter le jour où ça vaut le coup de lancer wrangler
+      # dans le job et d'attendre son port.
+      - run: npm test
