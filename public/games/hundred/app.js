@@ -24,6 +24,10 @@
       "Bodycount",
       "Beauté (homme)",
       "Beauté (femme)",
+      "Beauté des yeux",
+      "Âge",
+      "Perversité",
+      "Nom stylé",
       "Flow",
       "Aura",
       "Énergie de pnj",
@@ -71,11 +75,26 @@
 
   const wordingFor = (mode) => WORDING[mode] ?? WORDING.perso;
 
+  // La variante ne se devinait qu'au placeholder du champ de proposition :
+  // trop discret pour un truc qui change ce qu'on doit taper. Bandeau visible
+  // en haut des trois écrans de manche.
+  const MODE_BANNER = {
+    perso: "🧑 Partie Personnages — on propose des persos",
+    anime: "📺 Partie Animes — on propose des animes",
+  };
+
+  function renderModeBanner(node, mode) {
+    const known = mode === "anime" ? "anime" : "perso";
+    node.textContent = MODE_BANNER[known];
+    node.className = `mode-banner mode-${known}`;
+  }
+
   const el = {
 
     modeSelect: $("mode-select"),
     themeSelect: $("theme-select"),
 
+    proposeMode: $("propose-mode"),
     proposeTheme: $("propose-theme"),
     myNumber: $("my-number"),
     proposeForm: $("propose-form"),
@@ -86,12 +105,14 @@
     proposalsSecretHint: $("proposals-secret-hint"),
     proposalsList: $("proposals-list"),
 
+    arrangeMode: $("arrange-mode"),
     arrangeTheme: $("arrange-theme"),
     arrangeInstructions: $("arrange-instructions"),
     line: $("line"),
     revealBtn: $("reveal-btn"),
     revealHint: $("reveal-hint"),
 
+    revealMode: $("reveal-mode"),
     revealTheme: $("reveal-theme"),
     lineReveal: $("line-reveal"),
     revealNextBtn: $("reveal-next-btn"),
@@ -167,6 +188,7 @@
   }
 
   function renderPropose(state) {
+    renderModeBanner(el.proposeMode, state.mode);
     el.proposeTheme.textContent = state.theme;
     el.myNumber.textContent = state.you?.number ?? "—";
 
@@ -299,6 +321,7 @@
   }
 
   function renderArrange(state) {
+    renderModeBanner(el.arrangeMode, state.mode);
     el.arrangeTheme.textContent = state.theme;
 
     const isHost = state.hostId === Room.playerId;
@@ -335,6 +358,7 @@
   }
 
   function renderReveal(state) {
+    renderModeBanner(el.revealMode, state.mode);
     el.revealTheme.textContent = state.theme;
 
     el.lineReveal.innerHTML = "";

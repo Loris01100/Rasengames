@@ -12,7 +12,7 @@
     wordInput: $("word-input"),
     wordSubmit: $("word-submit"),
     waitHint: $("wait-hint"),
-    playersListPlay: $("players-list-play"),
+    bombSeats: $("bomb-seats"),
     answersLog: $("answers-log"),
 
     endTitle: $("end-title"),
@@ -62,10 +62,6 @@
     row.appendChild(tag);
   }
 
-  function withAlive(p) {
-    return { ...p, alive: !p.eliminated };
-  }
-
   function render(state) {
     Room.showSwitchGame(state.hostId === Room.playerId);
 
@@ -103,10 +99,43 @@
     el.waitHint.classList.toggle("hidden", myTurn || !state.turnId);
     if (!myTurn && state.turnId) el.waitHint.textContent = `En attente que ${state.turnName} réponde...`;
 
-    el.playersListPlay.innerHTML = "";
-    for (const p of state.players) el.playersListPlay.appendChild(Room.playerRow(withAlive(p), decorateLives));
+    renderSeats(state);
 
     renderAnswersLog(state);
+  }
+
+  // Les joueurs sont placés en cercle autour de la bombe : on voit d'un coup
+  // d'oeil qui la tient et à qui elle va passer, ce qu'une liste verticale ne
+  // montrait pas. La position vient d'un angle posé en variable CSS, le reste
+  // est du pur CSS (cf. .bomb-seat).
+  function renderSeats(state) {
+    el.bombSeats.innerHTML = "";
+    const players = state.players;
+    players.forEach((p, index) => {
+      const seat = document.createElement("div");
+      seat.className = "bomb-seat";
+      seat.style.setProperty("--angle", `${(360 / players.length) * index - 90}deg`);
+      if (p.id === state.turnId) seat.classList.add("current");
+      if (p.eliminated) seat.classList.add("dead");
+      if (p.id === Room.playerId) seat.classList.add("you");
+      if (p.connected === false) seat.classList.add("offline");
+
+      const name = document.createElement("span");
+      name.className = "bomb-seat-name";
+      name.textContent = p.name + (p.id === Room.playerId ? " (toi)" : "");
+      seat.appendChild(name);
+
+      seat.appendChild(makeAvatar(p.name));
+
+      const lives = document.createElement("span");
+      lives.className = "bomb-seat-lives";
+      lives.textContent = p.eliminated
+        ? "💀"
+        : "❤️".repeat(p.lives) + "🖤".repeat(Math.max(0, 2 - p.lives));
+      seat.appendChild(lives);
+
+      el.bombSeats.appendChild(seat);
+    });
   }
 
   // L'historique complet reste tout en bas de l'écran, mais la dernière

@@ -73,8 +73,18 @@
     <section id="screen-play" class="hidden">
       <div class="card bomb-card">
         <p id="play-instructions" class="muted small"></p>
-        <div class="bomb-icon">💣</div>
-        <div id="letter-display" class="bomb-letter-display">—</div>
+
+        <!-- La table : la bombe au centre, les joueurs autour, celui qui la
+             tient est mis en avant. Les sièges sont générés par app.js. -->
+        <div class="bomb-arena">
+          <div class="bomb-ring"></div>
+          <div class="bomb-core">
+            <div class="bomb-icon">💣</div>
+            <div id="letter-display" class="bomb-letter-display">—</div>
+          </div>
+          <div id="bomb-seats"></div>
+        </div>
+
         <h3 id="turn-banner" class="turn-banner"></h3>
         <div id="last-answer" class="bomb-last-answer hidden"></div>
         <div id="word-form" class="inline-form hidden">
@@ -82,11 +92,6 @@
           <button id="word-submit" class="btn">Envoyer</button>
         </div>
         <p id="wait-hint" class="muted small hidden"></p>
-      </div>
-
-      <div class="card">
-        <h3>Joueurs</h3>
-        <div id="players-list-play" class="players-list"></div>
       </div>
 
       <div class="card">

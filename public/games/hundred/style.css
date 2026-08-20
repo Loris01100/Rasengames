@@ -106,3 +106,29 @@
 #end-score {
   font-size: 1.05rem;
 }
+
+/* La variante de la manche, en haut de chaque écran : elle décide de ce que
+   tout le monde doit taper, elle ne peut pas être une note de bas de page. */
+.mode-banner {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.mode-banner.mode-perso {
+  color: #ffd9f2;
+  background: linear-gradient(135deg, rgba(255, 110, 199, 0.25), rgba(124, 92, 255, 0.25));
+  border-color: rgba(255, 110, 199, 0.5);
+}
+
+.mode-banner.mode-anime {
+  color: #d7e9ff;
+  background: linear-gradient(135deg, rgba(92, 160, 255, 0.25), rgba(62, 207, 142, 0.22));
+  border-color: rgba(92, 160, 255, 0.5);
+}

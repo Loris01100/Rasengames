@@ -117,3 +117,108 @@
   font-weight: 700;
   flex: 1;
 }
+
+/* La table : bombe au centre, joueurs en cercle autour. Le rayon est calculé
+   en CSS depuis la taille de l'arène, donc rien à recalculer au redimensionnement
+   — app.js ne pose qu'un angle par siège. */
+.bomb-arena {
+  --arena: min(360px, 86vw);
+  --seat: 76px;
+  position: relative;
+  width: var(--arena);
+  height: var(--arena);
+  margin: 8px auto 4px;
+}
+
+.bomb-ring {
+  position: absolute;
+  /* Cercle décoratif entre la bombe et les sièges, pas au travers. */
+  inset: var(--seat);
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+  animation: bomb-ring-spin 24s linear infinite;
+}
+
+@keyframes bomb-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Un cran plus petit que sur l ancien écran : la lettre partage désormais le
+   centre avec la bombe et les sièges. */
+.bomb-arena .bomb-letter-display {
+  font-size: 3rem;
+  margin: 0;
+}
+
+.bomb-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bomb-seat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--seat);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  /* rotate -> on s'éloigne du centre -> rotate inverse pour redresser le
+     siège -> on le recentre sur son point. */
+  transform: rotate(var(--angle)) translate(calc(var(--arena) / 2 - var(--seat) / 2))
+    rotate(calc(-1 * var(--angle))) translate(-50%, -50%);
+}
+
+.bomb-seat .avatar {
+  border: 2px solid transparent;
+}
+
+.bomb-seat-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.bomb-seat-lives {
+  font-size: 0.7rem;
+  letter-spacing: -0.05em;
+}
+
+.bomb-seat.you .bomb-seat-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Celui qui tient la bombe : c'est l'information principale de l'écran. */
+.bomb-seat.current .bomb-seat-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.bomb-seat.current .avatar {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+  animation: bomb-pulse 1.4s ease-in-out infinite;
+}
+
+.bomb-seat.dead {
+  opacity: 0.4;
+}
+
+.bomb-seat.dead .avatar {
+  filter: grayscale(1);
+}
+
+.bomb-seat.offline .avatar {
+  opacity: 0.5;
+}

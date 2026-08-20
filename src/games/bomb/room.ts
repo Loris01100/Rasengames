@@ -11,6 +11,7 @@ import {
   randomBombDelay,
   startsWithLetter,
 } from "./logic";
+import { sameWord } from "../../lib/words";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
@@ -406,6 +407,16 @@ export class BombRoom {
     }
     if (!room.letter || !startsWithLetter(text, room.letter)) {
       this.sendError(session.ws, `Ta réponse doit commencer par la lettre ${room.letter ?? "?"}.`);
+      return;
+    }
+
+    // Une lettre revient plusieurs fois dans une manche : sans ça, tout le
+    // monde pouvait ressortir le même personnage à chaque passage. Comparaison
+    // via sameWord (cf. lib/words.ts) pour que "Naruto" et "Naruto Uzumaki"
+    // comptent pour la même réponse.
+    const already = room.answers.find((a) => sameWord(a.text, text));
+    if (already) {
+      this.sendError(session.ws, `"${already.text}" est déjà passé dans cette manche, trouve autre chose.`);
       return;
     }
 

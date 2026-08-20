@@ -36,7 +36,8 @@ function makeEl(id) {
     children: [],
     listeners: {},
     classes: new Set(),
-    style: {},
+    // setProperty : les sièges de l Alphabombe posent leur angle en variable CSS.
+    style: { setProperty(name, value) { this[name] = value; } },
     dataset: {},
     textContent: "",
     value: "",
@@ -182,10 +183,21 @@ const PHASE_CHECKS = {
       type: "state",
       state: {
         code: "ABCD", phase: "play", hostId: "p1", mode: "perso", letter: "S",
-        players: [{ id: "p1", name: "Alice", connected: true, lives: 2 }],
+        players: [
+          { id: "p1", name: "Alice", connected: true, lives: 2 },
+          { id: "p2", name: "Bob", connected: true, lives: 1 },
+        ],
         turnId: "p1", answers: [],
       },
     });
+    // La table : un siège par joueur, placé par un angle, et celui qui tient
+    // la bombe est marqué — c'est toute l'information de l'écran.
+    const seats = byId("bomb-seats").children;
+    assert.strictEqual(seats.length, 2, `${slug}: un siège par joueur autour de la bombe`);
+    assert.strictEqual(seats[0].style["--angle"], "-90deg", `${slug}: siège sans angle`);
+    assert.ok(seats[0].classes.has("current"), `${slug}: le porteur de la bombe n'est pas marqué`);
+    assert.ok(!seats[1].classes.has("current"), `${slug}: un seul porteur à la fois`);
+
     const flush = () => new Promise((r) => setImmediate(r));
     const sentWords = () => socketSent().filter((m) => m.type === "submitWord").map((m) => m.text);
 
@@ -213,6 +225,21 @@ const PHASE_CHECKS = {
 
   // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.
   hundred(send, byId, slug) {
+    // La variante de la manche doit être lisible en haut de l'écran, pas
+    // seulement devinable au placeholder du champ.
+    for (const [mode, attendu] of [["perso", /Personnages/], ["anime", /Animes/]]) {
+      send({
+        type: "state",
+        state: {
+          code: "ABCD", phase: "propose", hostId: "p1", mode, theme: "Puissance",
+          players: [{ id: "p1", name: "Alice", connected: true }],
+          you: { id: "p1", number: 42, proposal: null },
+          proposalsSubmitted: 0, proposalsNeeded: 1,
+        },
+      });
+      assert.match(byId("propose-mode").textContent, attendu, `${slug}: variante ${mode} pas annoncée`);
+    }
+
     send({
       type: "state",
       state: {
