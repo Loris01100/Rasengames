@@ -70,6 +70,38 @@ const Room = (() => {
     return `${cfg.slug}:${code}:${suffix}`;
   }
 
+  // Deux clés par salon visité, plus jamais relues une fois la partie finie :
+  // on ne garde que les dix derniers codes par jeu.
+  function rememberRoom(code) {
+    const key = `${cfg.slug}:rooms`;
+    let codes = [];
+    try {
+      codes = JSON.parse(localStorage.getItem(key)) ?? [];
+    } catch {
+      codes = [];
+    }
+    codes = [code, ...codes.filter((c) => c !== code)];
+    for (const old of codes.slice(10)) {
+      localStorage.removeItem(storageKey(old, "token"));
+      localStorage.removeItem(storageKey(old, "name"));
+    }
+    localStorage.setItem(key, JSON.stringify(codes.slice(0, 10)));
+  }
+
+  // Le salon n'existe que si quelqu'un l'a créé : le DO, lui, naît à la
+  // demande. En panne de sonde on laisse passer — mieux vaut un salon fantôme
+  // qu'un joueur bloqué à la porte.
+  async function roomExists(code) {
+    try {
+      const res = await fetch(`/api/${cfg.slug}/exists/${code}`);
+      if (!res.ok) return true;
+      const { exists } = await res.json();
+      return exists;
+    } catch {
+      return true;
+    }
+  }
+
   function send(payload) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(payload));
@@ -99,10 +131,26 @@ const Room = (() => {
       if (api.playerId) {
         toast("Connexion perdue, reconnexion...");
         scheduleReconnect();
+      } else {
+        // Fermée avant même d'être entré : serveur injoignable ou WebSocket
+        // bloqué. Sans ce toast, le clic sur "Rejoindre" ne répondait rien.
+        toast("Connexion impossible pour le moment. Réessaie dans un instant.");
       }
     });
 
     ws.addEventListener("error", () => ws.close());
+  }
+
+  // Le backoff ne doit pas faire attendre 30 s celui qui revient : un onglet
+  // remis au premier plan (mobile qui coupe le WebSocket en arrière-plan) ou
+  // un réseau qui revient relance tout de suite.
+  function reconnectNow() {
+    if (!api.playerId || (ws && ws.readyState === WebSocket.OPEN)) return;
+    reconnectDelay = 2000;
+    clearTimeout(reconnectTimer);
+    const token = localStorage.getItem(storageKey(api.code, "token"));
+    const name = localStorage.getItem(storageKey(api.code, "name"));
+    if (api.code && token && name) connect(api.code, name, token);
   }
 
   // Backoff : un onglet oublié en arrière-plan (ou un salon supprimé) tapait
@@ -125,6 +173,7 @@ const Room = (() => {
       localStorage.setItem(storageKey(api.code, "token"), msg.token);
       localStorage.setItem(storageKey(api.code, "name"), name);
       localStorage.setItem(`${cfg.slug}:lastName`, name);
+      rememberRoom(api.code);
       const params = new URLSearchParams(location.search);
       params.set("room", api.code);
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
@@ -362,11 +411,15 @@ const Room = (() => {
       }
     });
 
-    el.joinBtn.addEventListener("click", () => {
+    el.joinBtn.addEventListener("click", async () => {
       const name = el.nameInput.value.trim();
-      const code = el.codeInput.value.trim();
+      const code = el.codeInput.value.trim().toUpperCase();
       if (name.length < MIN_NAME_LENGTH) return toast(NAME_TOO_SHORT);
       if (!code) return toast("Entre un code de salon.");
+      el.joinBtn.disabled = true;
+      const exists = await roomExists(code);
+      el.joinBtn.disabled = false;
+      if (!exists) return toast("Aucun salon avec ce code. Vérifie les lettres.");
       connect(code, name);
     });
 
@@ -392,6 +445,11 @@ const Room = (() => {
       if (!confirm(`Changer de jeu pour "${label}" ? Tout le monde du salon sera redirigé.`)) return;
       send({ type: "switchGame", slug });
     });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) reconnectNow();
+    });
+    window.addEventListener("online", reconnectNow);
 
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("room");

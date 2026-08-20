@@ -42,6 +42,21 @@ export default {
       return Response.json({ code });
     }
 
+    // Sans ça, un code mal tapé ne renvoie pas d'erreur : le Durable Object
+    // est créé à la demande, donc le joueur se retrouve seul dans un salon
+    // fantôme en croyant attendre ses amis. Le client sonde avant de rejoindre.
+    const existsMatch = url.pathname.match(/^\/api\/([a-z]+)\/exists\/([A-Za-z0-9]{4,8})$/);
+    if (existsMatch) {
+      const game = GAMES.find((g) => g.slug === existsMatch[1]);
+      if (!game) return new Response("Unknown game", { status: 404 });
+      const code = existsMatch[2].toUpperCase();
+      const namespace = game.namespace(env);
+      // Code en dernier segment : c'est ce que room.ts sait lire (cf. CLAUDE.md).
+      return namespace
+        .get(namespace.idFromName(code))
+        .fetch(new Request(`https://room/${game.slug}/exists/${code}`));
+    }
+
     const wsMatch = url.pathname.match(/^\/ws\/([a-z]+)\/([A-Za-z0-9]{4,8})$/);
     if (wsMatch) {
       const game = GAMES.find((g) => g.slug === wsMatch[1]);

@@ -120,9 +120,13 @@
   function startPlayTicker(state) {
     stopPlayTicker();
     const needed = state.stopMinFilled ?? 0;
+    // Le serveur envoie une durée restante, pas un instant : on l'ancre sur
+    // l'horloge locale à la réception, sinon un appareil désynchronisé
+    // affichait un compte à rebours faux.
+    const deadline = state.endsIn == null ? null : Date.now() + state.endsIn;
     const tick = () => {
-      if (state.endsAt) {
-        const left = Math.max(0, Math.round((state.endsAt - Date.now()) / 1000));
+      if (deadline) {
+        const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
         el.playTimer.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
         el.playTimer.classList.toggle("urgent", left <= 60);
       } else {

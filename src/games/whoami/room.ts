@@ -11,6 +11,7 @@ import {
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
+import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 
 // "character:417" / "anime:20" — the exact AniList entry a player picked from
 // the suggestions. Relayed as-is to every client so they all show the same
@@ -34,6 +35,8 @@ const VALID_SUBMIT_MODES: SubmitMode[] = ["libre", "categorie"];
 interface Session {
   ws: WebSocket;
   playerId: string;
+  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
+  recent: number[];
 }
 
 export class WhoamiRoom {
@@ -160,7 +163,7 @@ export class WhoamiRoom {
   }
 
   private attachSession(ws: WebSocket) {
-    const session: Session = { ws, playerId: "" };
+    const session: Session = { ws, playerId: "", recent: [] };
     this.sessions.push(session);
 
     ws.addEventListener("message", (event) => {
@@ -213,7 +216,8 @@ export class WhoamiRoom {
   }
 
   private async handleMessage(session: Session, raw: string | ArrayBuffer) {
-    if (typeof raw !== "string") return;
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_BYTES) return;
+    if (tooManyMessages(session.recent)) return;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);

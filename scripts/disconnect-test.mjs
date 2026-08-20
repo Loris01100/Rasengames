@@ -89,4 +89,21 @@ console.log("l'hôte est réattribué à sa déconnexion dans les 7 jeux");
   console.log("hundred: la phase se débloque quand le joueur attendu part");
 }
 
+// Un code jamais créé doit être annoncé comme inexistant : c'est ce que le
+// client sonde avant de rejoindre. Sans ça, une faute de frappe ouvre un salon
+// fantôme (le Durable Object naît à la demande) où le joueur attend seul.
+{
+  const unknown = Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+  const before = await (await fetch(`${BASE}/api/bomb/exists/${unknown}`)).json();
+  if (before.exists) throw new Error("exists: un code jamais créé est annoncé comme existant");
+
+  const { code } = await (await fetch(`${BASE}/api/bomb/create`, { method: "POST" })).json();
+  const host = join("bomb", code, "Hote1");
+  await host.next();
+  const after = await (await fetch(`${BASE}/api/bomb/exists/${code}`)).json();
+  if (!after.exists) throw new Error("exists: un salon créé et rejoint est annoncé comme inexistant");
+  host.ws.close();
+  console.log("exists: code inconnu refusé, salon réel reconnu");
+}
+
 process.exit(0);

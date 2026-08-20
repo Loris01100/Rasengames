@@ -13,6 +13,7 @@ import { CATEGORY_LABELS, type WordCategory } from "./words";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
+import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 
 const VALID_CATEGORIES = new Set(Object.keys(CATEGORY_LABELS));
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
@@ -31,6 +32,8 @@ const MIN_PLAYERS_TO_START = 3;
 interface Session {
   ws: WebSocket;
   playerId: string;
+  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
+  recent: number[];
 }
 
 export class UndercoverRoom {
@@ -153,7 +156,7 @@ export class UndercoverRoom {
   }
 
   private attachSession(ws: WebSocket) {
-    const session: Session = { ws, playerId: "" };
+    const session: Session = { ws, playerId: "", recent: [] };
     this.sessions.push(session);
 
     ws.addEventListener("message", (event) => {
@@ -203,7 +206,8 @@ export class UndercoverRoom {
   }
 
   private async handleMessage(session: Session, raw: string | ArrayBuffer) {
-    if (typeof raw !== "string") return;
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_BYTES) return;
+    if (tooManyMessages(session.recent)) return;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);

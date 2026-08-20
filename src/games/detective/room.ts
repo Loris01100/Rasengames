@@ -4,6 +4,7 @@ import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn } from "./lo
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
+import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -16,6 +17,8 @@ const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 interface Session {
   ws: WebSocket;
   playerId: string;
+  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
+  recent: number[];
 }
 
 export class DetectiveRoom {
@@ -140,7 +143,7 @@ export class DetectiveRoom {
   }
 
   private attachSession(ws: WebSocket) {
-    const session: Session = { ws, playerId: "" };
+    const session: Session = { ws, playerId: "", recent: [] };
     this.sessions.push(session);
 
     ws.addEventListener("message", (event) => {
@@ -193,7 +196,8 @@ export class DetectiveRoom {
   }
 
   private async handleMessage(session: Session, raw: string | ArrayBuffer) {
-    if (typeof raw !== "string") return;
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_BYTES) return;
+    if (tooManyMessages(session.recent)) return;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);

@@ -5,6 +5,7 @@ import { pickRandomTheme } from "./themes";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
+import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 import { sameWord } from "../../lib/words";
 
 // "character:417" / "anime:20" — the exact AniList entry a player picked from
@@ -29,6 +30,8 @@ const VALID_MODES: Mode[] = ["perso", "anime"];
 interface Session {
   ws: WebSocket;
   playerId: string;
+  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
+  recent: number[];
 }
 
 export class HundredRoom {
@@ -153,7 +156,7 @@ export class HundredRoom {
   }
 
   private attachSession(ws: WebSocket) {
-    const session: Session = { ws, playerId: "" };
+    const session: Session = { ws, playerId: "", recent: [] };
     this.sessions.push(session);
 
     ws.addEventListener("message", (event) => {
@@ -205,7 +208,8 @@ export class HundredRoom {
   }
 
   private async handleMessage(session: Session, raw: string | ArrayBuffer) {
-    if (typeof raw !== "string") return;
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_BYTES) return;
+    if (tooManyMessages(session.recent)) return;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);

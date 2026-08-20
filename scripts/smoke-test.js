@@ -140,7 +140,7 @@ const PHASE_CHECKS = {
       state: {
         code: "ABCD", phase: "play", hostId: "p1", players: [], letter: "K",
         categories: ["anime", "hero", "villain", "item"], // 4 cases -> 3 requises
-        stopMinFilled: 3, endsAt: Date.now() + 600000, you: { id: "p1", answers: {} },
+        stopMinFilled: 3, endsIn: 600000, you: { id: "p1", answers: {} },
       },
     });
     const inputs = byId("answers-form").children.map((row) => row.children[1]);
@@ -318,6 +318,8 @@ function run(slug) {
     requestAnimationFrame: () => 0,
     navigator: { userAgent: "node", clipboard: { writeText: async (text) => copied.push(text) } },
     prompt: () => "",
+    // room-client.js écoute "online" sur window pour relancer la reconnexion.
+    addEventListener: () => {},
     AudioContext: function () {
       return { createOscillator: () => ({ connect: () => {}, start: () => {}, stop: () => {}, frequency: { setValueAtTime: () => {} } }), createGain: () => ({ connect: () => {}, gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {}, linearRampToValueAtTime: () => {} } }), currentTime: 0, destination: {}, state: "running", resume: () => {} };
     },

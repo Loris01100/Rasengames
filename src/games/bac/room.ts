@@ -5,6 +5,7 @@ import { CATEGORY_IDS } from "./categories";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
+import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -15,6 +16,7 @@ const MAX_ANSWER_LENGTH = 40;
 // parti manger, table bloquée sur une catégorie), l'alarme du Durable Object la
 // termine toute seule.
 const ROUND_MS = 10 * 60 * 1000;
+const ANSWER_SAVE_DELAY_MS = 2000;
 // Crier stop fige la manche pour tout le monde, donc on l'interdit tant qu'on
 // n'a pas soi-même rempli l'essentiel de sa grille.
 const STOP_MIN_FILLED_RATIO = 0.75;
@@ -28,6 +30,8 @@ function requiredFilled(categoryCount: number): number {
 interface Session {
   ws: WebSocket;
   playerId: string;
+  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
+  recent: number[];
 }
 
 export class BacRoom {
@@ -40,6 +44,7 @@ export class BacRoom {
   // and doesn't need a migration in every game's room shape. Private by
   // default: a salon shows up in the public list only if the host says so.
   private visibility: "public" | "private" = "private";
+  private answerSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -85,6 +90,10 @@ export class BacRoom {
   }
 
   private async saveRoom(): Promise<void> {
+    if (this.answerSaveTimer !== null) {
+      clearTimeout(this.answerSaveTimer);
+      this.answerSaveTimer = null;
+    }
     if (this.room) {
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
@@ -150,7 +159,7 @@ export class BacRoom {
   }
 
   private attachSession(ws: WebSocket) {
-    const session: Session = { ws, playerId: "" };
+    const session: Session = { ws, playerId: "", recent: [] };
     this.sessions.push(session);
 
     ws.addEventListener("message", (event) => {
@@ -199,7 +208,8 @@ export class BacRoom {
   }
 
   private async handleMessage(session: Session, raw: string | ArrayBuffer) {
-    if (typeof raw !== "string") return;
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_BYTES) return;
+    if (tooManyMessages(session.recent)) return;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);
@@ -387,7 +397,21 @@ export class BacRoom {
     player.answers[category] = String(msg.text ?? "").slice(0, MAX_ANSWER_LENGTH);
     // No broadcast: answers are private until the round ends, and the typing
     // player already has their own value locally — nothing else to send.
-    await this.saveRoom();
+    // Écriture groupée : personne n'attend celle-ci, et une frappe débouncée
+    // toutes les 250 ms x 12 catégories x 8 joueurs faisait autant
+    // d'écritures de l'état complet du salon.
+    this.scheduleAnswerSave();
+  }
+
+  // Le DO reste vivant tant que des WebSockets y sont attachés (pas
+  // d'hibernation ici), donc ce timer aboutit. La fin de manche sauvegarde de
+  // toute façon, et saveRoom() annule le flush en attente.
+  private scheduleAnswerSave() {
+    if (this.answerSaveTimer !== null) return;
+    this.answerSaveTimer = setTimeout(() => {
+      this.answerSaveTimer = null;
+      void this.saveRoom();
+    }, ANSWER_SAVE_DELAY_MS);
   }
 
   private async onStop(session: Session, room: RoomState) {
@@ -537,7 +561,10 @@ export class BacRoom {
       players,
       categories: room.categories,
       letter: room.phase === "lobby" ? null : room.letter,
-      endsAt: room.phase === "play" ? room.endsAt : null,
+      // Durée restante et pas instant absolu : l'horloge du téléphone d'un
+      // joueur peut être décalée de plusieurs minutes, ce qui affichait un
+      // compte à rebours faux (voire 0) sur une manche qui tourne.
+      endsIn: room.phase === "play" && room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
       stopMinFilled: requiredFilled(room.categories.length),
       you: you && { id: you.id, answers: you.answers },
       stoppedByName: room.stoppedBy ? room.players[room.stoppedBy]?.name ?? null : null,
