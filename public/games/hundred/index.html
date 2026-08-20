@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Chacun a un chiffre secret et un thème commun. Débattez pour ranger tout le monde dans le bon ordre." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="1 à 100 · RasenGames" />
+  <meta property="og:description" content="Chacun a un chiffre secret et un thème commun. Débattez pour ranger tout le monde dans le bon ordre." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/hundred/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>1 à 100 · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -155,6 +167,18 @@
     </section>
   </main>
 
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>1 à 100</h2>
+    <p class="muted">Un chiffre secret chacun, un thème commun, et une ligne à remettre dans l'ordre.</p>
+    <ol class="rules-steps">
+      <li>Chacun reçoit un chiffre secret entre 1 et 100 et voit le thème choisi par l'hôte (par exemple « Talent pour les punchlines »).</li>
+      <li>Propose un personnage (ou un anime) qui correspond à ton chiffre sur ce thème : 1 c'est le minimum absolu, 100 le maximum.</li>
+      <li>Une fois tout le monde servi, débattez à voix haute. L'hôte range les cartes de gauche (petit chiffre) à droite (grand chiffre).</li>
+      <li>Révélation : les chiffres apparaissent et la ligne est notée.</li>
+    </ol>
+    <p class="muted small">Un point par paire de voisins dans le bon ordre — la table joue contre le hasard, pas les uns contre les autres.</p>
+  </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/anilist.js"></script>

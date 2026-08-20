@@ -2,9 +2,18 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
 import { pickRandomLetter, buildRoundResult, recomputeScores } from "./logic";
 import { CATEGORY_IDS } from "./categories";
-import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
+import {
+  type Session,
+  attachSession,
+  broadcastState,
+  kickPlayer,
+  nameTaken,
+  promoteWaiting,
+  sendError,
+  switchGame,
+} from "../../lib/session";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 
 const MAX_NAME_LENGTH = 20;
@@ -21,17 +30,9 @@ const ANSWER_SAVE_DELAY_MS = 2000;
 // n'a pas soi-même rempli l'essentiel de sa grille.
 const STOP_MIN_FILLED_RATIO = 0.75;
 const MIN_PLAYERS_TO_START = 2;
-const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 
 function requiredFilled(categoryCount: number): number {
   return Math.ceil(categoryCount * STOP_MIN_FILLED_RATIO);
-}
-
-interface Session {
-  ws: WebSocket;
-  playerId: string;
-  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
-  recent: number[];
 }
 
 export class BacRoom {
@@ -70,7 +71,12 @@ export class BacRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     server.accept();
-    this.attachSession(server);
+    attachSession(
+      this.sessions,
+      server,
+      (session, raw) => this.handleMessage(session, raw),
+      (session) => this.handleClose(session),
+    );
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -119,58 +125,13 @@ export class BacRoom {
 
   private async onSetVisibility(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
-      this.sendError(session.ws, "Seul l'hôte peut changer la visibilité du salon.");
+      sendError(session.ws, "Seul l'hôte peut changer la visibilité du salon.");
       return;
     }
     this.visibility = msg.visibility === "public" ? "public" : "private";
     await this.state.storage.put("visibility", this.visibility);
     await this.saveRoom();
     this.broadcast();
-  }
-
-  // Host-only, lobby-only: mid-game removal would need per-game turn/vote
-  // fixups, and a disconnect already covers someone who just leaves.
-  private async onKick(session: Session, room: RoomState, msg: Record<string, unknown>) {
-    if (session.playerId !== room.hostId) {
-      this.sendError(session.ws, "Seul l'hôte peut exclure un joueur.");
-      return;
-    }
-    if (room.phase !== "lobby") {
-      this.sendError(session.ws, "Impossible d'exclure quelqu'un en pleine partie.");
-      return;
-    }
-    const targetId = String(msg.playerId ?? "");
-    if (!targetId || targetId === room.hostId || !room.players[targetId]) return;
-
-    delete room.players[targetId];
-    room.playerOrder = room.playerOrder.filter((id) => id !== targetId);
-
-    for (const s of this.sessions.filter((s) => s.playerId === targetId)) {
-      try {
-        s.ws.send(JSON.stringify({ type: "kicked" }));
-        s.ws.close(1000, "kicked");
-      } catch {
-        // socket already gone
-      }
-    }
-
-    await this.saveRoom();
-    this.broadcast();
-  }
-
-  private attachSession(ws: WebSocket) {
-    const session: Session = { ws, playerId: "", recent: [] };
-    this.sessions.push(session);
-
-    ws.addEventListener("message", (event) => {
-      this.handleMessage(session, event.data).catch((err) => {
-        this.sendError(ws, err instanceof Error ? err.message : "Erreur inconnue.");
-      });
-    });
-
-    const onClose = () => this.handleClose(session);
-    ws.addEventListener("close", onClose);
-    ws.addEventListener("error", onClose);
   }
 
   private async handleClose(session: Session) {
@@ -196,14 +157,6 @@ export class BacRoom {
       reassignHost(this.room, player.id);
       await this.saveRoom();
       this.broadcast();
-    }
-  }
-
-  private sendError(ws: WebSocket, message: string) {
-    try {
-      ws.send(JSON.stringify({ type: "error", message }));
-    } catch {
-      // socket already gone
     }
   }
 
@@ -243,16 +196,19 @@ export class BacRoom {
         await this.onRestart(session, room);
         break;
       case "kick":
-        await this.onKick(session, room, msg);
+        if (kickPlayer(this.sessions, session, room, msg)) {
+          await this.saveRoom();
+          this.broadcast();
+        }
         break;
       case "setVisibility":
         await this.onSetVisibility(session, room, msg);
         break;
       case "switchGame":
-        this.onSwitchGame(session, room, msg);
+        switchGame(this.sessions, session, room, msg);
         break;
       default:
-        this.sendError(session.ws, `Type de message inconnu: ${String(msg.type)}`);
+        sendError(session.ws, `Type de message inconnu: ${String(msg.type)}`);
     }
   }
 
@@ -261,25 +217,10 @@ export class BacRoom {
     return { id, token, name, connected: true, answers: {} };
   }
 
-  private nameTaken(room: RoomState, name: string): boolean {
-    const taken = (p: Player) => p.connected && p.name.toLowerCase() === name.toLowerCase();
-    return Object.values(room.players).some(taken) || room.waiting.some(taken);
-  }
-
-  // Les joueurs arrivés en cours de partie rejoignent la table au retour au
-  // lobby, avec l'id et le token qu'ils ont déjà en localStorage.
-  private promoteWaiting(room: RoomState) {
-    for (const p of room.waiting) {
-      room.players[p.id] = p;
-      room.playerOrder.push(p.id);
-    }
-    room.waiting = [];
-  }
-
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
     if (name.length < MIN_NAME_LENGTH) {
-      this.sendError(session.ws, `Le pseudo doit faire au moins ${MIN_NAME_LENGTH} caractères.`);
+      sendError(session.ws, `Le pseudo doit faire au moins ${MIN_NAME_LENGTH} caractères.`);
       return;
     }
 
@@ -310,8 +251,8 @@ export class BacRoom {
     if (room.phase !== "lobby") {
       // La partie tourne : au lieu de renvoyer le nouveau venu créer son propre
       // salon, on le met de côté et il entrera à la manche suivante.
-      if (this.nameTaken(room, name)) {
-        this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
+      if (nameTaken(room, name)) {
+        sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
         return;
       }
       const pending = this.makePlayer(crypto.randomUUID(), crypto.randomUUID(), name);
@@ -323,8 +264,8 @@ export class BacRoom {
       return;
     }
 
-    if (this.nameTaken(room, name)) {
-      this.sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
+    if (nameTaken(room, name)) {
+      sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
       return;
     }
 
@@ -345,21 +286,21 @@ export class BacRoom {
 
   private async onStart(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
-      this.sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
+      sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
       return;
     }
     if (room.phase !== "lobby") return;
 
     const connectedCount = Object.values(room.players).filter((p) => p.connected).length;
     if (connectedCount < MIN_PLAYERS_TO_START) {
-      this.sendError(session.ws, `Il faut au moins ${MIN_PLAYERS_TO_START} joueurs connectés.`);
+      sendError(session.ws, `Il faut au moins ${MIN_PLAYERS_TO_START} joueurs connectés.`);
       return;
     }
 
     const rawCategories = Array.isArray(msg.categories) ? msg.categories : [];
     const categories = [...new Set(rawCategories.filter((c): c is string => typeof c === "string" && CATEGORY_IDS.has(c)))];
     if (categories.length === 0) {
-      this.sendError(session.ws, "Choisis au moins une catégorie.");
+      sendError(session.ws, "Choisis au moins une catégorie.");
       return;
     }
 
@@ -421,7 +362,7 @@ export class BacRoom {
 
     const filled = room.categories.filter((c) => (player.answers[c] ?? "").trim()).length;
     if (filled < requiredFilled(room.categories.length)) {
-      this.sendError(
+      sendError(
         session.ws,
         `Remplis au moins ${requiredFilled(room.categories.length)} catégories sur ${room.categories.length} avant de crier stop.`
       );
@@ -451,7 +392,7 @@ export class BacRoom {
 
   private async onSetValid(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
-      this.sendError(session.ws, "Seul l'hôte peut valider les réponses.");
+      sendError(session.ws, "Seul l'hôte peut valider les réponses.");
       return;
     }
     if (room.phase !== "review" || !room.result) return;
@@ -489,7 +430,7 @@ export class BacRoom {
     for (const player of Object.values(room.players)) {
       player.answers = {};
     }
-    this.promoteWaiting(room);
+    promoteWaiting(room);
     room.phase = "lobby";
     room.letter = null;
     room.stoppedBy = null;
@@ -501,41 +442,8 @@ export class BacRoom {
     this.broadcast();
   }
 
-  // Purely a redirect signal to every connected client — the group keeps its
-  // room code and just points its WebSocket at another game's room instead,
-  // so switching games doesn't require leaving and re-sharing a new code.
-  private onSwitchGame(session: Session, room: RoomState, msg: Record<string, unknown>) {
-    if (session.playerId !== room.hostId) {
-      this.sendError(session.ws, "Seul l'hôte peut changer de jeu.");
-      return;
-    }
-    const slug = String(msg.slug ?? "");
-    if (!VALID_GAME_SLUGS.has(slug)) {
-      this.sendError(session.ws, "Jeu invalide.");
-      return;
-    }
-    for (const s of this.sessions) {
-      try {
-        s.ws.send(
-          JSON.stringify({ type: "switchGame", slug, code: room.code, asHost: s === session })
-        );
-      } catch {
-        // socket already gone
-      }
-    }
-  }
-
   private broadcast() {
-    if (!this.room) return;
-    for (const session of this.sessions) {
-      if (!session.playerId) continue;
-      const view = this.buildView(this.room, session.playerId);
-      try {
-        session.ws.send(JSON.stringify({ type: "state", state: view }));
-      } catch {
-        // socket already gone; the close handler will clean it up
-      }
-    }
+    broadcastState(this.sessions, this.room, (room, playerId) => this.buildView(room, playerId));
   }
 
   private buildView(room: RoomState, forPlayerId: string) {

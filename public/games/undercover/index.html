@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Chacun reçoit un mot, sauf les infiltrés. Donnez vos indices et démasquez-les avant qu'ils ne prennent le dessus." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Undercover · RasenGames" />
+  <meta property="og:description" content="Chacun reçoit un mot, sauf les infiltrés. Donnez vos indices et démasquez-les avant qu'ils ne prennent le dessus." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/undercover/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Undercover · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -157,6 +169,18 @@
     </section>
   </main>
 
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>Undercover</h2>
+    <p class="muted">Des mots presque identiques, et des infiltrés qui ne savent pas lequel ils ont.</p>
+    <ol class="rules-steps">
+      <li>Chacun reçoit un mot secret. Les civils ont tous le même, les Undercover en ont un autre très proche, et Mr. White n'en a aucun.</li>
+      <li>Chacun son tour, donne un indice d'un seul mot sur le tien. Ni le mot lui-même, ni un synonyme évident.</li>
+      <li>Après le tour de table, tout le monde vote. Le plus voté est éliminé et son rôle est révélé — en cas d'égalité, personne ne sort.</li>
+      <li>Un Mr. White éliminé a droit à une dernière chance : s'il devine le mot des civils, il gagne sur-le-champ.</li>
+    </ol>
+    <p class="muted small">Les civils gagnent quand il ne reste plus aucun infiltré. Les infiltrés gagnent dès qu'ils sont aussi nombreux que les civils.</p>
+  </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/anilist.js"></script>

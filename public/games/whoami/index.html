@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Chacun écrit un personnage pour son voisin, puis devine le sien à coups de questions." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Qui suis-je · RasenGames" />
+  <meta property="og:description" content="Chacun écrit un personnage pour son voisin, puis devine le sien à coups de questions." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/whoami/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Qui suis-je · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -150,6 +162,18 @@
     </section>
   </main>
 
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>Qui suis-je</h2>
+    <p class="muted">Tout le monde voit ton personnage sauf toi.</p>
+    <ol class="rules-steps">
+      <li>Chacun écrit un personnage : c'est un autre joueur qui devra le deviner, jamais toi. Le tien reste caché à tes yeux seuls.</li>
+      <li>Chacun son tour, pose une question à voix haute à laquelle la table répond par oui ou non, puis marque ton tour comme joué.</li>
+      <li>Quand tu crois savoir, propose un nom : l'hôte confirme ou non.</li>
+      <li>Après une proposition ratée, il faut reposer deux questions avant d'avoir le droit d'en retenter une.</li>
+    </ol>
+    <p class="muted small">Le but est de trouver avec le moins de questions possible — le décompte est affiché à côté de chaque joueur.</p>
+  </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/anilist.js"></script>

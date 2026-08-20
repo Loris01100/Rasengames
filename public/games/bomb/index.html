@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Une lettre, un mot qui commence par elle, et une mèche invisible qui tourne. Ne la laisse pas t'exploser entre les mains." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Alphabombe · RasenGames" />
+  <meta property="og:description" content="Une lettre, un mot qui commence par elle, et une mèche invisible qui tourne. Ne la laisse pas t'exploser entre les mains." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/bomb/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Alphabombe · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -111,6 +123,18 @@
     </section>
   </main>
 
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>Alphabombe</h2>
+    <p class="muted">Une mèche invisible qui court de main en main.</p>
+    <ol class="rules-steps">
+      <li>Le joueur qui tient la bombe voit une lettre et doit taper un personnage (ou un anime) qui commence par elle.</li>
+      <li>Une réponse déjà donnée dans la manche ne compte pas. Dès que la tienne passe, la bombe file au suivant avec une nouvelle lettre.</li>
+      <li>La mèche est tirée au sort une seule fois par bombe (entre 20 et 50 secondes), n'est jamais affichée et continue de courir d'un tour à l'autre : passer la bombe vite est la seule défense.</li>
+      <li>Si elle explose entre tes mains, tu perds une vie. Chacun en a deux, donc la troisième explosion élimine.</li>
+    </ol>
+    <p class="muted small">Le dernier joueur en vie remporte la manche.</p>
+  </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/anilist.js"></script>

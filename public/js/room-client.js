@@ -252,6 +252,38 @@ const Room = (() => {
     el.waitingBadge.classList.toggle("hidden", count === 0);
   }
 
+  // Les règles vivent dans un <template id="rules"> de la page du jeu, et le
+  // <dialog> natif fournit le reste gratuitement : fond assombri, fermeture à
+  // Échap, focus piégé. Il se peint dans la top layer, donc il échappe aussi
+  // au piège d'empilement des .card (cf. suggest.js) sans classe de contournement.
+  function initRules() {
+    const template = $("rules");
+    if (!template || !template.content) return;
+
+    const dialog = document.createElement("dialog");
+    dialog.id = "rules-dialog";
+    dialog.className = "rules-dialog";
+    dialog.appendChild(template.content.cloneNode(true));
+
+    const close = document.createElement("button");
+    close.className = "btn secondary small";
+    close.textContent = "Fermer";
+    close.addEventListener("click", () => dialog.close());
+    dialog.appendChild(close);
+    // Un clic dans le fond compte comme un clic sur le <dialog> lui-même.
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+    document.body.appendChild(dialog);
+
+    const open = document.createElement("button");
+    open.className = "btn secondary small";
+    open.id = "rules-btn";
+    open.textContent = "Règles";
+    open.addEventListener("click", () => dialog.showModal());
+    el.roomBadge.parentNode.appendChild(open);
+  }
+
   // Every game screen is a <section id="screen-*">, so no per-game list needed.
   function showScreen(screen) {
     const target = typeof screen === "string" ? $(screen) : screen;
@@ -385,6 +417,8 @@ const Room = (() => {
     el.inviteBtn.textContent = "Copier le lien";
     el.inviteBtn.addEventListener("click", copyInvite);
     el.lobbyCode.parentNode.appendChild(el.inviteBtn);
+
+    initRules();
 
     for (const g of GAMES) {
       if (g.slug === cfg.slug) continue;

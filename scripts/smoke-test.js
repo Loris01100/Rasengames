@@ -262,6 +262,11 @@ const PHASE_CHECKS = {
 
 function run(slug) {
   const html = fs.readFileSync(path.join(ROOT, "games", slug, "index.html"), "utf8");
+  // Chaque page de jeu doit porter ses règles (reprises par room-client.js dans
+  // le <dialog> du bouton Règles) et ses balises de partage : un huitième jeu
+  // ajouté sans elles se voit ici plutôt que dans une conversation de groupe.
+  assert.match(html, /<template id="rules">[\s\S]*?<li>[\s\S]*?<\/template>/, slug + ': pas de <template id="rules"> avec des étapes');
+  assert.match(html, /property="og:image"/, slug + ': pas de balises de partage (og:)');
   const ids = new Set([...html.matchAll(/id="([\w-]+)"/g)].map((m) => m[1]));
   const els = new Map();
   const byId = (id) => {

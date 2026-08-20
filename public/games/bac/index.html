@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Une lettre, des catégories anime, un chrono. Le premier qui a tout rempli crie stop." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Petit Bac · RasenGames" />
+  <meta property="og:description" content="Une lettre, des catégories anime, un chrono. Le premier qui a tout rempli crie stop." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/bac/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Petit Bac · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -116,6 +128,18 @@
     </section>
   </main>
 
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>Petit Bac</h2>
+    <p class="muted">Une lettre, des catégories anime, et un chrono qui court.</p>
+    <ol class="rules-steps">
+      <li>L'hôte choisit les catégories, le serveur tire une lettre au sort et lance le chrono.</li>
+      <li>Remplis une réponse par catégorie, toutes commençant par cette lettre. Ce que tu écris reste privé jusqu'à la fin de la manche.</li>
+      <li>Dès que tu as rempli les trois quarts des cases, le bouton « Stop » se débloque et coupe le chrono pour tout le monde. Sinon le temps s'en charge.</li>
+      <li>L'hôte relit ensuite les réponses une par une et valide ce qui compte — rien n'est accepté automatiquement.</li>
+    </ol>
+    <p class="muted small">2 points par réponse validée que personne d'autre n'a écrite, 1 point si c'est un doublon.</p>
+  </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/room-client.js"></script>

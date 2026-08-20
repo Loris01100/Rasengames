@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Chacun son tour, proposez des personnages pour deviner la catégorie secrète des autres." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Détective Anime · RasenGames" />
+  <meta property="og:description" content="Chacun son tour, proposez des personnages pour deviner la catégorie secrète des autres." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/detective/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Détective Anime · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -137,6 +149,18 @@
     </section>
   </main>
 
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>Détective Anime</h2>
+    <p class="muted">Chacun cache une catégorie, et la fait deviner sans jamais la dire.</p>
+    <ol class="rules-steps">
+      <li>Chacun choisit une catégorie secrète, en texte libre : « ceux qui portent des lunettes », « les personnages en rouge », ce que tu veux.</li>
+      <li>Chacun son tour, propose un personnage à un autre joueur. Il répond simplement si ce personnage entre ou non dans sa catégorie.</li>
+      <li>Toutes les réponses sont publiques : la table entière apprend en même temps que toi.</li>
+      <li>Quand tu crois avoir trouvé la catégorie de quelqu'un, tente ta chance à la place d'une proposition.</li>
+    </ol>
+    <p class="muted small">Trouver une catégorie rapporte un point. Les autres continuent à chercher les leurs.</p>
+  </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/anilist.js"></script>
