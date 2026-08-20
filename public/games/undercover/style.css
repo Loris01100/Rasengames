@@ -171,3 +171,41 @@
 #end-title {
   margin-top: 0;
 }
+
+.clue-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.clue-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.clue-history-row.dead {
+  opacity: 0.55;
+}
+
+.clue-history-name {
+  min-width: 110px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.clue-history-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clue-history .chip {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}

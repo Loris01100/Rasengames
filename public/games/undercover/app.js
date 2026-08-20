@@ -38,6 +38,8 @@
 
     historyPanel: $("history-panel"),
     historyList: $("history-list"),
+    clueHistoryPanel: $("clue-history-panel"),
+    clueHistory: $("clue-history"),
 
     endPanel: $("end-panel"),
     endTitle: $("end-title"),
@@ -146,6 +148,7 @@
     renderVote(state);
     renderVoteResult(state);
     renderWhiteGuess(state);
+    renderClueHistory(state);
     renderHistory(state);
     renderEnd(state);
   }
@@ -282,6 +285,43 @@
     el.whiteguessInfo.textContent = isGuesser
       ? "Tu as été démasqué ! Devine le mot des civils pour gagner."
       : `${nameOf(state.pendingGuesserId)} (Mr. White) a été démasqué et tente de deviner le mot des civils...`;
+  }
+
+  // Le `clue-list` au-dessus ne montre que la manche en cours. Ici, tout ce
+  // que chacun a dit depuis le début de la partie, groupé par joueur : c'est
+  // le recoupement d'une manche à l'autre qui trahit un undercover.
+  function renderClueHistory(state) {
+    const history = state.clueHistory ?? [];
+    el.clueHistoryPanel.classList.toggle("hidden", history.length === 0);
+    if (history.length === 0) return;
+
+    el.clueHistory.innerHTML = "";
+    for (const p of state.players) {
+      const mine = history.filter((c) => c.playerId === p.id);
+      if (mine.length === 0) continue;
+
+      const row = document.createElement("div");
+      row.className = "clue-history-row";
+      if (!p.alive) row.classList.add("dead");
+
+      const name = document.createElement("span");
+      name.className = "clue-history-name";
+      name.textContent = p.name + (p.id === Room.playerId ? " (toi)" : "");
+      row.appendChild(name);
+
+      const words = document.createElement("span");
+      words.className = "clue-history-words";
+      for (const clue of mine) {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = clue.text;
+        chip.title = `Manche ${clue.round}`;
+        words.appendChild(chip);
+      }
+      row.appendChild(words);
+
+      el.clueHistory.appendChild(row);
+    }
   }
 
   function renderHistory(state) {

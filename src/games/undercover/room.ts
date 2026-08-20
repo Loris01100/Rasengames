@@ -84,6 +84,7 @@ export class UndercoverRoom {
       // persistés : sans ça, le premier push dans waiting casse la manche.
       this.room.scores ??= {};
       this.room.waiting ??= [];
+      this.room.clueHistory ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -422,6 +423,7 @@ export class UndercoverRoom {
     }
 
     room.clues.push({ playerId: session.playerId, text });
+    room.clueHistory.push({ round: room.round, playerId: session.playerId, text });
     room.currentTurnIndex += 1;
     this.maybeAdvancePhase(room);
 
@@ -590,6 +592,7 @@ export class UndercoverRoom {
     room.turnOrder = [];
     room.currentTurnIndex = 0;
     room.clues = [];
+    room.clueHistory = [];
     room.votes = {};
     room.lastVoteResult = null;
     room.eliminatedHistory = [];
@@ -678,6 +681,8 @@ export class UndercoverRoom {
       turnOrder: room.turnOrder,
       currentTurnPlayerId: room.turnOrder[room.currentTurnIndex] ?? null,
       clues: room.clues,
+      // Le client résout les noms via state.players (les éliminés y restent).
+      clueHistory: room.clueHistory,
       votesCast: Object.keys(room.votes).length,
       votesNeeded: room.playerOrder.filter((id) => room.players[id]?.alive).length,
       myVote: room.votes[forPlayerId] ?? null,

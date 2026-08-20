@@ -19,6 +19,12 @@ export interface Clue {
   text: string;
 }
 
+// `clues` est vidé à chaque nouvelle manche : l'historique, lui, garde tout
+// ce qui a été dit depuis le début de la partie, d'où le numéro de manche.
+export interface HistoryClue extends Clue {
+  round: number;
+}
+
 export interface Elimination {
   playerId: string;
   role: Role;
@@ -50,7 +56,8 @@ export interface RoomState {
   waiting: Player[];
   turnOrder: string[]; // clue order for the current round (alive players only)
   currentTurnIndex: number;
-  clues: Clue[];
+  clues: Clue[]; // manche en cours seulement
+  clueHistory: HistoryClue[]; // toutes les manches de la partie
   votes: Record<string, string>; // voterId -> targetId
   lastVoteResult: VoteResult | null;
   eliminatedHistory: Elimination[];
@@ -76,6 +83,7 @@ export function createEmptyRoom(code: string): RoomState {
     turnOrder: [],
     currentTurnIndex: 0,
     clues: [],
+    clueHistory: [],
     votes: {},
     lastVoteResult: null,
     eliminatedHistory: [],
