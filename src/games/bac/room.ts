@@ -1,6 +1,7 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { pickRandomLetter, buildRoundResult, recomputeScores } from "./logic";
+import { buildRoundResult, recomputeScores } from "./logic";
+import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
 import { CATEGORY_IDS } from "./categories";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
@@ -89,6 +90,7 @@ export class BacRoom {
       // persistés : sans ça, le premier push dans waiting casse la manche.
       this.room.scores ??= {};
       this.room.waiting ??= [];
+      this.room.letters ??= [...ALPHABET];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -313,7 +315,8 @@ export class BacRoom {
     }
 
     room.categories = categories;
-    room.letter = pickRandomLetter();
+    room.letters = parseLetters(msg.letters);
+    room.letter = pickLetter(room.letters);
     room.stoppedBy = null;
     room.endsAt = Date.now() + ROUND_MS;
     room.result = null;

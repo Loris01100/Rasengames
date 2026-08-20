@@ -1,13 +1,6 @@
 import type { RoomState, RoundResult } from "./types";
 import { normalizeWord, sameWord } from "../../lib/words";
 
-const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-export function pickRandomLetter(): string {
-  return LETTERS[Math.floor(Math.random() * LETTERS.length)];
-}
-
-
 // Only used as a soft hint in the review UI — the host is always the one
 // who decides validity, nothing is auto-accepted.
 export function isValidAnswer(answer: string, letter: string): boolean {

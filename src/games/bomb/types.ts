@@ -1,3 +1,5 @@
+import { ALPHABET } from "../../lib/letters";
+
 export type Phase = "lobby" | "play" | "ended";
 
 // "perso": chacun doit dire un personnage. "anime": chacun doit dire un anime.
@@ -35,6 +37,8 @@ export interface RoomState {
   waiting: Player[];
   turnId: string | null;
   letter: string | null;
+  // Lettres autorisées au tirage, choisies par l'hôte au lobby.
+  letters: string[];
   // Ce que chacun a tapé, dans l'ordre — c'est un jeu écrit, donc ça reste
   // affiché à tous plutôt que de disparaître une fois le tour passé.
   answers: WordEntry[];
@@ -55,6 +59,7 @@ export function createEmptyRoom(code: string): RoomState {
     waiting: [],
     turnId: null,
     letter: null,
+    letters: [...ALPHABET],
     answers: [],
     eliminationOrder: [],
     winnerId: null,

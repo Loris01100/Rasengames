@@ -9,12 +9,6 @@ export const MAX_PLAYERS = 10;
 export const BOMB_MIN_MS = 20_000;
 export const BOMB_MAX_MS = 50_000;
 
-const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-export function randomLetter(): string {
-  return LETTERS[Math.floor(Math.random() * LETTERS.length)];
-}
-
 export function randomBombDelay(): number {
   return BOMB_MIN_MS + Math.floor(Math.random() * (BOMB_MAX_MS - BOMB_MIN_MS));
 }

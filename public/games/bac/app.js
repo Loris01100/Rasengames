@@ -19,6 +19,7 @@
   const el = {
 
     categoryCheckboxes: $("category-checkboxes"),
+    letterCheckboxes: $("letter-checkboxes"),
 
     playLetter: $("play-letter"),
     playTimer: $("play-timer"),
@@ -78,6 +79,7 @@
     }
   }
   populateCategoryCheckboxes();
+  const selectedLetters = Room.letterPicker(el.letterCheckboxes);
 
   function render(state) {
     Room.showSwitchGame(state.hostId === Room.playerId);
@@ -307,7 +309,12 @@
         Room.toast("Choisis au moins une catégorie.");
         return null;
       }
-      return { categories };
+      const letters = selectedLetters();
+      if (letters.length === 0) {
+        Room.toast("Laisse au moins une lettre.");
+        return null;
+      }
+      return { categories, letters };
     },
     onState: (s) => { playSounds(s); render(s); },
   });

@@ -13,8 +13,8 @@ const GAMES = ["bac", "bomb", "detective", "hundred", "note", "undercover", "who
 
 // What each game's "start" message must carry beyond its type.
 const START_KEYS = {
-  bac: ["type", "categories"],
-  bomb: ["type", "mode"],
+  bac: ["type", "categories", "letters"],
+  bomb: ["type", "mode", "letters"],
   detective: ["type"],
   hundred: ["type", "mode", "theme"],
   note: ["type", "guesserId"],

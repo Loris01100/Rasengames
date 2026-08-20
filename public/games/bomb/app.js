@@ -3,6 +3,7 @@
 
   const el = {
     modeSelect: $("mode-select"),
+    letterCheckboxes: $("letter-checkboxes"),
 
     playInstructions: $("play-instructions"),
     letterDisplay: $("letter-display"),
@@ -293,13 +294,22 @@
 
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
 
+  const selectedLetters = Room.letterPicker(el.letterCheckboxes);
+
   Suggest.attach(el.wordInput, () => (Room.state?.mode === "anime" ? "anime" : "any"));
 
   Room.init({
     slug: "bomb",
     minPlayers: 2,
     maxPlayers: 10,
-    onStart: () => ({ mode: el.modeSelect.value }),
+    onStart: () => {
+      const letters = selectedLetters();
+      if (letters.length === 0) {
+        Room.toast("Laisse au moins une lettre.");
+        return null;
+      }
+      return { mode: el.modeSelect.value, letters };
+    },
     onState: (s, prev) => {
       playSounds(prev, s);
       render(s);

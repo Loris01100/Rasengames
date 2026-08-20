@@ -7,11 +7,11 @@ import {
   aliveIds,
   connectedAliveIds,
   nextTurn,
-  randomLetter,
   randomBombDelay,
   startsWithLetter,
 } from "./logic";
 import { sameWord } from "../../lib/words";
+import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
 import {
@@ -90,6 +90,7 @@ export class BombRoom {
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
       this.room.mode = VALID_MODES.includes(this.room.mode) ? this.room.mode : "perso";
       this.room.eliminationOrder ??= [];
+      this.room.letters ??= [...ALPHABET];
     }
     return this.room;
   }
@@ -320,8 +321,9 @@ export class BombRoom {
     room.winnerId = null;
 
     const ids = connectedAliveIds(room);
+    room.letters = parseLetters(msg.letters);
     room.turnId = ids[Math.floor(Math.random() * ids.length)] ?? null;
-    room.letter = randomLetter();
+    room.letter = pickLetter(room.letters);
     room.phase = "play";
 
     await this.saveRoom();
@@ -369,7 +371,7 @@ export class BombRoom {
 
   private advanceTurn(room: RoomState) {
     room.turnId = nextTurn(room, room.turnId);
-    room.letter = room.turnId ? randomLetter() : null;
+    room.letter = room.turnId ? pickLetter(room.letters) : null;
   }
 
   private async scheduleBomb(): Promise<void> {
@@ -412,7 +414,7 @@ export class BombRoom {
     // La personne qui vient de se faire éliminer ne peut plus recevoir la
     // bombe : on repart d'après elle pour que le suivant soit forcément en vie.
     room.turnId = nextTurn(room, holder?.id ?? room.turnId);
-    room.letter = room.turnId ? randomLetter() : null;
+    room.letter = room.turnId ? pickLetter(room.letters) : null;
 
     // Plus personne de connecté pour tenir la bombe : la manche s'arrête là.
     // Sinon l'alarme se reprogrammait toutes les 30 s dans le vide, pour

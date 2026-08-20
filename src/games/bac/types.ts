@@ -1,3 +1,5 @@
+import { ALPHABET } from "../../lib/letters";
+
 export type Phase = "lobby" | "play" | "review" | "ended";
 
 export interface Player {
@@ -40,6 +42,8 @@ export interface RoomState {
   waiting: Player[];
   categories: string[]; // selected category ids, kept across rounds
   letter: string | null;
+  // Lettres autorisées au tirage, choisies par l'hôte au lobby.
+  letters: string[];
   stoppedBy: string | null; // playerId who called stop this round, null if the round timed out
   endsAt: number | null; // epoch ms of the automatic end of the round
   result: RoundResult | null;
@@ -56,6 +60,7 @@ export function createEmptyRoom(code: string): RoomState {
     waiting: [],
     categories: [],
     letter: null,
+    letters: [...ALPHABET],
     stoppedBy: null,
     endsAt: null,
     result: null,

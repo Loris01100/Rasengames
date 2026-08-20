@@ -508,7 +508,25 @@ const Room = (() => {
     }
   }
 
-  return Object.assign(api, { init, send, toast, showScreen, playerRow, renderLobby, showSwitchGame });
+  // Grille "lettres autorisées" du lobby (bombe, petit bac) : remplit le
+  // conteneur de 26 cases cochées et rend le lecteur de la sélection.
+  function letterPicker(container) {
+    container.innerHTML = "";
+    for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+      const label = document.createElement("label");
+      label.className = "letter-checkbox";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = letter;
+      input.checked = true;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(letter));
+      container.appendChild(label);
+    }
+    return () => Array.from(container.querySelectorAll("input:checked"), (i) => i.value);
+  }
+
+  return Object.assign(api, { init, send, toast, showScreen, playerRow, renderLobby, showSwitchGame, letterPicker });
 
   function showSwitchGame(visible) {
     el.switchGame.classList.toggle("hidden", !visible);
