@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/words-test.mts && node scripts/smoke-test.js"
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/words-test.mts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/ts-resolve.mjs scripts/logic-test.mts && node scripts/smoke-test.js",
+    "loc": "node scripts/loc.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260811.1",

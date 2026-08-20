@@ -14,7 +14,7 @@ Un seul handler `fetch` pour tout le site, piloté par le tableau `GAMES` (`{ sl
 
 Chaque jeu est autonome et suit la même forme (`undercover/` et `hundred/` comme références) :
 - `types.ts` — la forme du `RoomState` persisté dans le stockage du DO, plus `createEmptyRoom(code)`.
-- `logic.ts` — fonctions pures (attribution des rôles/nombres, conditions de victoire, score), sans dépendance au DO ni aux WebSockets.
+- `logic.ts` — fonctions pures (attribution des rôles/nombres, conditions de victoire, score), sans dépendance au DO ni aux WebSockets. C'est le seul endroit testé unitairement (`scripts/logic-test.mts`) : y mettre toute règle de jeu non triviale plutôt que de l'inliner dans `room.ts`.
 - `room.ts` — la classe Durable Object : un tableau `sessions: {ws, playerId}[]` en mémoire et un `RoomState` en cache (`this.room`), lu/écrit via `loadRoom()`/`saveRoom()`. Tout message qui change l'état finit par `saveRoom()` + `broadcast()`. `broadcast()` envoie à chaque socket une vue *personnalisée* via `buildView(room, playerId)` — c'est là que l'information cachée est filtrée par destinataire avant sérialisation.
 - Les données statiques du jeu (`words.ts`, `themes.ts`, etc.).
 
