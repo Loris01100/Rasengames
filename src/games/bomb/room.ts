@@ -13,6 +13,7 @@ import {
 } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { reassignHost } from "../../lib/host";
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -183,6 +184,7 @@ export class BombRoom {
 
     if (!stillHere) {
       player.connected = false;
+      reassignHost(this.room, player.id);
       // Sans ça, la bombe resterait bloquée dans les mains de quelqu'un qui
       // vient de partir jusqu'à ce qu'elle explose sur lui — on fait passer
       // le tour tout de suite, la mèche continue de courir sans être touchée.
@@ -355,6 +357,7 @@ export class BombRoom {
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
         delete room.players[id];
+        delete room.scores[id];
         room.playerOrder = room.playerOrder.filter((pid) => pid !== id);
       }
     }
@@ -421,12 +424,11 @@ export class BombRoom {
   // Durable Object avait été déchargé entre-temps — c'est ce qui rend la mèche
   // fiable sans qu'aucun client n'ait à la faire tourner lui-même.
   async alarm(): Promise<void> {
-    if (!this.room) {
-      const stored = await this.state.storage.get<RoomState>("room");
-      if (!stored) return;
-      this.room = stored;
-    }
-    const room = this.room;
+    // Par loadRoom() : recharger la visibilité et les champs rétro-compatibles
+    // compte autant ici qu'à l'ouverture d'un WebSocket. Sans ça, un salon
+    // réveillé après éviction du DO repassait en privé (donc disparaissait de
+    // la liste publique) et pouvait planter sur un room.scores absent.
+    const room = await this.loadRoom("");
     if (room.phase !== "play") return;
 
     const holder = room.turnId ? room.players[room.turnId] : null;
@@ -456,13 +458,25 @@ export class BombRoom {
     room.turnId = nextTurn(room, holder?.id ?? room.turnId);
     room.letter = room.turnId ? randomLetter() : null;
 
+    // Plus personne de connecté pour tenir la bombe : la manche s'arrête là.
+    // Sinon l'alarme se reprogrammait toutes les 30 s dans le vide, pour
+    // toujours, sur un salon que plus personne ne regarde.
+    if (!room.turnId) {
+      room.phase = "ended";
+      await this.saveRoom();
+      this.broadcast();
+      return;
+    }
+
     await this.saveRoom();
     await this.scheduleBomb();
     this.broadcast();
   }
 
   private async onRestart(session: Session, room: RoomState) {
-    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    // Depuis n'importe quelle phase sauf le lobby : c'est aussi la sortie de
+    // secours quand une manche reste bloquée (joueur parti sans revenir).
+    if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
       player.lives = 2;

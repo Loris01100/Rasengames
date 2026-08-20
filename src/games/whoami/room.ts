@@ -10,6 +10,7 @@ import {
 } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { reassignHost } from "../../lib/host";
 
 // "character:417" / "anime:20" — the exact AniList entry a player picked from
 // the suggestions. Relayed as-is to every client so they all show the same
@@ -193,9 +194,11 @@ export class WhoamiRoom {
 
     if (!stillHere) {
       player.connected = false;
+      reassignHost(this.room, player.id);
       if (this.room.phase === "play" && this.room.turnId === player.id) {
         this.room.turnId = nextTurn(this.room, player.id);
       }
+      this.maybeAdvancePhase(this.room);
       await this.saveRoom();
       this.broadcast();
     }
@@ -402,6 +405,7 @@ export class WhoamiRoom {
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
         delete room.players[id];
+        delete room.scores[id];
         room.playerOrder = room.playerOrder.filter((pid) => pid !== id);
       }
     }
@@ -438,19 +442,35 @@ export class WhoamiRoom {
     player.submittedRef = parseAnilistRef(msg.anilistRef);
     player.ready = true;
 
-    const ids = connectedIds(room);
-    const roundReady = ids.length >= MIN_PLAYERS && ids.every((id) => room.players[id]?.ready);
-    if (roundReady) {
-      assignWords(room);
-      room.phase = "play";
-      room.turnId = ids[0] ?? null;
-    }
+    this.maybeAdvancePhase(room);
 
     await this.saveRoom();
     this.broadcast();
 
   }
 
+
+  // Les deux bascules "tout le monde a fait sa part". Rejouées à chaque
+  // déconnexion, sinon le départ du dernier joueur attendu fige la table pour
+  // toujours : plus personne ne peut déclencher le message qui les évaluait.
+  private maybeAdvancePhase(room: RoomState) {
+    const ids = connectedIds(room);
+    if (ids.length === 0) return;
+
+    if (room.phase === "submit") {
+      if (ids.length >= MIN_PLAYERS && ids.every((id) => room.players[id]?.ready)) {
+        assignWords(room);
+        room.phase = "play";
+        room.turnId = ids[0] ?? null;
+      }
+      return;
+    }
+
+    if (room.phase === "play" && ids.every((id) => room.players[id]?.found)) {
+      this.awardFound(room);
+      room.phase = "ended";
+    }
+  }
 
   // Turn order for asking a (verbal) yes/no question aloud, one player at a
   // time. The actual question isn't captured by the app — this just tracks
@@ -529,10 +549,7 @@ export class WhoamiRoom {
       // dû parler après passe le sien, pas seulement quand ça tombait déjà
       // sur le tour du trouveur — donc deux pas, pas un.
       room.turnId = nextTurn(room, nextTurn(room, room.turnId));
-      if (connectedIds(room).every((id) => room.players[id]?.found)) {
-        this.awardFound(room);
-        room.phase = "ended";
-      }
+      this.maybeAdvancePhase(room);
     }
 
     await this.saveRoom();
@@ -555,7 +572,9 @@ export class WhoamiRoom {
   }
 
   private async onRestart(session: Session, room: RoomState) {
-    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    // Depuis n'importe quelle phase sauf le lobby : c'est aussi la sortie de
+    // secours quand une manche reste bloquée (joueur parti sans revenir).
+    if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
       player.submittedWord = null;

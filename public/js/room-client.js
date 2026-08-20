@@ -32,6 +32,7 @@ const Room = (() => {
   let reconnectTimer = null;
   let toastTimer = null;
   let wantPublic = false;
+  let reconnectDelay = 2000;
 
   const api = {
     playerId: null,
@@ -104,18 +105,22 @@ const Room = (() => {
     ws.addEventListener("error", () => ws.close());
   }
 
+  // Backoff : un onglet oublié en arrière-plan (ou un salon supprimé) tapait
+  // toutes les 2 s indéfiniment. Remis à zéro dès qu'une connexion aboutit.
   function scheduleReconnect() {
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
       const token = localStorage.getItem(storageKey(api.code, "token"));
       const name = localStorage.getItem(storageKey(api.code, "name"));
       if (api.code && token && name) connect(api.code, name, token);
-    }, 2000);
+    }, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   }
 
   function handleServerMessage(msg) {
     if (msg.type === "joined") {
       api.playerId = msg.playerId;
+      reconnectDelay = 2000;
       const name = el.nameInput.value.trim() || "Joueur";
       localStorage.setItem(storageKey(api.code, "token"), msg.token);
       localStorage.setItem(storageKey(api.code, "name"), name);
@@ -133,6 +138,7 @@ const Room = (() => {
       const previous = api.state;
       api.state = msg.state;
       renderWaitingBadge(msg.state);
+      renderBackToLobby(msg.state);
       // Arrivé en cours de partie : le serveur ne nous envoie rien de la manche
       // en cours (on n'y est pas), donc le jeu n'a rien à rendre.
       if ((msg.state.waiting ?? []).some((w) => w.id === api.playerId)) {
@@ -179,6 +185,14 @@ const Room = (() => {
     }
     showScreen(waitingScreen);
     waitingScreen.classList.remove("hidden");
+  }
+
+  // Sortie de secours de l'hôte, valable pour les sept jeux (tous acceptent
+  // "restart" depuis n'importe quelle phase sauf le lobby) : un joueur parti
+  // en pleine manche sans revenir peut laisser une phase en attente de lui.
+  function renderBackToLobby(state) {
+    const show = state.phase !== "lobby" && state.hostId === api.playerId;
+    el.backToLobbyBtn.classList.toggle("hidden", !show);
   }
 
   // Sinon l'hôte n'a aucune raison de relancer une manche : il ne sait pas
@@ -306,6 +320,15 @@ const Room = (() => {
     el.waitingBadge.className = "badge hidden";
     el.waitingBadge.id = "waiting-badge";
     el.roomBadge.parentNode.appendChild(el.waitingBadge);
+
+    el.backToLobbyBtn = document.createElement("button");
+    el.backToLobbyBtn.className = "btn secondary small hidden";
+    el.backToLobbyBtn.id = "back-to-lobby-btn";
+    el.backToLobbyBtn.textContent = "Revenir au lobby";
+    el.backToLobbyBtn.addEventListener("click", () => {
+      if (confirm("Arrêter la manche en cours et revenir au lobby ?")) send({ type: "restart" });
+    });
+    el.roomBadge.parentNode.appendChild(el.backToLobbyBtn);
 
     el.inviteBtn = document.createElement("button");
     el.inviteBtn.className = "btn secondary small";

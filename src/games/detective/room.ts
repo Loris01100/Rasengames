@@ -3,6 +3,7 @@ import { type RoomState, type Player, createEmptyRoom } from "./types";
 import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn } from "./logic";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { reassignHost } from "../../lib/host";
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -173,9 +174,11 @@ export class DetectiveRoom {
 
     if (!stillHere) {
       player.connected = false;
+      reassignHost(this.room, player.id);
       if (this.room.phase === "play" && this.room.turnId === player.id) {
         this.room.turnId = this.advanceTurn(this.room, player.id);
       }
+      this.maybeAdvancePhase(this.room);
       await this.saveRoom();
       this.broadcast();
     }
@@ -383,11 +386,7 @@ export class DetectiveRoom {
     player.category = text;
     player.ready = true;
 
-    const ids = connectedIds(room);
-    if (ids.length >= MIN_PLAYERS && ids.every((id) => room.players[id]?.ready)) {
-      room.phase = "play";
-      room.turnId = ids[0];
-    }
+    this.maybeAdvancePhase(room);
 
     await this.saveRoom();
     this.broadcast();
@@ -456,22 +455,43 @@ export class DetectiveRoom {
 
     if (kind === "guess" && fits && !this.isSolved(room, player.id)) {
       room.solved.push({ target: player.id, by: from });
-      // Ends only once every connected player's category has been found, not
-      // after some fixed count — nobody's secret is left hanging.
-      if (room.solved.length >= connectedIds(room).length) {
-        // Trouvée en dernier = a tenu le plus longtemps : c'est le gagnant
-        // affiché sur l'écran de fin, il prend le point de la manche.
-        const winner = room.solved[room.solved.length - 1]?.target;
-        if (winner) room.scores[winner] = (room.scores[winner] ?? 0) + 1;
-        room.phase = "ended";
-      }
     }
-    if (room.phase === "play" && room.turnId && this.openTargets(room, room.turnId).length === 0) {
-      room.turnId = this.advanceTurn(room, room.turnId);
-    }
+    this.maybeAdvancePhase(room);
 
     await this.saveRoom();
     this.broadcast();
+  }
+
+  // Les bascules de phase, rejouées aussi à chaque déconnexion : sans ça, le
+  // départ du dernier joueur attendu (catégorie non choisie, ou catégorie
+  // jamais trouvée) laissait la manche figée pour tout le monde.
+  private maybeAdvancePhase(room: RoomState) {
+    const ids = connectedIds(room);
+    if (ids.length === 0) return;
+
+    if (room.phase === "setup") {
+      if (ids.length >= MIN_PLAYERS && ids.every((id) => room.players[id]?.ready)) {
+        room.phase = "play";
+        room.turnId = ids[0];
+      }
+      return;
+    }
+    if (room.phase !== "play") return;
+
+    // Ends only once every connected player's category has been found, not
+    // after some fixed count — nobody's secret is left hanging.
+    if (room.solved.length >= ids.length) {
+      // Trouvée en dernier = a tenu le plus longtemps : c'est le gagnant
+      // affiché sur l'écran de fin, il prend le point de la manche.
+      const winner = room.solved[room.solved.length - 1]?.target;
+      if (winner) room.scores[winner] = (room.scores[winner] ?? 0) + 1;
+      room.phase = "ended";
+      return;
+    }
+
+    if (room.turnId && this.openTargets(room, room.turnId).length === 0) {
+      room.turnId = this.advanceTurn(room, room.turnId);
+    }
   }
 
   private isSolved(room: RoomState, playerId: string): boolean {
@@ -494,7 +514,9 @@ export class DetectiveRoom {
   }
 
   private async onRestart(session: Session, room: RoomState) {
-    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    // Depuis n'importe quelle phase sauf le lobby : c'est aussi la sortie de
+    // secours quand une manche reste bloquée (joueur parti sans revenir).
+    if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
       player.category = null;

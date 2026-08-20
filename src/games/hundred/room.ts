@@ -4,6 +4,7 @@ import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { reassignHost } from "../../lib/host";
 import { sameWord } from "../../lib/words";
 
 // "character:417" / "anime:20" — the exact AniList entry a player picked from
@@ -186,6 +187,10 @@ export class HundredRoom {
 
     if (!stillHere) {
       player.connected = false;
+      reassignHost(this.room, player.id);
+      // Le partant ne proposera jamais sa carte : sans ça la phase "propose"
+      // attendait une proposition qui n'arriverait plus, pour toujours.
+      this.maybeStartArrange(this.room);
       await this.saveRoom();
       this.broadcast();
     }
@@ -358,6 +363,7 @@ export class HundredRoom {
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
         delete room.players[id];
+        delete room.scores[id];
         room.playerOrder = room.playerOrder.filter((pid) => pid !== id);
       }
     }
@@ -412,14 +418,18 @@ export class HundredRoom {
     player.proposal = text;
     player.proposalRef = ref;
 
-    if (allProposed(room)) {
-      const connectedIds = room.playerOrder.filter((id) => room.players[id]?.connected);
-      room.order = shuffle(connectedIds);
-      room.phase = "arrange";
-    }
+    this.maybeStartArrange(room);
 
     await this.saveRoom();
     this.broadcast();
+  }
+
+  // Rejoué aussi à la déconnexion (cf. handleClose) : la bascule ne doit pas
+  // dépendre de l'arrivée d'un message qui ne viendra plus.
+  private maybeStartArrange(room: RoomState) {
+    if (room.phase !== "propose" || !allProposed(room)) return;
+    room.order = shuffle(room.playerOrder.filter((id) => room.players[id]?.connected));
+    room.phase = "arrange";
   }
 
   private async onMove(session: Session, room: RoomState, msg: Record<string, unknown>) {
@@ -472,7 +482,9 @@ export class HundredRoom {
   }
 
   private async onRestart(session: Session, room: RoomState) {
-    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    // Depuis n'importe quelle phase sauf le lobby : c'est aussi la sortie de
+    // secours quand une manche reste bloquée (joueur parti sans revenir).
+    if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
       player.number = null;

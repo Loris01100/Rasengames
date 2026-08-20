@@ -374,7 +374,7 @@ function run(slug) {
       assert.strictEqual(byId("start-btn").disabled, false, `${slug}: start should be enabled with 3 players`);
       assert.ok(!byId("screen-lobby").classList.contains("hidden"), `${slug}: lobby screen hidden`);
 
-      // Score cumulé du salon, rendu par le client partagé pour les six jeux.
+      // Score cumulé du salon, rendu par le client partagé pour les sept jeux.
       const tags = byId("players-list").children[1].children.map((c) => c.textContent);
       assert.ok(tags.includes("3 pts"), `${slug}: score cumulé absent de la ligne joueur (${tags})`);
 
@@ -433,8 +433,8 @@ function run(slug) {
         ).then(resolve);
       };
 
-      // Typeahead: inputs that expect a character name must query /api/suggest
-      // once enough letters are typed, and expose the result as a <datalist>.
+      // Typeahead: inputs that expect a character name must query AniList
+      // (from the browser, cf. anilist.js) once enough letters are typed.
       const typeahead = TYPEAHEAD[slug];
       if (typeahead) {
         const input = byId(typeahead.id);

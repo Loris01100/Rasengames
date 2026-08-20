@@ -4,6 +4,7 @@ import { pickRandomLetter, buildRoundResult, recomputeScores } from "./logic";
 import { CATEGORY_IDS } from "./categories";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { reassignHost } from "../../lib/host";
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -183,6 +184,7 @@ export class BacRoom {
 
     if (!stillHere) {
       player.connected = false;
+      reassignHost(this.room, player.id);
       await this.saveRoom();
       this.broadcast();
     }
@@ -354,6 +356,7 @@ export class BacRoom {
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
         delete room.players[id];
+        delete room.scores[id];
         room.playerOrder = room.playerOrder.filter((pid) => pid !== id);
       }
     }
@@ -455,7 +458,9 @@ export class BacRoom {
   }
 
   private async onRestart(session: Session, room: RoomState) {
-    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    // Depuis n'importe quelle phase sauf le lobby : c'est aussi la sortie de
+    // secours quand une manche reste bloquée (joueur parti sans revenir).
+    if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
       player.answers = {};

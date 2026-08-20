@@ -12,6 +12,7 @@ import { normalizeWord } from "../../lib/words";
 import { CATEGORY_LABELS, type WordCategory } from "./words";
 import { GAME_SLUGS } from "../../lib/gameSlugs";
 import { reportRoom } from "../../lib/registry";
+import { reassignHost } from "../../lib/host";
 
 const VALID_CATEGORIES = new Set(Object.keys(CATEGORY_LABELS));
 const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
@@ -186,6 +187,8 @@ export class UndercoverRoom {
 
     if (!stillHere) {
       player.connected = false;
+      reassignHost(this.room, player.id);
+      this.maybeAdvancePhase(this.room);
       await this.saveRoom();
       this.broadcast();
     }
@@ -370,6 +373,7 @@ export class UndercoverRoom {
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
         delete room.players[id];
+        delete room.scores[id];
         room.playerOrder = room.playerOrder.filter((pid) => pid !== id);
       }
     }
@@ -415,11 +419,7 @@ export class UndercoverRoom {
 
     room.clues.push({ playerId: session.playerId, text });
     room.currentTurnIndex += 1;
-
-    if (room.currentTurnIndex >= room.turnOrder.length) {
-      room.phase = "vote";
-      room.votes = {};
-    }
+    this.maybeAdvancePhase(room);
 
     await this.saveRoom();
     this.broadcast();
@@ -438,15 +438,57 @@ export class UndercoverRoom {
     }
 
     room.votes[session.playerId] = targetId;
-
-    const aliveIds = room.playerOrder.filter((id) => room.players[id]?.alive);
-    const allVoted = aliveIds.every((id) => room.votes[id]);
-    if (allVoted) {
-      this.resolveVote(room);
-    }
+    this.maybeAdvancePhase(room);
 
     await this.saveRoom();
     this.broadcast();
+  }
+
+  // Un joueur parti ne donnera plus d'indice et ne votera jamais : sans ça la
+  // manche restait figée sur lui. Rejoué à chaque indice, chaque vote et
+  // chaque déconnexion — en boucle, parce qu'une phase débloquée peut en
+  // débloquer une autre (dernier vote -> nouveau tour d'indices, dont le
+  // premier joueur est peut-être parti lui aussi).
+  private maybeAdvancePhase(room: RoomState) {
+    for (let guard = room.playerOrder.length * 2 + 2; guard > 0; guard--) {
+      if (!this.advancePhaseOnce(room)) return;
+    }
+  }
+
+  // Un pas, ou false quand il n'y a rien à débloquer.
+  private advancePhaseOnce(room: RoomState): boolean {
+    if (room.phase === "clue") {
+      const currentId = room.turnOrder[room.currentTurnIndex];
+      if (currentId === undefined) {
+        room.phase = "vote";
+        room.votes = {};
+        return true;
+      }
+      if (room.players[currentId]?.connected) return false;
+      room.currentTurnIndex += 1;
+      return true;
+    }
+
+    if (room.phase === "vote") {
+      const voters = room.playerOrder.filter((id) => {
+        const p = room.players[id];
+        return !!p && p.alive && p.connected;
+      });
+      if (voters.length === 0 || !voters.every((id) => room.votes[id])) return false;
+      this.resolveVote(room);
+      return true;
+    }
+
+    // Le Mr White éliminé est parti sans deviner : on tranche comme une
+    // mauvaise réponse plutôt que de laisser la manche en suspens.
+    if (room.phase === "whiteguess") {
+      const guesser = room.pendingGuesserId ? room.players[room.pendingGuesserId] : null;
+      if (!guesser || guesser.connected) return false;
+      this.resolveWhiteGuess(room, "");
+      return true;
+    }
+
+    return false;
   }
 
   private resolveVote(room: RoomState) {
@@ -485,26 +527,32 @@ export class UndercoverRoom {
   private async onWhiteGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "whiteguess" || session.playerId !== room.pendingGuesserId) return;
 
-    const guess = String(msg.word ?? "");
+    this.resolveWhiteGuess(room, String(msg.word ?? ""));
+    this.maybeAdvancePhase(room);
+
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private resolveWhiteGuess(room: RoomState, guess: string) {
     room.pendingGuesserId = null;
 
     if (room.civilianWord && normalizeWord(guess) === normalizeWord(room.civilianWord)) {
       room.winner = "mrwhite";
       room.phase = "ended";
       this.awardWin(room);
-    } else {
-      const winner = checkWinCondition(room);
-      if (winner) {
-        room.winner = winner;
-        room.phase = "ended";
-        this.awardWin(room);
-      } else {
-        startNewRound(room);
-      }
+      return;
     }
 
-    await this.saveRoom();
-    this.broadcast();
+    const winner = checkWinCondition(room);
+    if (winner) {
+      room.winner = winner;
+      room.phase = "ended";
+      this.awardWin(room);
+      return;
+    }
+
+    startNewRound(room);
   }
 
   // Un point à chaque membre du camp gagnant, cumulé sur le salon.
@@ -521,7 +569,9 @@ export class UndercoverRoom {
   }
 
   private async onRestart(session: Session, room: RoomState) {
-    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    // Depuis n'importe quelle phase sauf le lobby : c'est aussi la sortie de
+    // secours quand une manche reste bloquée (joueur parti sans revenir).
+    if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
       player.alive = true;

@@ -39,18 +39,14 @@
     info.appendChild(meta);
     row.appendChild(info);
 
-    if (open) {
-      const join = document.createElement("a");
-      join.className = "btn small";
-      join.href = `/games/${room.slug}/?room=${room.code}`;
-      join.textContent = "Rejoindre";
-      row.appendChild(join);
-    } else {
-      const tag = document.createElement("span");
-      tag.className = "tag";
-      tag.textContent = "En cours";
-      row.appendChild(tag);
-    }
+    // Une partie en cours se rejoint aussi : le serveur met le nouveau venu
+    // dans sa file d'attente et le fait entrer à la fin de la manche (écran
+    // d'attente géré par room-client.js).
+    const join = document.createElement("a");
+    join.className = open ? "btn small" : "btn secondary small";
+    join.href = `/games/${room.slug}/?room=${room.code}`;
+    join.textContent = open ? "Rejoindre" : "Rejoindre (manche suivante)";
+    row.appendChild(join);
 
     return row;
   }
