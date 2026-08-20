@@ -229,6 +229,17 @@
       return;
     }
 
+    // Un mot pris dans la liste de suggestions sort déjà d'AniList : le
+    // revérifier ne ferait que brûler le quota de la table (limite par IP, et
+    // tout le monde joue souvent derrière la même box).
+    const picked = el.wordInput.dataset.anilistRef;
+    if (picked) {
+      Room.send({ type: "submitWord", text });
+      el.wordInput.value = "";
+      delete el.wordInput.dataset.anilistRef;
+      return;
+    }
+
     const kind = Room.state?.mode === "anime" ? "anime" : "any";
     el.wordSubmit.disabled = true;
     const originalLabel = el.wordSubmit.textContent;

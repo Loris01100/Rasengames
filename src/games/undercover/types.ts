@@ -1,4 +1,4 @@
-import type { WordCategory } from "./words";
+import type { WordCategory, PairCategory } from "./words";
 
 export type Role = "civilian" | "undercover" | "mrwhite";
 
@@ -55,6 +55,8 @@ export interface RoomState {
   lastVoteResult: VoteResult | null;
   eliminatedHistory: Elimination[];
   civilianWord: string | null;
+  // Liste d'où sort la paire de la manche (utile même en "random").
+  wordCategory: PairCategory | null;
   undercoverWord: string | null;
   pendingGuesserId: string | null;
   winner: Role | "civilians" | null;
@@ -78,6 +80,7 @@ export function createEmptyRoom(code: string): RoomState {
     lastVoteResult: null,
     eliminatedHistory: [],
     civilianWord: null,
+    wordCategory: null,
     undercoverWord: null,
     pendingGuesserId: null,
     winner: null,

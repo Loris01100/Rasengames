@@ -23,13 +23,24 @@ const Suggest = (() => {
     input.parentNode.classList.add("suggest-anchor"); // positions the menu
     input.parentNode.appendChild(menu);
 
+    // Chaque .card est un contexte d'empilement à elle seule (l'animation
+    // fadeInUp est en fill-mode "both", donc le transform de sa dernière frame
+    // reste appliqué) : le z-index du menu ne peut pas passer devant la carte
+    // suivante, c'est la carte porteuse qu'il faut remonter le temps que le
+    // menu est ouvert.
+    const card = input.closest ? input.closest(".card") : null;
+    function setOpen(open) {
+      menu.classList.toggle("hidden", !open);
+      if (card) card.classList.toggle("suggest-open", open);
+    }
+
     let timer = null;
     let items = [];
     let rowEls = []; // one per item, so the optional header doesn't shift indexes
     let active = -1;
 
     function close() {
-      menu.classList.add("hidden");
+      setOpen(false);
       active = -1;
     }
 
@@ -109,7 +120,7 @@ const Suggest = (() => {
         rowEls.push(row);
       }
       active = -1;
-      menu.classList.remove("hidden");
+      setOpen(true);
     }
 
     input.addEventListener("input", () => {

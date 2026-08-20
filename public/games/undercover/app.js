@@ -150,10 +150,19 @@
     renderEnd(state);
   }
 
-  // The "anime" category hands out show titles; every other category is a
-  // character, a place, an object… for which a character search matches best.
+  // AniList ne connaît que des personnages et des anime. Chercher une image
+  // pour un groupe ("Akatsuki"), un lieu ou une technique tombe forcément sur
+  // un homonyme — un perso nommé Akatsuki plutôt que l'organisation. Pas
+  // d'image vaut mieux qu'une fausse, d'où le null pour ces catégories.
   function wordKind(state) {
-    return state.settings?.category === "anime" ? "anime" : "character";
+    const category = state.wordCategory ?? state.settings?.category;
+    return category === "anime" ? "anime" : category === "character" ? "character" : null;
+  }
+
+  function showWordImage(img, word, state) {
+    const kind = wordKind(state);
+    if (word && kind) Anilist.setImage(img, word, kind);
+    else img.classList.add("hidden");
   }
 
   function renderRoleCard(state) {
@@ -163,11 +172,7 @@
     el.wordDisplay.textContent = wordHidden ? "•••••" : text;
     el.wordDisplay.classList.toggle("hidden-word", wordHidden);
 
-    if (you.word && !wordHidden) {
-      Anilist.setImage(el.wordImage, you.word, wordKind(state));
-    } else {
-      el.wordImage.classList.add("hidden");
-    }
+    showWordImage(el.wordImage, !wordHidden && you.word, state);
 
     el.roleHint.textContent = you.role === "mrwhite"
       ? "Bluffe : tu n'as pas de mot, essaie de deviner celui des civils si tu es démasqué."
@@ -317,7 +322,7 @@
       img.className = "hidden";
       img.alt = "";
       img.referrerPolicy = "no-referrer";
-      Anilist.setImage(img, w.word, wordKind(state));
+      showWordImage(img, w.word, state);
       fig.appendChild(img);
       const caption = document.createElement("figcaption");
       caption.textContent = `${w.label} : ${w.word}`;

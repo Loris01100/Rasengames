@@ -14,6 +14,9 @@
     submitProgress: $("submit-progress"),
     submitCategory: $("submit-category"),
 
+    notesArea: $("notes-area"),
+    notesClear: $("notes-clear"),
+
     guessForm: $("guess-form"),
     guessInput: $("guess-input"),
     guessSubmit: $("guess-submit"),
@@ -214,7 +217,26 @@
     return row;
   }
 
+  // Bloc-notes : ce que les autres répondent à tes questions ne regarde que
+  // toi, donc rien ne passe par le serveur — le texte vit dans le localStorage
+  // du navigateur, par salon, et survit à un refresh en pleine manche.
+  const notesKey = () => `whoami:${Room.code}:notes`;
+  let notesLoaded = false;
+
+  function loadNotes() {
+    if (notesLoaded || !Room.code) return;
+    notesLoaded = true;
+    el.notesArea.value = localStorage.getItem(notesKey()) ?? "";
+  }
+
+  el.notesArea.addEventListener("input", () => localStorage.setItem(notesKey(), el.notesArea.value));
+  el.notesClear.addEventListener("click", () => {
+    el.notesArea.value = "";
+    localStorage.removeItem(notesKey());
+  });
+
   function renderPlay(state) {
+    loadNotes();
 
     const you = state.players.find((p) => p.id === Room.playerId);
     const isHost = state.hostId === Room.playerId;

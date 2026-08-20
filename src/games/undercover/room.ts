@@ -540,6 +540,7 @@ export class UndercoverRoom {
     room.lastVoteResult = null;
     room.eliminatedHistory = [];
     room.civilianWord = null;
+    room.wordCategory = null;
     room.undercoverWord = null;
     room.pendingGuesserId = null;
     room.winner = null;
@@ -636,6 +637,7 @@ export class UndercoverRoom {
       civilianWord: revealAll ? room.civilianWord : undefined,
       undercoverWord: revealAll ? room.undercoverWord : undefined,
       settings: room.settings,
+      wordCategory: room.wordCategory,
     };
   }
 }

@@ -33,6 +33,7 @@ export function assignRoles(room: RoomState): void {
     .filter((p): p is Player => !!p && p.connected !== false);
 
   const pair = pickRandomPair(room.settings.category);
+  room.wordCategory = pair.category;
   const [civilianWord, undercoverWord] = Math.random() < 0.5 ? [pair.a, pair.b] : [pair.b, pair.a];
   room.civilianWord = civilianWord;
   room.undercoverWord = undercoverWord;

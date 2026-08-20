@@ -464,7 +464,19 @@ const CATEGORY_MAP: Record<Exclude<WordCategory, "random">, WordPair[]> = {
   object: OBJECT_PAIRS,
 };
 
-export function pickRandomPair(category: WordCategory): WordPair {
-  const pool = category === "random" ? Object.values(CATEGORY_MAP).flat() : CATEGORY_MAP[category];
+export type PairCategory = Exclude<WordCategory, "random">;
+export interface PickedPair extends WordPair {
+  category: PairCategory;
+}
+
+// La catégorie voyage avec la paire : en "random" personne ne sait de quelle
+// liste le mot sort, et le client en a besoin pour décider s'il peut chercher
+// une image (un groupe ou un lieu n'existe pas sur AniList — voir app.js).
+const ALL_PAIRS: PickedPair[] = (Object.entries(CATEGORY_MAP) as [PairCategory, WordPair[]][]).flatMap(
+  ([category, pairs]) => pairs.map((pair) => ({ ...pair, category }))
+);
+
+export function pickRandomPair(category: WordCategory): PickedPair {
+  const pool = category === "random" ? ALL_PAIRS : ALL_PAIRS.filter((p) => p.category === category);
   return pool[Math.floor(Math.random() * pool.length)];
 }

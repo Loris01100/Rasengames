@@ -201,8 +201,12 @@ const Anilist = (() => {
   // Page-based, like SUGGEST_CHARACTERS/SUGGEST_ANIME above: a no-match search
   // answers with an empty array (200 OK), not the 404 that the singular
   // Character(search:)/Media(search:) fields use.
-  const NAMES_CHARACTER = `query ($search: String) { Page(perPage: 10) { characters(search: $search) { name { full native alternative } } } }`;
-  const NAMES_ANIME = `query ($search: String) { Page(perPage: 10) { media(search: $search, type: ANIME) { title { romaji english native } } } }`;
+  //
+  // Les deux types dans une seule requête (AniList accepte plusieurs champs
+  // racines) : sa limite compte les requêtes, et elle est basse. Une partie
+  // d'Alphabombe à quatre derrière la même box les épuisait en deux minutes,
+  // et une vérification qui n'aboutit pas laisse passer n'importe quel mot.
+  const NAMES_BOTH = `query ($search: String) { chars: Page(perPage: 10) { characters(search: $search) { name { full native alternative } } } animes: Page(perPage: 10) { media(search: $search, type: ANIME) { title { romaji english native } } } }`;
 
   function normalizeForMatch(s) {
     return (s || "")
@@ -234,15 +238,23 @@ const Anilist = (() => {
     return candidates.reduce((max, c) => Math.max(max, matchScore(typed, c)), 0);
   }
 
-  async function candidateNames(search, kind) {
-    const data = await query(kind === "anime" ? NAMES_ANIME : NAMES_CHARACTER, { search });
-    if (data === null) return null; // request failed — distinct from a clean "nothing found"
-    if (kind === "anime") {
-      return (data.Page?.media ?? []).flatMap((m) => [m.title?.romaji, m.title?.english, m.title?.native].filter(Boolean));
-    }
-    return (data.Page?.characters ?? []).flatMap((c) =>
-      [c.name?.full, c.name?.native, ...(c.name?.alternative ?? [])].filter(Boolean)
-    );
+  // { character: [...], anime: [...] }, ou null si la requête n'a pas abouti
+  // (hors ligne, timeout, 429) — un cas que l'appelant doit distinguer d'un
+  // vrai "rien trouvé". Mis en cache sur le mot seul, donc les variantes
+  // strict/non-strict d'un même mot ne coûtent qu'une requête.
+  async function candidateNames(search) {
+    return cached(`names:${search.toLowerCase()}`, async () => {
+      const data = await query(NAMES_BOTH, { search });
+      if (data === null) return null;
+      return {
+        character: (data.chars?.characters ?? []).flatMap((c) =>
+          [c.name?.full, c.name?.native, ...(c.name?.alternative ?? [])].filter(Boolean)
+        ),
+        anime: (data.animes?.media ?? []).flatMap((m) =>
+          [m.title?.romaji, m.title?.english, m.title?.native].filter(Boolean)
+        ),
+      };
+    });
   }
 
   // Used by Alphabombe to reject made-up names, and by 1 à 100 to keep an
@@ -263,14 +275,11 @@ const Anilist = (() => {
     const trimmed = (name || "").trim();
     if (!trimmed) return "notfound";
     return cached(`exists:${kind}:${strict ? "strict" : "any"}:${trimmed.toLowerCase()}`, async () => {
-      const [charCandidates, animeCandidates] = await Promise.all([
-        candidateNames(trimmed, "character"),
-        candidateNames(trimmed, "anime"),
-      ]);
-      if (charCandidates === null || animeCandidates === null) return "unknown";
+      const candidates = await candidateNames(trimmed);
+      if (candidates === null) return "unknown";
 
-      const charScore = bestScore(trimmed, charCandidates);
-      const animeScore = bestScore(trimmed, animeCandidates);
+      const charScore = bestScore(trimmed, candidates.character);
+      const animeScore = bestScore(trimmed, candidates.anime);
       if (!strict) return Math.max(charScore, animeScore) > 0 ? "found" : "notfound";
 
       const ownScore = kind === "anime" ? animeScore : charScore;

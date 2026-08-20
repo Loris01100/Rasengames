@@ -176,6 +176,41 @@ const PHASE_CHECKS = {
     assert.ok(!cells[1].listeners.click?.length, `${slug}: an empty answer must not be validable`);
   },
 
+  // Alphabombe : un mot inconnu d'AniList ne doit pas partir au serveur.
+  async bomb(send, byId, slug, tick, socketSent, fetchCount) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "play", hostId: "p1", mode: "perso", letter: "S",
+        players: [{ id: "p1", name: "Alice", connected: true, lives: 2 }],
+        turnId: "p1", answers: [],
+      },
+    });
+    const flush = () => new Promise((r) => setImmediate(r));
+    const sentWords = () => socketSent().filter((m) => m.type === "submitWord").map((m) => m.text);
+
+    byId("word-input").value = "Sdfsdfsdf";
+    byId("word-submit").dispatch("click");
+    await flush();
+    await flush();
+    assert.deepStrictEqual(sentWords(), [], `${slug}: un mot inconnu d'AniList ne doit pas être envoyé`);
+
+    byId("word-input").value = "Shouyou Hinata";
+    byId("word-submit").dispatch("click");
+    await flush();
+    await flush();
+    assert.deepStrictEqual(sentWords(), ["Shouyou Hinata"], `${slug}: un vrai personnage doit passer`);
+
+    // Un mot pris dans les suggestions est déjà validé : pas de requête de plus.
+    const before = fetchCount();
+    byId("word-input").value = "Shouyou Hinata";
+    byId("word-input").dataset.anilistRef = "character:1";
+    byId("word-submit").dispatch("click");
+    await flush();
+    assert.deepStrictEqual(sentWords(), ["Shouyou Hinata", "Shouyou Hinata"], `${slug}: mot choisi dans la liste`);
+    assert.strictEqual(fetchCount(), before, `${slug}: un mot déjà choisi ne doit pas redemander AniList`);
+  },
+
   // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.
   hundred(send, byId, slug) {
     send({
@@ -391,8 +426,11 @@ function run(slug) {
         const badge = byId("room-badge").parentNode.children.find((c) => c.id === "waiting-badge");
         assert.strictEqual(badge?.textContent, "1 en attente", `${slug}: badge d'attente`);
 
-        if (extra) extra(send, byId, slug, () => intervals.forEach((fn) => fn()));
-        resolve();
+        Promise.resolve(
+          extra
+            ? extra(send, byId, slug, () => intervals.forEach((fn) => fn()), () => socket.sent, () => fetches.length)
+            : null
+        ).then(resolve);
       };
 
       // Typeahead: inputs that expect a character name must query /api/suggest

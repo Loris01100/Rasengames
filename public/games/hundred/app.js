@@ -381,6 +381,15 @@
     const mode = Room.state?.mode === "anime" ? "anime" : "perso";
     const kind = mode === "anime" ? "anime" : "character";
 
+    // Déjà validé par AniList au moment du clic dans la liste : inutile de
+    // redemander (le quota est par IP, et la table est souvent derrière une
+    // seule box). On ne saute que si le type correspond au mode en cours.
+    const picked = el.proposalInput.dataset.anilistRef ?? "";
+    if (picked.startsWith(kind === "anime" ? "anime:" : "character:")) {
+      Room.send({ type: "propose", text, anilistRef: picked });
+      return;
+    }
+
     el.proposalSubmit.disabled = true;
     const originalLabel = el.proposalSubmit.textContent;
     el.proposalSubmit.textContent = "Vérification...";

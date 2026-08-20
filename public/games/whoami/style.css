@@ -144,3 +144,13 @@
   padding: 2px 8px;
   border-radius: 999px;
 }
+
+/* Bloc-notes de la phase de jeu (local au navigateur, voir app.js). */
+.notes-area {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  margin-bottom: 10px;
+  font-family: inherit;
+  line-height: 1.5;
+}
