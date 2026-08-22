@@ -16,8 +16,11 @@ export const WORDS: string[] = [
   "Tanjiro", "Nezuko", "Zenitsu", "Inosuke", "Muzan", "Rengoku", "Shinobu", "Kanao", "Giyu",
   "Akaza", "Doma",
   "Deku", "Bakugo", "Todoroki", "Endeavor", "Shigaraki", "Ochaco", "Iida", "Kirishima",
-  "Tokoyami", "Aizawa",
+  "Tokoyami", "Aizawa", "All Might", "Momo", "Tsuyu", "Mineta", "Jiro", "Mirio", "Dabi",
+  "Toga", "Twice", "Mirko", "Hawks", "Nezu", "Stain", "Eri", "Nomu", "All For One",
   "Gon", "Killua", "Kurapika", "Hisoka", "Chrollo", "Meruem", "Leorio", "Netero",
+  "Feitan", "Machi", "Shalnark", "Phinks", "Nobunaga", "Illumi", "Silva", "Zeno",
+  "Biscuit", "Knuckle", "Morel", "Kite", "Komugi", "Palm",
   "Eren", "Mikasa", "Levi", "Armin", "Erwin", "Annie", "Historia", "Hange", "Zeke", "Reiner", "Ymir",
   "Saitama", "Genos", "Garou", "Mob", "Reigen", "Bang", "Tatsumaki", "King", "Fubuki",
   "Light", "Misa", "Near", "Lelouch", "Suzaku", "Nunnally",
@@ -27,18 +30,23 @@ export const WORDS: string[] = [
   "Frieren", "Fern", "Himmel", "Stark",
   "Isagi", "Rin", "Bachira", "Hinata", "Kageyama",
   "Subaru", "Rimuru", "Anya", "Loid", "Yor", "Bond", "Draken", "Mikey",
+  "Asta", "Yuno", "Noelle", "Yami", "Klaus", "Finral", "Charmy", "Magna", "Luck",
+  "Gauche", "Vanessa", "Nacht", "Julius", "Licht", "Zenon", "Mereoleona", "Fuegoleon",
+  "Nozel", "Charlotte", "Zora", "Leopold", "Mimosa",
 
   // Lieux
   "Konoha", "Suna", "Wano", "Alabasta", "Marineford", "Namek", "Shibuya", "Karakura",
   "Hueco Mundo", "Zou", "Aincrad", "Egghead", "Kamino", "Yorknew", "Shiganshina", "Trost",
   "Whole Cake", "Sabaody", "Impel Down", "Skypiea", "Water Seven",
   "Dressrosa", "Punk Hazard", "Enies Lobby", "Amazon Lily", "Onigashima", "Grand Line",
+  "Clover Kingdom", "Spade Kingdom", "Heart Kingdom", "Diamond Kingdom",
 
   // Objets et pouvoirs
   "Rasengan", "Chidori", "Sharingan", "Byakugan", "Rinnegan", "Zanpakuto", "Bankai",
   "Kamehameha", "Genkidama", "Domain Expansion", "Nichirin", "Kunai", "Shuriken",
   "One For All", "Death Note", "Poneglyph", "Fruit du Démon", "Dragon Balls", "Haki",
   "Susanoo", "Amaterasu", "Izanagi", "Gear Fifth", "Haoshoku Haki", "Poké Ball",
+  "Plus Ultra", "Quirk", "Grimoire", "Anti Magic", "Nen", "Godspeed", "Bungee Gum", "Jajanken",
 
   // Groupes et concepts
   "Akatsuki", "Marine", "Espada", "Piliers", "Hokage", "Titan", "Shinobi", "Samurai",
@@ -46,6 +54,8 @@ export const WORDS: string[] = [
   "Mangaka", "Otaku", "Shonen", "Kawaii", "Chibi", "Bushido", "Ronin", "Sensei",
   "Bento", "Katana", "Cosplay", "Hollow", "Quincy", "Shinigami", "Arrancar",
   "Jinchuriki", "Kekkei Genkai", "Seiyuu", "Doujin", "Shoujo",
+  "Magic Knights", "Black Bulls", "Phantom Troupe", "Zoldyck Family", "Hunter Exam",
+  "Greed Island", "Chimera Ant",
 
   // Séries et studios
   "Ghibli", "Totoro", "Pikachu", "Digimon", "Doraemon", "Conan", "Evangelion", "Gundam",
