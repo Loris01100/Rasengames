@@ -15,6 +15,8 @@ import * as note from "../src/games/note/logic.ts";
 import { createEmptyRoom as emptyNote } from "../src/games/note/types.ts";
 import * as detective from "../src/games/detective/logic.ts";
 import { createEmptyRoom as emptyDetective } from "../src/games/detective/types.ts";
+import * as codenames from "../src/games/codenames/logic.ts";
+import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost } from "../src/lib/host.ts";
 
@@ -275,6 +277,201 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   room.players.c.connected = false;
   reassignHost(room, "c");
   assert.equal(room.hostId, "c", "plus personne en ligne : l'hôte reste, il reviendra avec son token");
+}
+
+// --- Codenames : clés, assignation, résolution des pioches -------------------
+
+{
+  const key = codenames.generateDuetKey(25);
+  assert.equal(key.filter((c) => c === "agent").length, 9);
+  assert.equal(key.filter((c) => c === "assassin").length, 3);
+  assert.equal(key.filter((c) => c === "bystander").length, 13);
+}
+
+{
+  // Union des deux clés : une case comptée une seule fois même si "agent" des deux côtés.
+  const keyA = ["agent", "agent", "bystander", "assassin"] as const;
+  const keyB = ["agent", "bystander", "agent", "agent"] as const;
+  assert.equal(codenames.countDuetAgents([...keyA], [...keyB]), 4, "4 cases agent sur au moins une clé, sur 4");
+}
+
+{
+  const keyA = codenames.generateTeamKey("A", 25);
+  assert.equal(keyA.filter((c) => c === "agentA").length, 9, "l'équipe qui commence a 9 mots");
+  assert.equal(keyA.filter((c) => c === "agentB").length, 8);
+  assert.equal(keyA.filter((c) => c === "neutral").length, 7);
+  assert.equal(keyA.filter((c) => c === "assassin").length, 1);
+
+  const keyB = codenames.generateTeamKey("B", 25);
+  assert.equal(keyB.filter((c) => c === "agentB").length, 9, "l'équipe B commence ici : 9 mots pour elle");
+}
+
+{
+  const assignment = codenames.assignTeamsAndRoles(["a", "b", "c", "d"]);
+  const ids = Object.keys(assignment);
+  assert.deepEqual(ids.sort(), ["a", "b", "c", "d"]);
+  const spymasters = ids.filter((id) => assignment[id].role === "spymaster");
+  const operatives = ids.filter((id) => assignment[id].role === "operative");
+  assert.equal(spymasters.length, 2, "un chiffreur par équipe");
+  assert.equal(operatives.length, 2, "un agent de terrain par équipe");
+  assert.deepEqual(spymasters.map((id) => assignment[id].team).sort(), ["A", "B"]);
+  assert.deepEqual(operatives.map((id) => assignment[id].team).sort(), ["A", "B"]);
+}
+
+{
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, { a: { seat: "A" }, b: { seat: "B" } });
+  room.mode = "duet";
+  room.keyA = ["agent", "bystander", "assassin", "agent"];
+  room.keyB = ["bystander", "agent", "bystander", "assassin"];
+  room.duetAgentsTotal = codenames.countDuetAgents(room.keyA, room.keyB);
+  assert.equal(room.duetAgentsTotal, 3, "agent sur au moins une des deux clés : indices 0, 1 et 3");
+  room.duetErrors = 5;
+  room.duetErrorsMax = 5;
+  room.revealed = [false, false, false, false];
+  room.revealedColor = [null, null, null, null];
+  room.duetTurnSeat = "A";
+  room.phase = "playing";
+
+  // A donne un indice, B devine juste (agent) : on continue à deviner.
+  room.currentClue = { by: "a", word: "x", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 0); // keyA[0] = agent
+  assert.equal(room.revealedColor[0], "agent");
+  assert.equal(room.duetTurnSeat, "A", "bonne pioche : on reste sur le même tour");
+  assert.ok(room.currentClue, "l'indice reste actif tant qu'il reste des pioches");
+  assert.equal(room.currentClue.guessesLeft, 1);
+
+  // Deuxième et dernière pioche autorisée : le tour passe ensuite.
+  codenames.resolveDuetGuess(room, 3); // keyA[3] = agent
+  assert.equal(room.duetTurnSeat, "B", "plus de pioches : le tour passe");
+  assert.equal(room.currentClue, null);
+  assert.equal(room.phase, "playing", "pas encore gagné : il manque l'agent de la clé B");
+
+  // B donne un indice à son tour, A devine mal (bystander pour la clé B active) : erreur.
+  room.currentClue = { by: "b", word: "y", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 2); // keyB[2] = bystander
+  assert.equal(room.duetErrors, 4, "une erreur en moins");
+  assert.equal(room.duetTurnSeat, "A", "le tour repasse à A");
+
+  // Nouvel indice de B, A devine le dernier agent (celui de la clé B) : victoire.
+  room.duetTurnSeat = "B";
+  room.currentClue = { by: "b", word: "z", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 1); // keyB[1] = agent
+  assert.equal(room.phase, "ended");
+  assert.equal(room.winner, "coop-win");
+}
+
+{
+  // Toucher l'assassin met fin à la partie sur-le-champ.
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, { a: { seat: "A" }, b: { seat: "B" } });
+  room.mode = "duet";
+  room.keyA = ["assassin"];
+  room.keyB = ["bystander"];
+  room.duetAgentsTotal = 0;
+  room.duetErrors = 9;
+  room.revealed = [false];
+  room.revealedColor = [null];
+  room.duetTurnSeat = "A";
+  room.phase = "playing";
+  room.currentClue = { by: "a", word: "x", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 0);
+  assert.equal(room.phase, "ended");
+  assert.equal(room.winner, "coop-lose-assassin");
+}
+
+{
+  // La réserve d'erreurs à 0 fait perdre, sans avoir touché l'assassin.
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, { a: { seat: "A" }, b: { seat: "B" } });
+  room.mode = "duet";
+  room.keyA = ["bystander"];
+  room.keyB = ["agent"];
+  room.duetAgentsTotal = 1;
+  room.duetErrors = 1;
+  room.revealed = [false];
+  room.revealedColor = [null];
+  room.duetTurnSeat = "A";
+  room.phase = "playing";
+  room.currentClue = { by: "a", word: "x", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 0);
+  assert.equal(room.duetErrors, 0);
+  assert.equal(room.phase, "ended");
+  assert.equal(room.winner, "coop-lose-errors");
+}
+
+{
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, {
+    a: { team: "A", role: "spymaster" },
+    b: { team: "A", role: "operative" },
+    c: { team: "B", role: "spymaster" },
+    d: { team: "B", role: "operative" },
+  });
+  room.mode = "teams";
+  room.teamColors = ["agentA", "agentB", "neutral", "assassin", "agentA"];
+  room.remainingA = 2; // indices 0 et 4
+  room.remainingB = 1; // indice 1
+  room.revealed = [false, false, false, false, false];
+  room.revealedColor = [null, null, null, null, null];
+  room.turnTeam = "A";
+  room.phase = "playing";
+
+  // Équipe A touche sa propre couleur : on continue, pas de changement de tour.
+  room.currentClue = { by: "a", word: "x", number: 2, guessesLeft: 3 };
+  codenames.resolveTeamGuess(room, 0);
+  assert.equal(room.remainingA, 1);
+  assert.equal(room.turnTeam, "A", "bonne pioche : l'équipe garde la main");
+  assert.ok(room.currentClue);
+
+  // Équipe A touche un mot neutre : le tour passe.
+  codenames.resolveTeamGuess(room, 2);
+  assert.equal(room.turnTeam, "B", "mot neutre : le tour passe");
+  assert.equal(room.currentClue, null);
+
+  // Équipe B (au tour) touche par erreur la couleur de l'équipe A : ça l'aide, et le tour passe.
+  room.currentClue = { by: "c", word: "y", number: 1, guessesLeft: 2 };
+  codenames.resolveTeamGuess(room, 4); // dernier agentA
+  assert.equal(room.remainingA, 0, "l'équipe A a été involontairement aidée");
+  assert.equal(room.phase, "ended", "elle vient de trouver son dernier mot");
+  assert.equal(room.winner, "A", "même si ce n'est pas elle qui devinait");
+}
+
+{
+  // L'assassin fait perdre l'équipe qui devine, gagner l'autre.
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, {
+    a: { team: "A", role: "spymaster" },
+    b: { team: "A", role: "operative" },
+    c: { team: "B", role: "spymaster" },
+    d: { team: "B", role: "operative" },
+  });
+  room.mode = "teams";
+  room.teamColors = ["assassin"];
+  room.remainingA = 5;
+  room.remainingB = 5;
+  room.revealed = [false];
+  room.revealedColor = [null];
+  room.turnTeam = "A";
+  room.phase = "playing";
+  room.currentClue = { by: "a", word: "x", number: 1, guessesLeft: 2 };
+  codenames.resolveTeamGuess(room, 0);
+  assert.equal(room.phase, "ended");
+  assert.equal(room.winner, "B", "l'équipe B gagne, ce n'est pas elle qui a touché l'assassin");
+}
+
+{
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, { a: { role: "spymaster", team: "A" }, b: { role: "operative", team: "A" } });
+  room.mode = "teams";
+  room.teamColors = ["agentA", "assassin"];
+  room.revealed = [false, false];
+  room.revealedColor = [null, null];
+  assert.equal(codenames.cellColorFor(room, 0, "a"), "agentA", "le chiffreur voit sa grille en permanence");
+  assert.equal(codenames.cellColorFor(room, 0, "b"), null, "l'agent de terrain ne voit rien avant révélation");
+  room.revealed[1] = true;
+  room.revealedColor[1] = "assassin";
+  assert.equal(codenames.cellColorFor(room, 1, "b"), "assassin", "une case révélée devient publique");
 }
 
 console.log("logic: ok");

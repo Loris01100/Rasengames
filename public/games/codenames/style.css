@@ -1,0 +1,167 @@
+.status-line {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.counters-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.counters-line .chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.clue-display {
+  margin-bottom: 12px;
+}
+
+.clue-text {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+#clue-form .inline-form {
+  flex-wrap: wrap;
+}
+
+#clue-number {
+  width: 70px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+#pass-btn {
+  margin-top: 4px;
+}
+
+#turn-hint {
+  margin-top: 8px;
+}
+
+.key-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.board-grid.small-grid {
+  margin-bottom: 16px;
+}
+
+.tile {
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
+  transition: transform 0.1s ease, border-color 0.15s ease;
+}
+
+.tile:not(:disabled) {
+  cursor: pointer;
+}
+
+.tile:not(:disabled):hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.tile:disabled {
+  cursor: default;
+}
+
+/* Case pas encore révélée mais dont tu connais la couleur (ta propre clé, ou
+   toute la grille pour un chiffreur) : un liseré teinté plutôt qu'un fond
+   plein, pour ne jamais se confondre avec une case déjà retournée aux yeux de
+   toute la table. */
+.tile.key-hint {
+  border-width: 2px;
+}
+
+.tile.revealed {
+  color: white;
+  font-weight: 800;
+}
+
+.tile.c-agent.key-hint,
+.tile.c-agentA.key-hint {
+  border-color: var(--success);
+  background: rgba(62, 207, 142, 0.12);
+}
+
+.tile.c-agent.revealed,
+.tile.c-agentA.revealed {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.tile.c-agentB.key-hint {
+  border-color: #4fa3ff;
+  background: rgba(79, 163, 255, 0.12);
+}
+
+.tile.c-agentB.revealed {
+  background: #4fa3ff;
+  border-color: #4fa3ff;
+}
+
+.tile.c-bystander.key-hint,
+.tile.c-neutral.key-hint {
+  border-color: var(--warning);
+  background: rgba(230, 184, 60, 0.12);
+}
+
+.tile.c-bystander.revealed,
+.tile.c-neutral.revealed {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #1a1500;
+}
+
+.tile.c-assassin.key-hint {
+  border-color: var(--danger);
+  background: rgba(239, 91, 91, 0.12);
+}
+
+.tile.c-assassin.revealed {
+  background: #0c0d10;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.tile.recap {
+  cursor: default;
+}
+
+@media (max-width: 520px) {
+  .tile {
+    font-size: 0.68rem;
+  }
+}

@@ -7,5 +7,6 @@ export interface Env {
   DETECTIVE_ROOM: DurableObjectNamespace;
   NOTE_ROOM: DurableObjectNamespace;
   BOMB_ROOM: DurableObjectNamespace;
+  CODENAMES_ROOM: DurableObjectNamespace;
   LOBBY_REGISTRY: DurableObjectNamespace;
 }

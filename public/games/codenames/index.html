@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="1v1 coopératif ou 2v2 par équipes : donnez des indices pour faire deviner vos mots sans toucher l'assassin." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Codenames Anime · RasenGames" />
+  <meta property="og:description" content="1v1 coopératif ou 2v2 par équipes : donnez des indices pour faire deviner vos mots sans toucher l'assassin." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/codenames/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>Codenames Anime · RasenGames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/codenames/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+    <div id="switch-game" class="switch-game hidden">
+      <select id="switch-game-select"></select>
+      <button id="switch-game-btn" class="btn secondary small">Changer de jeu</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Join / create screen -->
+    <section id="screen-join" class="card narrow">
+      <h1>Codenames Anime</h1>
+      <p class="muted">2 joueurs : coopérez pour retrouver vos mots à deux. 4 joueurs : 2v2, chiffreur + agent de terrain par équipe, contre l'autre duo.</p>
+
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
+
+      <div class="join-actions">
+        <label class="visibility-toggle">
+          <input id="create-public" type="checkbox" />
+          <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
+        </label>
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lobby -->
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Partage ce code avec tes amis pour qu'ils rejoignent. Exactement 2 ou 4 joueurs pour démarrer.</p>
+
+      <div id="players-list" class="players-list"></div>
+
+      <div id="host-settings" class="hidden">
+        <label class="visibility-toggle">
+          <input id="public-toggle" type="checkbox" />
+          <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
+        </label>
+        <p class="muted small">2 joueurs → mode coopératif (Duet). 4 joueurs → mode équipes (2v2). Les rôles sont tirés au sort au lancement.</p>
+        <button id="start-btn" class="btn">Démarrer la partie</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
+    </section>
+
+    <!-- In-game -->
+    <section id="screen-game" class="hidden">
+      <div class="card">
+        <div id="status-line" class="status-line"></div>
+        <div id="counters-line" class="counters-line"></div>
+      </div>
+
+      <div class="card" id="clue-panel">
+        <div id="clue-display" class="clue-display hidden">
+          <span class="muted small">Indice</span>
+          <div id="clue-text" class="clue-text"></div>
+        </div>
+
+        <div id="clue-form" class="hidden">
+          <p class="muted small">Donne un indice d'un seul mot et un nombre : combien de tes mots il concerne.</p>
+          <div class="inline-form">
+            <input id="clue-input" type="text" maxlength="30" placeholder="Ton indice (un mot)" autocomplete="off" />
+            <input id="clue-number" type="number" min="1" max="9" value="1" />
+            <button id="clue-submit" class="btn">Envoyer</button>
+          </div>
+        </div>
+
+        <button id="pass-btn" class="btn secondary small hidden">Passer</button>
+        <p id="turn-hint" class="muted small"></p>
+      </div>
+
+      <div class="card">
+        <div class="key-toggle-row">
+          <button id="key-toggle" class="btn secondary small hidden">Cacher ma clé</button>
+        </div>
+        <div id="board-grid" class="board-grid"></div>
+      </div>
+
+      <div class="card hidden" id="end-panel">
+        <h2 id="end-title"></h2>
+        <p id="end-summary" class="muted"></p>
+        <div id="end-recap"></div>
+        <button id="restart-btn" class="btn hidden">Rejouer</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
+  <template id="rules">
+    <h2>Codenames Anime</h2>
+    <p class="muted">Donnez des indices à un seul mot pour faire deviner votre grille, sans jamais toucher l'assassin.</p>
+    <ol class="rules-steps">
+      <li><strong>À 2 (coopératif) :</strong> chacun voit en secret sa propre carte-clé sur les 25 mots du plateau. À tour de rôle, tu donnes un indice (un mot + un nombre) basé sur ta clé, et l'autre devine tes mots. Une case n'est révélée qu'une fois : mal deviner peut la perdre pour de bon.</li>
+      <li>Bonne pioche : on continue à deviner. Mauvaise pioche (un mot neutre) : le tour passe et la réserve d'erreurs commune baisse d'un cran. Assassin : défaite immédiate.</li>
+      <li>Vous gagnez ensemble en trouvant tous les mots "agent" des deux clés avant d'épuiser la réserve d'erreurs.</li>
+      <li><strong>À 4 (2v2) :</strong> deux équipes de 2, un chiffreur (voit toute la grille) et un agent de terrain (devine) par équipe, tirés au sort. Toucher un mot adverse aide l'équipe adverse malgré vous ; toucher l'assassin fait perdre votre équipe sur-le-champ.</li>
+      <li>La première équipe à avoir fait deviner tous ses mots gagne.</li>
+    </ol>
+  </template>
+  <script src="/js/sound.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/room-client.js"></script>
+  <script src="/games/codenames/app.js"></script>
+</body>
+</html>

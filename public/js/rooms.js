@@ -12,6 +12,7 @@
     detective: { label: "Détective Anime", icon: "🔍" },
     note: { label: "Le jeu de la note", icon: "🔟" },
     bomb: { label: "Alphabombe", icon: "💣" },
+    codenames: { label: "Codenames Anime", icon: "🗂️" },
   };
 
   function roomRow(room) {

@@ -24,6 +24,7 @@ const Room = (() => {
     { slug: "detective", label: "Détective Anime" },
     { slug: "note", label: "Le jeu de la note" },
     { slug: "bomb", label: "Alphabombe" },
+    { slug: "codenames", label: "Codenames Anime" },
   ];
 
   const el = {};
