@@ -39,6 +39,10 @@ export interface RoomState {
   waiting: Player[];
 
   words: string[]; // 25 mots, ordre du plateau
+  // Indice de contexte par mot (sa série d'origine, ou une catégorie
+  // générique) — public, affiché sous chaque tuile pour aider qui ne
+  // reconnaît pas un mot à construire son indice. Même index que `words`.
+  wordHints: string[];
 
   // ---- mode duet ----
   // Chaque siège voit sa propre clé en permanence (pas seulement à son tour) :
@@ -77,6 +81,7 @@ export function createEmptyRoom(code: string): RoomState {
     scores: {},
     waiting: [],
     words: [],
+    wordHints: [],
     keyA: null,
     keyB: null,
     duetTurnSeat: null,

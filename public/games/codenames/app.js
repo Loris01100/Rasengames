@@ -204,8 +204,18 @@
       if (cell.color && !cell.revealed) tile.classList.add("key-hint");
 
       const label = document.createElement("span");
+      label.className = "tile-word";
       label.textContent = cell.word;
       tile.appendChild(label);
+
+      // Un mot d'anime pas forcément connu de tous : sa série d'origine en
+      // petit aide à construire un indice même sans le reconnaître.
+      if (cell.hint) {
+        const hint = document.createElement("span");
+        hint.className = "tile-hint";
+        hint.textContent = cell.hint;
+        tile.appendChild(hint);
+      }
 
       if (myGuessTurn && !cell.revealed) {
         tile.addEventListener("click", () => Room.send({ type: "guess", index }));

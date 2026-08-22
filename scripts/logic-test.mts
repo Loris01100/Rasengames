@@ -282,6 +282,15 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
 // --- Codenames : clés, assignation, résolution des pioches -------------------
 
 {
+  // Chaque mot du plateau porte un indice de contexte (sa série d'origine) :
+  // 25 mots uniques, chacun avec un indice non vide.
+  const board = codenames.pickBoard();
+  assert.equal(board.length, 25);
+  assert.equal(new Set(board.map((e) => e.word)).size, 25, "pas de mot en double sur un plateau");
+  assert.ok(board.every((e) => e.hint && e.hint.trim().length > 0), "chaque mot a un indice de contexte");
+}
+
+{
   const key = codenames.generateDuetKey(25);
   assert.equal(key.filter((c) => c === "agent").length, 9);
   assert.equal(key.filter((c) => c === "assassin").length, 3);

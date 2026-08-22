@@ -86,6 +86,7 @@ export class CodenamesRoom {
       // Salons persistés avant ces champs : relus tels quels plutôt que de casser.
       this.room.scores ??= {};
       this.room.waiting ??= [];
+      this.room.wordHints ??= [];
       this.visibility = (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
     return this.room;
@@ -285,7 +286,9 @@ export class CodenamesRoom {
       return;
     }
 
-    room.words = pickBoard();
+    const board = pickBoard();
+    room.words = board.map((entry) => entry.word);
+    room.wordHints = board.map((entry) => entry.hint);
     room.revealed = new Array(BOARD_SIZE).fill(false);
     room.revealedColor = new Array(BOARD_SIZE).fill(null);
     room.currentClue = null;
@@ -483,6 +486,7 @@ export class CodenamesRoom {
     room.mode = null;
     room.phase = "lobby";
     room.words = [];
+    room.wordHints = [];
     room.keyA = null;
     room.keyB = null;
     room.duetTurnSeat = null;
@@ -526,6 +530,7 @@ export class CodenamesRoom {
 
     const board = room.words.map((word, i) => ({
       word,
+      hint: room.wordHints[i] ?? "",
       revealed: room.revealed[i] ?? false,
       color: ended && room.mode === "teams" ? room.teamColors![i] : cellColorFor(room, i, forPlayerId),
     }));

@@ -1,5 +1,5 @@
 import type { RoomState, DuetColor, TeamColor, Seat, Team, Role } from "./types";
-import { WORDS } from "./words";
+import { WORDS, type WordEntry } from "./words";
 
 export function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -17,7 +17,7 @@ export const DUET_MAX_ERRORS = 9;
 export const TEAM_START_COUNT = 9;
 export const TEAM_SECOND_COUNT = 8;
 
-export function pickBoard(pool: string[] = WORDS, size = BOARD_SIZE): string[] {
+export function pickBoard(pool: WordEntry[] = WORDS, size = BOARD_SIZE): WordEntry[] {
   return shuffle(pool).slice(0, size);
 }
 
