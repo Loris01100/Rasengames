@@ -1,13 +1,91 @@
+/* Cette page vise à tenir sur un seul écran sans défiler : moins de marge
+   basse que le gabarit partagé, cartes resserrées, plateau et indices côte à
+   côte plutôt qu'empilés. */
+.container {
+  padding-bottom: 24px;
+}
+
+#screen-game {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#screen-game .card {
+  padding: 16px 18px;
+}
+
 .status-line {
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+/* Qui joue avec qui : une ligne de puces sous le statut, toujours visible
+   (y compris à la fin de la manche) pour qu'on n'ait jamais à le deviner. */
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.roster-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.roster-chip.you {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.2);
+}
+
+.roster-chip.seat-A,
+.roster-chip.team-A {
+  background: rgba(62, 207, 142, 0.14);
+  border-color: rgba(62, 207, 142, 0.4);
+  color: var(--success);
+}
+
+.roster-chip.seat-B,
+.roster-chip.team-B {
+  background: rgba(79, 163, 255, 0.14);
+  border-color: rgba(79, 163, 255, 0.4);
+  color: #4fa3ff;
+}
+
+.roster-chip.you.seat-A,
+.roster-chip.you.team-A,
+.roster-chip.you.seat-B,
+.roster-chip.you.team-B {
+  color: var(--text);
+}
+
+/* Ton propre coéquipier (même équipe, mode teams ; l'autre siège, mode duet) :
+   même famille de couleur que toi, distingué du camp adverse par un contour
+   plein plutôt qu'à demi-teinte. */
+.roster-chip.mate {
+  border-style: solid;
+  font-weight: 700;
+}
+
+.roster-chip .roster-crown {
+  margin-left: 2px;
 }
 
 .counters-line {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .counters-line .chip {
@@ -16,6 +94,21 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   font-size: 0.85rem;
+}
+
+/* Plateau et panneau d'indice côte à côte sur un écran large : c'est ce qui
+   évite le défilement vertical une fois les cartes empilées. */
+.game-live {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .game-live {
+    grid-template-columns: 1fr;
+  }
 }
 
 .clue-display {
@@ -54,26 +147,49 @@
 .key-toggle-row {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .board-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
+/* Récap de fin de manche : la grille complète (ou les deux clés, en duet) ne
+   sert plus qu'à relire la partie, pas à jouer — en tuiles compactes, elle
+   tient sur l'écran au lieu de forcer un long défilement. */
 .board-grid.small-grid {
-  margin-bottom: 16px;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.board-grid.small-grid .tile {
+  aspect-ratio: 5 / 2.2;
+  font-size: 0.6rem;
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.end-recap-duet {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .end-recap-duet {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tile {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 5 / 4;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   padding: 6px;
   display: flex;
@@ -158,6 +274,41 @@
 
 .tile.recap {
   cursor: default;
+}
+
+/* Écran de fin : qui a gagné doit sauter aux yeux avant tout le reste. */
+.end-banner {
+  text-align: center;
+  padding: 12px 16px 14px;
+  margin: -16px -18px 12px;
+  border-radius: 14px 14px 0 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.end-banner.win {
+  background: rgba(62, 207, 142, 0.14);
+  border-bottom-color: rgba(62, 207, 142, 0.4);
+}
+
+.end-banner.lose {
+  background: rgba(239, 91, 91, 0.14);
+  border-bottom-color: rgba(239, 91, 91, 0.4);
+}
+
+.end-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+#end-title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+}
+
+#end-summary {
+  margin: 0;
 }
 
 @media (max-width: 520px) {

@@ -78,40 +78,46 @@
 
     <!-- In-game -->
     <section id="screen-game" class="hidden">
-      <div class="card">
+      <div class="card" id="status-card">
         <div id="status-line" class="status-line"></div>
+        <div id="roster" class="roster"></div>
         <div id="counters-line" class="counters-line"></div>
       </div>
 
-      <div class="card" id="clue-panel">
-        <div id="clue-display" class="clue-display hidden">
-          <span class="muted small">Indice</span>
-          <div id="clue-text" class="clue-text"></div>
-        </div>
-
-        <div id="clue-form" class="hidden">
-          <p class="muted small">Donne un indice d'un seul mot et un nombre : combien de tes mots il concerne.</p>
-          <div class="inline-form">
-            <input id="clue-input" type="text" maxlength="30" placeholder="Ton indice (un mot)" autocomplete="off" />
-            <input id="clue-number" type="number" min="1" max="9" value="1" />
-            <button id="clue-submit" class="btn">Envoyer</button>
+      <div id="game-live" class="game-live">
+        <div class="card" id="clue-panel">
+          <div id="clue-display" class="clue-display hidden">
+            <span class="muted small">Indice</span>
+            <div id="clue-text" class="clue-text"></div>
           </div>
+
+          <div id="clue-form" class="hidden">
+            <p class="muted small">Donne un indice d'un seul mot et un nombre : combien de tes mots il concerne.</p>
+            <div class="inline-form">
+              <input id="clue-input" type="text" maxlength="30" placeholder="Ton indice (un mot)" autocomplete="off" />
+              <input id="clue-number" type="number" min="1" max="9" value="1" />
+              <button id="clue-submit" class="btn">Envoyer</button>
+            </div>
+          </div>
+
+          <button id="pass-btn" class="btn secondary small hidden">Passer</button>
+          <p id="turn-hint" class="muted small"></p>
         </div>
 
-        <button id="pass-btn" class="btn secondary small hidden">Passer</button>
-        <p id="turn-hint" class="muted small"></p>
-      </div>
-
-      <div class="card">
-        <div class="key-toggle-row">
-          <button id="key-toggle" class="btn secondary small hidden">Cacher ma clé</button>
+        <div class="card" id="board-card">
+          <div class="key-toggle-row">
+            <button id="key-toggle" class="btn secondary small hidden">Cacher ma clé</button>
+          </div>
+          <div id="board-grid" class="board-grid"></div>
         </div>
-        <div id="board-grid" class="board-grid"></div>
       </div>
 
       <div class="card hidden" id="end-panel">
-        <h2 id="end-title"></h2>
-        <p id="end-summary" class="muted"></p>
+        <div id="end-banner" class="end-banner">
+          <div id="end-icon" class="end-icon"></div>
+          <h2 id="end-title"></h2>
+          <p id="end-summary" class="muted"></p>
+        </div>
         <div id="end-recap"></div>
         <button id="restart-btn" class="btn hidden">Rejouer</button>
         <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>

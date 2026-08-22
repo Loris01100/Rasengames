@@ -3,7 +3,9 @@
 
   const el = {
     statusLine: $("status-line"),
+    roster: $("roster"),
     countersLine: $("counters-line"),
+    gameLive: $("game-live"),
     clueDisplay: $("clue-display"),
     clueText: $("clue-text"),
     clueForm: $("clue-form"),
@@ -15,6 +17,8 @@
     keyToggle: $("key-toggle"),
     boardGrid: $("board-grid"),
     endPanel: $("end-panel"),
+    endBanner: $("end-banner"),
+    endIcon: $("end-icon"),
     endTitle: $("end-title"),
     endSummary: $("end-summary"),
     endRecap: $("end-recap"),
@@ -72,7 +76,10 @@
     }
 
     Room.showScreen("screen-game");
+    const ended = state.phase === "ended";
+    el.gameLive.classList.toggle("hidden", ended);
     renderStatus(state);
+    renderRoster(state);
     renderClue(state);
     renderBoard(state);
     renderEnd(state);
@@ -86,22 +93,69 @@
   }
 
   function renderStatus(state) {
+    const ended = state.phase === "ended";
     el.countersLine.innerHTML = "";
     if (state.mode === "duet") {
-      const giver = state.players.find((p) => p.seat === state.duetTurnSeat);
-      el.statusLine.textContent = state.currentClue
-        ? `${nameOf(state, giver?.id)} a donné un indice, à l'autre de deviner.`
-        : `Au tour de ${nameOf(state, giver?.id)} de donner un indice.`;
+      if (ended) {
+        el.statusLine.textContent = "Partie terminée.";
+      } else {
+        const giver = state.players.find((p) => p.seat === state.duetTurnSeat);
+        el.statusLine.textContent = state.currentClue
+          ? `${nameOf(state, giver?.id)} a donné un indice, à l'autre de deviner.`
+          : `Au tour de ${nameOf(state, giver?.id)} de donner un indice.`;
+      }
       el.countersLine.appendChild(counterChip(`❤️ ${state.duetErrors}/${state.duetErrorsMax} erreurs restantes`));
       el.countersLine.appendChild(counterChip(`🎯 ${state.duetAgentsFound}/${state.duetAgentsTotal} agents trouvés`));
     } else if (state.mode === "teams") {
-      const spymaster = state.players.find((p) => p.team === state.turnTeam && p.role === "spymaster");
-      const teamLabel = state.turnTeam === "A" ? "Équipe A" : "Équipe B";
-      el.statusLine.textContent = state.currentClue
-        ? `${teamLabel} devine (indice de ${nameOf(state, spymaster?.id)}).`
-        : `${teamLabel} au tour : ${nameOf(state, spymaster?.id)} donne un indice.`;
+      if (ended) {
+        el.statusLine.textContent = "Partie terminée.";
+      } else {
+        const spymaster = state.players.find((p) => p.team === state.turnTeam && p.role === "spymaster");
+        const teamLabel = state.turnTeam === "A" ? "Équipe A" : "Équipe B";
+        el.statusLine.textContent = state.currentClue
+          ? `${teamLabel} devine (indice de ${nameOf(state, spymaster?.id)}).`
+          : `${teamLabel} au tour : ${nameOf(state, spymaster?.id)} donne un indice.`;
+      }
       el.countersLine.appendChild(counterChip(`🟢 Équipe A : ${state.remainingA} restants`));
       el.countersLine.appendChild(counterChip(`🔵 Équipe B : ${state.remainingB} restants`));
+    }
+  }
+
+  function crown() {
+    const span = document.createElement("span");
+    span.className = "roster-crown";
+    span.textContent = "🏆";
+    return span;
+  }
+
+  // Qui joue avec qui, toujours visible (y compris à la fin) : la question
+  // qu'on se pose le plus souvent en pleine manche.
+  function renderRoster(state) {
+    el.roster.innerHTML = "";
+    const ended = state.phase === "ended";
+    const you = state.you;
+
+    if (state.mode === "duet") {
+      for (const p of state.players) {
+        const isYou = p.id === Room.playerId;
+        const chip = document.createElement("span");
+        chip.className = `roster-chip seat-${p.seat ?? ""}${isYou ? " you" : " mate"}`;
+        chip.textContent = `${p.name}${isYou ? " (toi)" : " 🤝"} · Siège ${p.seat ?? "?"}`;
+        if (ended && isWin(state)) chip.appendChild(crown());
+        el.roster.appendChild(chip);
+      }
+    } else if (state.mode === "teams") {
+      for (const p of state.players) {
+        const isYou = p.id === Room.playerId;
+        const isMate = !!you && !!p.team && p.team === you.team && !isYou;
+        const chip = document.createElement("span");
+        chip.className = `roster-chip team-${p.team ?? ""}${isYou ? " you" : ""}${isMate ? " mate" : ""}`;
+        const roleLabel = p.role === "spymaster" ? "Chiffreur" : p.role === "operative" ? "Agent" : "";
+        const teamLabel = p.team ? `Équipe ${p.team}` : "";
+        chip.textContent = `${p.name}${isYou ? " (toi)" : isMate ? " 🤝" : ""} · ${[teamLabel, roleLabel].filter(Boolean).join(" ")}`;
+        if (ended && state.winner === p.team) chip.appendChild(crown());
+        el.roster.appendChild(chip);
+      }
     }
   }
 
@@ -177,10 +231,25 @@
     return grid;
   }
 
+  function buildRecapColumn(label, words, colors) {
+    const wrap = document.createElement("div");
+    const head = document.createElement("p");
+    head.className = "muted small";
+    head.textContent = label;
+    wrap.appendChild(head);
+    wrap.appendChild(buildRecapGrid(words, colors));
+    return wrap;
+  }
+
   const DUET_TITLES = {
-    "coop-win": "Victoire coopérative ! 🎉",
-    "coop-lose-errors": "Défaite : plus d'erreurs possibles 😞",
-    "coop-lose-assassin": "Défaite : l'assassin a été touché 💀",
+    "coop-win": "Victoire coopérative !",
+    "coop-lose-errors": "Défaite : plus d'erreurs possibles",
+    "coop-lose-assassin": "Défaite : l'assassin a été touché",
+  };
+  const DUET_ICONS = {
+    "coop-win": "🎉",
+    "coop-lose-errors": "😞",
+    "coop-lose-assassin": "💀",
   };
 
   function renderEnd(state) {
@@ -188,32 +257,30 @@
     el.endPanel.classList.toggle("hidden", !active);
     if (!active) return;
 
+    const won = isWin(state);
+    el.endBanner.classList.remove("win", "lose");
+    el.endBanner.classList.add(won ? "win" : "lose");
+
     if (state.mode === "duet") {
+      el.endIcon.textContent = DUET_ICONS[state.winner] || "🏁";
       el.endTitle.textContent = DUET_TITLES[state.winner] || "Partie terminée";
       el.endSummary.textContent = `${state.duetAgentsFound}/${state.duetAgentsTotal} agents trouvés.`;
     } else {
-      const won = isWin(state);
+      el.endIcon.textContent = won ? "🏆" : "😞";
       el.endTitle.textContent = state.winner
-        ? `${won ? "Vous avez gagné" : "L'équipe adverse a gagné"} — Équipe ${state.winner} 🏆`
+        ? `${won ? "Vous avez gagné" : "Vous avez perdu"} — Équipe ${state.winner} gagne`
         : "Partie terminée";
       el.endSummary.textContent = `Équipe A : ${state.remainingA} restants · Équipe B : ${state.remainingB} restants.`;
     }
 
     el.endRecap.innerHTML = "";
+    el.endRecap.classList.toggle("end-recap-duet", state.mode === "duet");
     const words = (state.board ?? []).map((c) => c.word);
     if (state.mode === "teams") {
       el.endRecap.appendChild(buildRecapGrid(words, (state.board ?? []).map((c) => c.color)));
     } else if (state.mode === "duet") {
-      const headA = document.createElement("p");
-      headA.className = "muted small";
-      headA.textContent = "Clé A";
-      const headB = document.createElement("p");
-      headB.className = "muted small";
-      headB.textContent = "Clé B";
-      el.endRecap.appendChild(headA);
-      el.endRecap.appendChild(buildRecapGrid(words, state.endKeyA ?? []));
-      el.endRecap.appendChild(headB);
-      el.endRecap.appendChild(buildRecapGrid(words, state.endKeyB ?? []));
+      el.endRecap.appendChild(buildRecapColumn("Clé A", words, state.endKeyA ?? []));
+      el.endRecap.appendChild(buildRecapColumn("Clé B", words, state.endKeyB ?? []));
     }
 
     const isHost = state.hostId === Room.playerId;
