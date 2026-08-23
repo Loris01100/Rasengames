@@ -33,6 +33,7 @@
     wordFilterCheckAll: $("word-filter-check-all"),
     wordFilterUncheckAll: $("word-filter-uncheck-all"),
     wordFilterList: $("word-filter-list"),
+    wordFilterEmpty: $("word-filter-empty"),
     wordFilterCancel: $("word-filter-cancel"),
     wordFilterSave: $("word-filter-save"),
   };
@@ -327,12 +328,14 @@
       catalogPromise = fetch("/api/codenames/words")
         .then((res) => res.json())
         .then((data) => {
-          catalog = data;
+          catalog = Array.isArray(data) && data.length ? data : null;
           return catalog;
         })
         .catch(() => {
+          // On laisse `catalog` à null : s'ouvrir sur une liste vide sans
+          // rien dire ressemble à un bug, le bouton préfère prévenir.
           catalogPromise = null;
-          return [];
+          return null;
         });
     }
     return catalogPromise;
@@ -358,13 +361,17 @@
   let excludedSet = new Set();
   let wordFilterRows = [];
 
+  // "Demon" doit trouver "Démon" : sans ça un accent oublié vide la liste,
+  // ce qui se lit comme un filtre cassé.
+  const fold = (text) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
   function buildWordFilterRows() {
     el.wordFilterList.innerHTML = "";
     wordFilterRows = [];
     for (const entry of catalog) {
       const row = document.createElement("label");
       row.className = "word-filter-row";
-      row.dataset.search = `${entry.word} ${entry.hint}`.toLowerCase();
+      row.dataset.search = fold(`${entry.word} ${entry.hint}`);
 
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
@@ -385,6 +392,9 @@
       el.wordFilterList.appendChild(row);
       wordFilterRows.push({ row, checkbox, word: entry.word });
     }
+    // Remis après le vidage de la liste : c'est lui qui s'affiche quand le
+    // filtre ne laisse rien passer.
+    el.wordFilterList.appendChild(el.wordFilterEmpty);
   }
 
   function onWordCheckboxChange(word, checkbox) {
@@ -406,10 +416,14 @@
     const active = catalog.length - excludedSet.size;
     const visible = wordFilterRows.filter((r) => !r.row.hidden).length;
     el.wordFilterCount.textContent = `${active}/${catalog.length} mots actifs · ${visible} affichés`;
+    // Une liste vide qui ne dit pas pourquoi passe pour un bug.
+    const q = el.wordFilterSearch.value.trim();
+    el.wordFilterEmpty.textContent = q ? `Aucun mot ne correspond à « ${q} ».` : "Aucun mot à afficher.";
+    el.wordFilterEmpty.classList.toggle("hidden", visible > 0);
   }
 
   function filterWordFilterRows() {
-    const q = el.wordFilterSearch.value.trim().toLowerCase();
+    const q = fold(el.wordFilterSearch.value.trim());
     for (const { row } of wordFilterRows) {
       row.hidden = q.length > 0 && !row.dataset.search.includes(q);
     }
@@ -417,12 +431,18 @@
   }
 
   el.wordFilterOpen.addEventListener("click", async () => {
-    await ensureCatalog();
+    // Deux clics pendant le chargement du catalogue lanceraient deux
+    // `showModal()`, et le second lève une InvalidStateError.
+    if (el.wordFilterDialog.open) return;
+    if (!(await ensureCatalog())) {
+      Room.toast("Liste des mots indisponible — vérifie ta connexion et réessaie.");
+      return;
+    }
     excludedSet = new Set(Room.state?.excludedWords ?? []);
     el.wordFilterSearch.value = "";
     buildWordFilterRows();
     filterWordFilterRows();
-    el.wordFilterDialog.showModal();
+    if (!el.wordFilterDialog.open) el.wordFilterDialog.showModal();
   });
 
   el.wordFilterSearch.addEventListener("input", filterWordFilterRows);

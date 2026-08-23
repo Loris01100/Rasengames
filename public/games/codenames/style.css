@@ -70,6 +70,19 @@
   font-size: 0.9rem;
 }
 
+/* Sans ça le filtre ne cache rien : la règle du navigateur pour [hidden]
+   (display: none) perd contre le display: flex ci-dessus, qui vient de la
+   feuille de la page. Le compteur baissait, la liste ne bougeait pas. */
+.word-filter-row[hidden] {
+  display: none;
+}
+
+.word-filter-empty {
+  margin: 0;
+  padding: 12px 8px;
+  text-align: center;
+}
+
 .word-filter-row:hover {
   background: #262a35;
 }
