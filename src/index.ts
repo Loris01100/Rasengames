@@ -7,6 +7,7 @@ import { DetectiveRoom } from "./games/detective/room";
 import { NoteRoom } from "./games/note/room";
 import { BombRoom } from "./games/bomb/room";
 import { CodenamesRoom } from "./games/codenames/room";
+import { WORDS as CODENAMES_WORDS } from "./games/codenames/words";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
 
@@ -44,6 +45,12 @@ export default {
 
     if (url.pathname === "/api/rooms") {
       return listRooms(env);
+    }
+
+    // Catalogue complet (mot + série d'origine) pour le filtre de mots du
+    // lobby Codenames — statique, pas besoin de passer par un Durable Object.
+    if (url.pathname === "/api/codenames/words") {
+      return Response.json(CODENAMES_WORDS);
     }
 
     const createMatch = url.pathname.match(/^\/api\/([a-z]+)\/create$/);

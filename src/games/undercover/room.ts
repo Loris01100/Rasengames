@@ -538,8 +538,10 @@ export class UndercoverRoom {
     room.lastVoteResult = null;
     room.eliminatedHistory = [];
     room.civilianWord = null;
+    room.civilianWordHint = null;
     room.wordCategory = null;
     room.undercoverWord = null;
+    room.undercoverWordHint = null;
     room.pendingGuesserId = null;
     room.winner = null;
 
@@ -572,6 +574,7 @@ export class UndercoverRoom {
         // Le mot de chacun, en clair, une fois la manche finie — "résumé
         // des mots" : plus besoin de recouper rôle + les deux mots globaux.
         word: revealAll ? p.word : undefined,
+        wordHint: revealAll ? p.wordHint : undefined,
       }));
 
     const you = room.players[forPlayerId] ?? null;
@@ -585,7 +588,7 @@ export class UndercoverRoom {
       round: room.round,
       hostId: room.hostId,
       players,
-      you: you && { id: you.id, role: ownRole(you), word: you.word, alive: you.alive },
+      you: you && { id: you.id, role: ownRole(you), word: you.word, wordHint: you.wordHint, alive: you.alive },
       turnOrder: room.turnOrder,
       currentTurnPlayerId: room.turnOrder[room.currentTurnIndex] ?? null,
       clues: room.clues,
@@ -603,6 +606,8 @@ export class UndercoverRoom {
       winner: room.winner,
       civilianWord: revealAll ? room.civilianWord : undefined,
       undercoverWord: revealAll ? room.undercoverWord : undefined,
+      civilianWordHint: revealAll ? room.civilianWordHint : undefined,
+      undercoverWordHint: revealAll ? room.undercoverWordHint : undefined,
       settings: room.settings,
       wordCategory: room.wordCategory,
     };

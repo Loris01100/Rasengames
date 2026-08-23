@@ -55,6 +55,12 @@
   margin: 10px 0 4px;
 }
 
+/* Indice de contexte (série ou catégorie) sous le mot — utile surtout pour
+   ne pas rester bloqué sur un mot qu'on ne connaît pas. */
+.word-hint {
+  margin: -2px 0 8px;
+}
+
 .end-words-images {
   display: flex;
   gap: 16px;

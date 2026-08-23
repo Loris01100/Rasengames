@@ -34,9 +34,14 @@ export function assignRoles(room: RoomState): void {
 
   const pair = pickRandomPair(room.settings.category);
   room.wordCategory = pair.category;
-  const [civilianWord, undercoverWord] = Math.random() < 0.5 ? [pair.a, pair.b] : [pair.b, pair.a];
+  const [civilianWord, undercoverWord, civilianWordHint, undercoverWordHint] =
+    Math.random() < 0.5
+      ? [pair.a, pair.b, pair.hintA, pair.hintB]
+      : [pair.b, pair.a, pair.hintB, pair.hintA];
   room.civilianWord = civilianWord;
   room.undercoverWord = undercoverWord;
+  room.civilianWordHint = civilianWordHint;
+  room.undercoverWordHint = undercoverWordHint;
 
   const shuffled = shuffle(alivePlayers);
   const { undercoverCount, mrWhiteCount } = room.settings;
@@ -46,12 +51,15 @@ export function assignRoles(room: RoomState): void {
     if (index < undercoverCount) {
       player.role = "undercover";
       player.word = undercoverWord;
+      player.wordHint = undercoverWordHint;
     } else if (index < undercoverCount + mrWhiteCount) {
       player.role = "mrwhite";
       player.word = undefined;
+      player.wordHint = undefined;
     } else {
       player.role = "civilian";
       player.word = civilianWord;
+      player.wordHint = civilianWordHint;
     }
   });
 }

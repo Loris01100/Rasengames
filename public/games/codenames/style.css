@@ -15,6 +15,89 @@
   padding: 16px 18px;
 }
 
+/* Lobby : bouton "Gérer les mots" et son décompte, juste au-dessus de Démarrer. */
+.word-filter-row-lobby {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.word-filter-dialog {
+  width: min(560px, calc(100% - 2rem));
+  max-height: min(640px, calc(100% - 4rem));
+  display: flex;
+  flex-direction: column;
+}
+
+.word-filter-dialog input[type="text"] {
+  margin: 4px 0 10px;
+}
+
+.word-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.word-filter-toolbar-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Liste défilante à l'intérieur de la boîte de dialogue seulement : ça ne
+   contredit pas l'objectif "pas de défilement" de l'écran de jeu lui-même,
+   un catalogue de 380+ mots ne peut pas tenir autrement. */
+.word-filter-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 200px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  background: var(--surface-2);
+}
+
+.word-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.word-filter-row:hover {
+  background: #262a35;
+}
+
+.word-filter-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.word-filter-row .word-filter-word {
+  flex: 1;
+}
+
+.word-filter-row .word-filter-hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.word-filter-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .status-line {
   font-size: 1.05rem;
   font-weight: 700;

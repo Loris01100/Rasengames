@@ -24,11 +24,26 @@
     endRecap: $("end-recap"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
+
+    wordFilterOpen: $("word-filter-open"),
+    wordFilterSummary: $("word-filter-summary"),
+    wordFilterDialog: $("word-filter-dialog"),
+    wordFilterSearch: $("word-filter-search"),
+    wordFilterCount: $("word-filter-count"),
+    wordFilterCheckAll: $("word-filter-check-all"),
+    wordFilterUncheckAll: $("word-filter-uncheck-all"),
+    wordFilterList: $("word-filter-list"),
+    wordFilterCancel: $("word-filter-cancel"),
+    wordFilterSave: $("word-filter-save"),
   };
 
   // N'affecte que les cases pas encore révélées : celles-ci restent la seule
   // info vraiment privée (les cases révélées sont publiques pour tout le monde).
   let keyHidden = false;
+
+  // Doit rester égal à BOARD_SIZE côté serveur (src/games/codenames/logic.ts) :
+  // en dessous, un plateau de 25 mots ne peut plus se former.
+  const MIN_ACTIVE_WORDS = 25;
 
   function nameOf(state, id) {
     return state.players.find((p) => p.id === id)?.name ?? "?";
@@ -72,6 +87,7 @@
     if (state.phase === "lobby") {
       Room.showScreen("screen-lobby");
       Room.renderLobby(state);
+      renderWordFilterSummary(state);
       return;
     }
 
@@ -297,6 +313,155 @@
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
   }
+
+  // ---- filtre de mots (lobby, hôte) ----
+
+  // Catalogue complet {word, hint} servi par le Worker (src/games/codenames/words.ts),
+  // récupéré une seule fois et mis en cache — c'est la seule donnée que ce jeu
+  // va chercher hors du flux WebSocket habituel.
+  let catalog = null;
+  let catalogPromise = null;
+  function ensureCatalog() {
+    if (catalog) return Promise.resolve(catalog);
+    if (!catalogPromise) {
+      catalogPromise = fetch("/api/codenames/words")
+        .then((res) => res.json())
+        .then((data) => {
+          catalog = data;
+          return catalog;
+        })
+        .catch(() => {
+          catalogPromise = null;
+          return [];
+        });
+    }
+    return catalogPromise;
+  }
+  ensureCatalog().then(() => {
+    if (Room.state && Room.state.phase === "lobby") renderWordFilterSummary(Room.state);
+  });
+
+  function renderWordFilterSummary(state) {
+    if (!catalog) {
+      el.wordFilterSummary.textContent = "";
+      return;
+    }
+    const total = catalog.length;
+    const active = total - (state.excludedWords ?? []).length;
+    el.wordFilterSummary.textContent = `${active}/${total} mots actifs`;
+  }
+
+  // Set d'exclusion édité localement pendant que la boîte de dialogue est
+  // ouverte ; envoyé au serveur seulement sur "Enregistrer" (sinon 380+
+  // messages en rafale à chaque case cochée, pour rien tant que ce n'est pas
+  // confirmé).
+  let excludedSet = new Set();
+  let wordFilterRows = [];
+
+  function buildWordFilterRows() {
+    el.wordFilterList.innerHTML = "";
+    wordFilterRows = [];
+    for (const entry of catalog) {
+      const row = document.createElement("label");
+      row.className = "word-filter-row";
+      row.dataset.search = `${entry.word} ${entry.hint}`.toLowerCase();
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !excludedSet.has(entry.word);
+      checkbox.addEventListener("change", () => onWordCheckboxChange(entry.word, checkbox));
+      row.appendChild(checkbox);
+
+      const word = document.createElement("span");
+      word.className = "word-filter-word";
+      word.textContent = entry.word;
+      row.appendChild(word);
+
+      const hint = document.createElement("span");
+      hint.className = "word-filter-hint";
+      hint.textContent = entry.hint;
+      row.appendChild(hint);
+
+      el.wordFilterList.appendChild(row);
+      wordFilterRows.push({ row, checkbox, word: entry.word });
+    }
+  }
+
+  function onWordCheckboxChange(word, checkbox) {
+    if (checkbox.checked) {
+      excludedSet.delete(word);
+    } else {
+      const wouldRemain = catalog.length - excludedSet.size - 1;
+      if (wouldRemain < MIN_ACTIVE_WORDS) {
+        checkbox.checked = true;
+        Room.toast(`Il faut garder au moins ${MIN_ACTIVE_WORDS} mots actifs.`);
+        return;
+      }
+      excludedSet.add(word);
+    }
+    updateWordFilterCount();
+  }
+
+  function updateWordFilterCount() {
+    const active = catalog.length - excludedSet.size;
+    const visible = wordFilterRows.filter((r) => !r.row.hidden).length;
+    el.wordFilterCount.textContent = `${active}/${catalog.length} mots actifs · ${visible} affichés`;
+  }
+
+  function filterWordFilterRows() {
+    const q = el.wordFilterSearch.value.trim().toLowerCase();
+    for (const { row } of wordFilterRows) {
+      row.hidden = q.length > 0 && !row.dataset.search.includes(q);
+    }
+    updateWordFilterCount();
+  }
+
+  el.wordFilterOpen.addEventListener("click", async () => {
+    await ensureCatalog();
+    excludedSet = new Set(Room.state?.excludedWords ?? []);
+    el.wordFilterSearch.value = "";
+    buildWordFilterRows();
+    filterWordFilterRows();
+    el.wordFilterDialog.showModal();
+  });
+
+  el.wordFilterSearch.addEventListener("input", filterWordFilterRows);
+
+  el.wordFilterCheckAll.addEventListener("click", () => {
+    for (const { row, checkbox, word } of wordFilterRows) {
+      if (row.hidden || checkbox.checked) continue;
+      checkbox.checked = true;
+      excludedSet.delete(word);
+    }
+    updateWordFilterCount();
+  });
+
+  el.wordFilterUncheckAll.addEventListener("click", () => {
+    let blocked = false;
+    for (const { row, checkbox, word } of wordFilterRows) {
+      if (row.hidden || !checkbox.checked) continue;
+      const wouldRemain = catalog.length - excludedSet.size - 1;
+      if (wouldRemain < MIN_ACTIVE_WORDS) {
+        blocked = true;
+        break;
+      }
+      checkbox.checked = false;
+      excludedSet.add(word);
+    }
+    if (blocked) Room.toast(`Il faut garder au moins ${MIN_ACTIVE_WORDS} mots actifs : certains mots affichés restent cochés.`);
+    updateWordFilterCount();
+  });
+
+  el.wordFilterCancel.addEventListener("click", () => el.wordFilterDialog.close());
+  // Un clic dans le fond compte comme "Annuler", comme le <dialog> des règles.
+  el.wordFilterDialog.addEventListener("click", (e) => {
+    if (e.target === el.wordFilterDialog) el.wordFilterDialog.close();
+  });
+
+  el.wordFilterSave.addEventListener("click", () => {
+    Room.send({ type: "setWordFilter", excluded: [...excludedSet] });
+    el.wordFilterDialog.close();
+  });
 
   // ---- events ----
 

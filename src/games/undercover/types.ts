@@ -12,6 +12,9 @@ export interface Player {
   alive: boolean;
   role?: Role;
   word?: string; // undefined for Mr White
+  // Indice de contexte du mot reçu (sa série, ou une catégorie générique) —
+  // voyage avec `word` puisque chacun ne voit jamais l'autre côté de la paire.
+  wordHint?: string;
 }
 
 export interface Clue {
@@ -62,9 +65,11 @@ export interface RoomState {
   lastVoteResult: VoteResult | null;
   eliminatedHistory: Elimination[];
   civilianWord: string | null;
+  civilianWordHint: string | null;
   // Liste d'où sort la paire de la manche (utile même en "random").
   wordCategory: PairCategory | null;
   undercoverWord: string | null;
+  undercoverWordHint: string | null;
   pendingGuesserId: string | null;
   winner: Role | "civilians" | null;
   settings: Settings;
@@ -88,8 +93,10 @@ export function createEmptyRoom(code: string): RoomState {
     lastVoteResult: null,
     eliminatedHistory: [],
     civilianWord: null,
+    civilianWordHint: null,
     wordCategory: null,
     undercoverWord: null,
+    undercoverWordHint: null,
     pendingGuesserId: null,
     winner: null,
     settings: { undercoverCount: 1, mrWhiteCount: 0, category: "random" },

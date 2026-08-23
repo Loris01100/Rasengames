@@ -18,6 +18,7 @@ import {
   passDuetTurn,
   passTeamTurn,
 } from "./logic";
+import { WORDS } from "./words";
 import { normalizeWord } from "../../lib/words";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost } from "../../lib/host";
@@ -87,6 +88,7 @@ export class CodenamesRoom {
       this.room.scores ??= {};
       this.room.waiting ??= [];
       this.room.wordHints ??= [];
+      this.room.excludedWords ??= [];
       this.visibility = (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
     return this.room;
@@ -168,6 +170,9 @@ export class CodenamesRoom {
         break;
       case "start":
         await this.onStart(session, room);
+        break;
+      case "setWordFilter":
+        await this.onSetWordFilter(session, room, msg);
         break;
       case "clue":
         await this.onClue(session, room, msg);
@@ -286,7 +291,17 @@ export class CodenamesRoom {
       return;
     }
 
-    const board = pickBoard();
+    const excluded = new Set(room.excludedWords);
+    const pool = WORDS.filter((entry) => !excluded.has(entry.word));
+    if (pool.length < BOARD_SIZE) {
+      sendError(
+        session.ws,
+        `Il ne reste que ${pool.length} mots actifs sur ${BOARD_SIZE} minimum — réactive-en depuis "Gérer les mots".`,
+      );
+      return;
+    }
+
+    const board = pickBoard(pool);
     room.words = board.map((entry) => entry.word);
     room.wordHints = board.map((entry) => entry.hint);
     room.revealed = new Array(BOARD_SIZE).fill(false);
@@ -320,6 +335,29 @@ export class CodenamesRoom {
     }
 
     room.phase = "playing";
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Lobby uniquement : changer la liste en pleine partie changerait le pool
+  // sous les pieds d'une manche déjà tirée, sans rien y gagner.
+  private async onSetWordFilter(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (session.playerId !== room.hostId) {
+      sendError(session.ws, "Seul l'hôte peut modifier la liste des mots.");
+      return;
+    }
+    if (room.phase !== "lobby") return;
+
+    const raw = Array.isArray(msg.excluded) ? msg.excluded : [];
+    const validWords = new Set(WORDS.map((entry) => entry.word));
+    const excluded = [...new Set(raw.filter((w): w is string => typeof w === "string" && validWords.has(w)))];
+
+    if (WORDS.length - excluded.length < BOARD_SIZE) {
+      sendError(session.ws, `Il faut garder au moins ${BOARD_SIZE} mots actifs.`);
+      return;
+    }
+
+    room.excludedWords = excluded;
     await this.saveRoom();
     this.broadcast();
   }
@@ -542,6 +580,7 @@ export class CodenamesRoom {
       visibility: this.visibility,
       scores: room.scores,
       waiting: room.waiting.map((p) => ({ id: p.id, name: p.name })),
+      excludedWords: room.excludedWords,
       hostId: room.hostId,
       players,
       you: you && { id: you.id, seat: you.seat, team: you.team, role: you.role },

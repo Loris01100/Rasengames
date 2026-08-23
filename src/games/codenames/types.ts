@@ -37,6 +37,10 @@ export interface RoomState {
   scores: Record<string, number>;
   // Arrivés en cours de partie : hors de players/playerOrder, entrent au retour au lobby.
   waiting: Player[];
+  // Mots retirés du pool par l'hôte (lobby "Gérer les mots") — persiste
+  // d'une manche à l'autre dans le salon, contrairement au reste qui se
+  // réinitialise à chaque restart.
+  excludedWords: string[];
 
   words: string[]; // 25 mots, ordre du plateau
   // Indice de contexte par mot (sa série d'origine, ou une catégorie
@@ -80,6 +84,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    excludedWords: [],
     words: [],
     wordHints: [],
     keyA: null,

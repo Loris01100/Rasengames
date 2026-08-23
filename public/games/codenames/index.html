@@ -70,6 +70,10 @@
           <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
         </label>
         <p class="muted small">2 joueurs → mode coopératif (Duet). 4 joueurs → mode équipes (2v2). Les rôles sont tirés au sort au lancement.</p>
+        <div class="word-filter-row-lobby">
+          <button id="word-filter-open" type="button" class="btn secondary small">Gérer les mots</button>
+          <span id="word-filter-summary" class="muted small"></span>
+        </div>
         <button id="start-btn" class="btn">Démarrer la partie</button>
         <p id="start-hint" class="muted small"></p>
       </div>
@@ -124,6 +128,25 @@
       </div>
     </section>
   </main>
+
+  <!-- Hôte, lobby seulement : retirer des mots du pool avant de lancer. -->
+  <dialog id="word-filter-dialog" class="rules-dialog word-filter-dialog">
+    <h2>Gérer les mots</h2>
+    <p class="muted small">Décoche les mots que tu ne veux pas voir apparaître sur le plateau (garde-t'en au moins 25).</p>
+    <input id="word-filter-search" type="text" placeholder="Filtrer par mot ou par série (ex: Naruto)" autocomplete="off" />
+    <div class="word-filter-toolbar">
+      <span id="word-filter-count" class="muted small"></span>
+      <div class="word-filter-toolbar-actions">
+        <button id="word-filter-check-all" type="button" class="btn secondary small">Cocher affichés</button>
+        <button id="word-filter-uncheck-all" type="button" class="btn secondary small">Décocher affichés</button>
+      </div>
+    </div>
+    <div id="word-filter-list" class="word-filter-list"></div>
+    <div class="word-filter-footer">
+      <button id="word-filter-cancel" type="button" class="btn secondary">Annuler</button>
+      <button id="word-filter-save" type="button" class="btn">Enregistrer</button>
+    </div>
+  </dialog>
 
   <!-- Repris par room-client.js dans le <dialog> du bouton « Règles ». -->
   <template id="rules">

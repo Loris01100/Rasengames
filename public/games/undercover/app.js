@@ -9,6 +9,7 @@
 
     wordImage: $("word-image"),
     wordDisplay: $("word-display"),
+    wordHint: $("word-hint"),
     toggleWord: $("toggle-word"),
     roleHint: $("role-hint"),
     roundNumber: $("round-number"),
@@ -104,7 +105,13 @@
     // Mr. White n'en a pas, sa ligne le dit plutôt que de rester vide.
     const word = document.createElement("span");
     word.className = "tag";
-    word.textContent = p.word ?? (p.role === "mrwhite" ? "pas de mot" : "");
+    word.textContent = p.word
+      ? p.wordHint
+        ? `${p.word} (${p.wordHint})`
+        : p.word
+      : p.role === "mrwhite"
+        ? "pas de mot"
+        : "";
     if (word.textContent) row.appendChild(word);
   }
 
@@ -140,7 +147,10 @@
       ended: "🏁 Partie terminée",
     };
     el.phaseLabel.textContent = phaseLabels[state.phase] || "";
-    el.categoryLabel.textContent = CATEGORY_LABELS[state.settings?.category] || "";
+    // La catégorie tirée pour cette manche précisément (utile surtout en
+    // réglage "Aléatoire" : sans ça, l'étiquette resterait bloquée sur
+    // "Aléatoire" toute la manche au lieu de dire ce qui est vraiment sorti).
+    el.categoryLabel.textContent = CATEGORY_LABELS[state.wordCategory ?? state.settings?.category] || "";
 
     renderRoleCard(state);
     renderPlayersMini(state);
@@ -176,6 +186,8 @@
     el.wordDisplay.classList.toggle("hidden-word", wordHidden);
 
     showWordImage(el.wordImage, !wordHidden && you.word, state);
+
+    el.wordHint.textContent = !wordHidden && you.word && you.wordHint ? you.wordHint : "";
 
     el.roleHint.textContent = you.role === "mrwhite"
       ? "Bluffe : tu n'as pas de mot, essaie de deviner celui des civils si tu es démasqué."
@@ -347,7 +359,11 @@
       mrwhite: "Mr. White gagne en devinant le mot ! 🃏",
     };
     el.endTitle.textContent = titles[state.winner] || "Partie terminée";
-    el.endWords.textContent = `Mot des civils : ${state.civilianWord} — Mot des undercover : ${state.undercoverWord}`;
+    const civilianLabel = state.civilianWordHint ? `${state.civilianWord} (${state.civilianWordHint})` : state.civilianWord;
+    const undercoverLabel = state.undercoverWordHint
+      ? `${state.undercoverWord} (${state.undercoverWordHint})`
+      : state.undercoverWord;
+    el.endWords.textContent = `Mot des civils : ${civilianLabel} — Mot des undercover : ${undercoverLabel}`;
 
     el.endWordsImages.innerHTML = "";
     const wordCards = [
