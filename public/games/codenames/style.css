@@ -16,6 +16,52 @@
 }
 
 /* Lobby : bouton "Gérer les mots" et son décompte, juste au-dessus de Démarrer. */
+.roles-setup {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.roles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.roles-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.role-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-row select {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.roles-setup p {
+  margin: 0;
+}
+
 .word-filter-row-lobby {
   display: flex;
   align-items: center;
@@ -26,6 +72,13 @@
 .word-filter-dialog {
   width: min(560px, calc(100% - 2rem));
   max-height: min(640px, calc(100% - 4rem));
+}
+
+/* Le display ne vaut QUE boîte ouverte. Posé sur .word-filter-dialog tout
+   court, il battait le `dialog:not([open]) { display: none }` du navigateur
+   (feuille de la page contre feuille du navigateur) : la boîte restait
+   plantée dans le flux de la page, y compris en pleine partie. */
+.word-filter-dialog[open] {
   display: flex;
   flex-direction: column;
 }

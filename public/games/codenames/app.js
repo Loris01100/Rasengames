@@ -25,6 +25,10 @@
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
 
+    rolesSetup: $("roles-setup"),
+    rolesList: $("roles-list"),
+    rolesShuffle: $("roles-shuffle"),
+
     wordFilterOpen: $("word-filter-open"),
     wordFilterSummary: $("word-filter-summary"),
     wordFilterDialog: $("word-filter-dialog"),
@@ -88,6 +92,7 @@
     if (state.phase === "lobby") {
       Room.showScreen("screen-lobby");
       Room.renderLobby(state);
+      renderRolesSetup(state);
       renderWordFilterSummary(state);
       return;
     }
@@ -315,6 +320,93 @@
     el.restartHint.classList.toggle("hidden", isHost);
   }
 
+  // ---- équipes et rôles (lobby, hôte, 4 joueurs) ----
+
+  const ROLE_SLOTS = [
+    { value: "A-spymaster", label: "Équipe A · Chiffreur" },
+    { value: "A-operative", label: "Équipe A · Agent" },
+    { value: "B-spymaster", label: "Équipe B · Chiffreur" },
+    { value: "B-operative", label: "Équipe B · Agent" },
+  ];
+
+  // playerId -> place choisie. Toujours une permutation complète des quatre
+  // places : les <select> s'échangent leurs valeurs plutôt que d'autoriser un
+  // doublon, sinon il faudrait bloquer "Démarrer" sur un état invalide.
+  let roleChoice = {};
+
+  function syncRoleChoice(players) {
+    const kept = {};
+    const taken = new Set();
+    for (const p of players) {
+      const slot = roleChoice[p.id];
+      if (slot && !taken.has(slot)) {
+        kept[p.id] = slot;
+        taken.add(slot);
+      }
+    }
+    // Les arrivants (et ceux dont la place a été reprise) récupèrent ce qui
+    // reste, dans l'ordre du salon.
+    const free = ROLE_SLOTS.map((s) => s.value).filter((v) => !taken.has(v));
+    for (const p of players) if (!kept[p.id]) kept[p.id] = free.shift();
+    roleChoice = kept;
+  }
+
+  // Les déconnectés sont retirés du salon au démarrage côté serveur : on
+  // répartit exactement les joueurs qui vont jouer, sinon l'envoi ne
+  // correspondrait plus à la table au moment du lancement.
+  const seated = (state) => state.players.filter((p) => p.connected);
+
+  function renderRolesSetup(state) {
+    const players = seated(state);
+    const show = state.hostId === Room.playerId && players.length === 4;
+    el.rolesSetup.classList.toggle("hidden", !show);
+    if (!show) return;
+
+    syncRoleChoice(players);
+    el.rolesList.innerHTML = "";
+    for (const p of players) {
+      const row = document.createElement("div");
+      row.className = "role-row";
+
+      const name = document.createElement("span");
+      name.className = "role-name";
+      name.textContent = p.name;
+      row.appendChild(name);
+
+      const select = document.createElement("select");
+      for (const slot of ROLE_SLOTS) {
+        const option = document.createElement("option");
+        option.value = slot.value;
+        option.textContent = slot.label;
+        select.appendChild(option);
+      }
+      select.value = roleChoice[p.id];
+      select.addEventListener("change", () => swapRoleSlot(p.id, select.value));
+      row.appendChild(select);
+
+      el.rolesList.appendChild(row);
+    }
+  }
+
+  function swapRoleSlot(playerId, wanted) {
+    const previous = roleChoice[playerId];
+    const other = Object.keys(roleChoice).find((id) => id !== playerId && roleChoice[id] === wanted);
+    if (other) roleChoice[other] = previous;
+    roleChoice[playerId] = wanted;
+    if (Room.state) renderRolesSetup(Room.state);
+  }
+
+  el.rolesShuffle.addEventListener("click", () => {
+    const ids = Object.keys(roleChoice);
+    const slots = ROLE_SLOTS.map((s) => s.value);
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    ids.forEach((id, i) => (roleChoice[id] = slots[i]));
+    if (Room.state) renderRolesSetup(Room.state);
+  });
+
   // ---- filtre de mots (lobby, hôte) ----
 
   // Catalogue complet {word, hint} servi par le Worker (src/games/codenames/words.ts),
@@ -514,6 +606,21 @@
     // Le nombre de connectés (2 ou 4) détermine seul le mode : pas de réglage
     // à envoyer, le serveur refuse (et prévient par toast) si ce n'est ni
     // l'un ni l'autre — pas besoin de le redire côté client.
+    // À 2 joueurs il n'y a ni chiffreur ni agent (chacun donne ses indices
+    // à son tour) : rien à envoyer, le serveur tire les sièges.
+    onStart: () => {
+      const state = Room.state;
+      if (!state) return {};
+      const players = seated(state);
+      if (players.length !== 4) return {};
+      syncRoleChoice(players);
+      const assignment = {};
+      for (const p of players) {
+        const [team, role] = roleChoice[p.id].split("-");
+        assignment[p.id] = { team, role };
+      }
+      return { assignment };
+    },
     onState: (s) => {
       playSounds(s);
       render(s);

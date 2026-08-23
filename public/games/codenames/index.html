@@ -69,7 +69,15 @@
           <input id="public-toggle" type="checkbox" />
           <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
         </label>
-        <p class="muted small">2 joueurs → mode coopératif (Duet). 4 joueurs → mode équipes (2v2). Les rôles sont tirés au sort au lancement.</p>
+        <p class="muted small">2 joueurs → mode coopératif (Duet), chacun donne ses indices à son tour. 4 joueurs → mode équipes (2v2), à toi de répartir les rôles.</p>
+        <div id="roles-setup" class="roles-setup hidden">
+          <div class="roles-head">
+            <span>Équipes et rôles</span>
+            <button id="roles-shuffle" type="button" class="btn secondary small">Au hasard</button>
+          </div>
+          <div id="roles-list" class="roles-list"></div>
+          <p class="muted small">Le chiffreur voit la clé et donne les indices, l'agent devine sur le plateau. Choisir une place déjà prise l'échange avec l'autre joueur.</p>
+        </div>
         <div class="word-filter-row-lobby">
           <button id="word-filter-open" type="button" class="btn secondary small">Gérer les mots</button>
           <span id="word-filter-summary" class="muted small"></span>
@@ -156,7 +164,7 @@
       <li><strong>À 2 (coopératif) :</strong> chacun voit en secret sa propre carte-clé sur les 25 mots du plateau. À tour de rôle, tu donnes un indice (un mot + un nombre) basé sur ta clé, et l'autre devine tes mots. Une case n'est révélée qu'une fois : mal deviner peut la perdre pour de bon.</li>
       <li>Bonne pioche : on continue à deviner. Mauvaise pioche (un mot neutre) : le tour passe et la réserve d'erreurs commune baisse d'un cran. Assassin : défaite immédiate.</li>
       <li>Vous gagnez ensemble en trouvant tous les mots "agent" des deux clés avant d'épuiser la réserve d'erreurs.</li>
-      <li><strong>À 4 (2v2) :</strong> deux équipes de 2, un chiffreur (voit toute la grille) et un agent de terrain (devine) par équipe, tirés au sort. Toucher un mot adverse aide l'équipe adverse malgré vous ; toucher l'assassin fait perdre votre équipe sur-le-champ.</li>
+      <li><strong>À 4 (2v2) :</strong> deux équipes de 2, un chiffreur (voit toute la grille) et un agent de terrain (devine) par équipe, répartis par l'hôte dans le salon. Toucher un mot adverse aide l'équipe adverse malgré vous ; toucher l'assassin fait perdre votre équipe sur-le-champ.</li>
       <li>La première équipe à avoir fait deviner tous ses mots gagne.</li>
       <li class="muted small">Chaque mot affiche sa série d'origine en petit dessous : de quoi construire un indice même sur un mot qu'on ne reconnaît pas.</li>
     </ol>

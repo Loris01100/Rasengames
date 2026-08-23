@@ -77,6 +77,35 @@ export function assignTeamsAndRoles(
   };
 }
 
+// Répartition choisie par l'hôte dans le lobby. Rien n'est pris pour argent
+// comptant : il faut exactement les quatre joueurs du salon et les quatre
+// places, une chacune — sinon on renvoie null et l'hôte est prévenu plutôt
+// que de démarrer sur une partie bancale (deux chiffreurs dans la même
+// équipe, un joueur sans rôle...).
+export function parseTeamAssignment(
+  raw: unknown,
+  playerIds: string[],
+): Record<string, { team: Team; role: Role }> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const entries = raw as Record<string, unknown>;
+  if (Object.keys(entries).length !== playerIds.length) return null;
+
+  const taken = new Set<string>();
+  const assignment: Record<string, { team: Team; role: Role }> = {};
+  for (const id of playerIds) {
+    const value = entries[id];
+    if (!value || typeof value !== "object") return null;
+    const { team, role } = value as { team?: unknown; role?: unknown };
+    if (team !== "A" && team !== "B") return null;
+    if (role !== "spymaster" && role !== "operative") return null;
+    const slot = `${team}-${role}`;
+    if (taken.has(slot)) return null;
+    taken.add(slot);
+    assignment[id] = { team, role };
+  }
+  return assignment;
+}
+
 // La couleur qu'un joueur donné a le droit de connaître pour une case : celle
 // du plateau si elle est déjà révélée (publique à tous une fois retournée),
 // sinon seulement celle de la clé qu'il détient (chiffreur en teams, siège

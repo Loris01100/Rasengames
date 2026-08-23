@@ -10,6 +10,7 @@ import {
   cellColorFor,
   assignSeatsForDuet,
   assignTeamsAndRoles,
+  parseTeamAssignment,
   generateTeamKey,
   resolveDuetGuess,
   resolveTeamGuess,
@@ -169,7 +170,7 @@ export class CodenamesRoom {
         await this.onJoin(session, room, msg);
         break;
       case "start":
-        await this.onStart(session, room);
+        await this.onStart(session, room, msg);
         break;
       case "setWordFilter":
         await this.onSetWordFilter(session, room, msg);
@@ -270,7 +271,7 @@ export class CodenamesRoom {
     this.broadcast();
   }
 
-  private async onStart(session: Session, room: RoomState) {
+  private async onStart(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
       sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
       return;
@@ -288,6 +289,20 @@ export class CodenamesRoom {
     const ids = [...room.playerOrder];
     if (ids.length !== 2 && ids.length !== 4) {
       sendError(session.ws, "Il faut exactement 2 joueurs (coopératif) ou 4 joueurs (équipes) pour lancer une partie.");
+      return;
+    }
+
+    // Répartition des équipes choisie par l'hôte (4 joueurs). Absente, on tire
+    // au sort ; présente mais devenue fausse (un joueur parti entre-temps), on
+    // le dit plutôt que de démarrer sur autre chose que ce qu'il a réglé.
+    const chosenTeams = msg.assignment === undefined || ids.length !== 4
+      ? null
+      : parseTeamAssignment(msg.assignment, ids);
+    if (msg.assignment !== undefined && ids.length === 4 && !chosenTeams) {
+      sendError(
+        session.ws,
+        "La répartition des équipes ne correspond plus aux joueurs du salon — vérifie-la et relance.",
+      );
       return;
     }
 
@@ -323,7 +338,7 @@ export class CodenamesRoom {
       room.turnTeam = null;
     } else {
       room.mode = "teams";
-      const assignment = assignTeamsAndRoles(ids);
+      const assignment = chosenTeams ?? assignTeamsAndRoles(ids);
       for (const id of ids) Object.assign(room.players[id], assignment[id]);
       const startingTeam = Math.random() < 0.5 ? "A" : "B";
       room.teamColors = generateTeamKey(startingTeam);
