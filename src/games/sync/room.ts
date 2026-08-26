@@ -202,7 +202,7 @@ export class SyncRoom {
     const token = crypto.randomUUID();
     room.players[id] = this.makePlayer(id, token, name);
     room.playerOrder.push(id);
-    if (!room.hostId || msg.asHost === true) room.hostId = id;
+    if (!room.hostId) room.hostId = id;
     session.playerId = id;
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
     await this.saveRoom();

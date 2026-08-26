@@ -139,7 +139,9 @@ export function switchGame(
   }
   for (const s of sessions) {
     try {
-      s.ws.send(JSON.stringify({ type: "switchGame", slug, code: room.code, asHost: s === session }));
+      // Le nouveau jeu choisit son hôte selon l'ordre d'arrivée, comme un
+      // salon neuf : le rôle de l'ancien jeu n'est pas transféré de force.
+      s.ws.send(JSON.stringify({ type: "switchGame", slug, code: room.code }));
     } catch {
       // socket already gone
     }

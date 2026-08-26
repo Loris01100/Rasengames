@@ -136,6 +136,35 @@ const ANILIST_CAST = {
 
 // Vérifications propres à une phase de jeu, jouées après le lobby.
 const PHASE_CHECKS = {
+  // Qui suis-je : les noms inventés restent côté client, tandis qu'une fiche
+  // personnage AniList exacte peut être envoyée immédiatement.
+  async whoami(send, byId, slug, tick, socketSent) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "submit", hostId: "p1", submitMode: "libre", category: null,
+        players: [
+          { id: "p1", name: "Alice", connected: true, ready: false },
+          { id: "p2", name: "Bob", connected: true, ready: false },
+        ],
+      },
+    });
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    const submissions = () => socketSent().filter((m) => m.type === "submitWord");
+
+    byId("word-input").value = "Perso Qui Existe Pas";
+    byId("word-submit").dispatch("click");
+    await flush();
+    await flush();
+    assert.strictEqual(submissions().length, 0, `${slug}: personnage inventé envoyé`);
+
+    byId("word-input").value = "Shouyou Hinata";
+    byId("word-input").dataset.anilistRef = "character:1";
+    byId("word-submit").dispatch("click");
+    assert.strictEqual(submissions().length, 1, `${slug}: fiche AniList valide bloquée`);
+    assert.strictEqual(submissions()[0].anilistRef, "character:1", `${slug}: référence AniList perdue`);
+  },
+
   // Petit Bac : stop verrouillé tant que 75 % des cases ne sont pas remplies.
   bac(send, byId, slug, tick) {
     send({
@@ -199,6 +228,9 @@ const PHASE_CHECKS = {
     assert.strictEqual(seats[0].style["--angle"], "-90deg", `${slug}: siège sans angle`);
     assert.ok(seats[0].classes.has("current"), `${slug}: le porteur de la bombe n'est pas marqué`);
     assert.ok(!seats[1].classes.has("current"), `${slug}: un seul porteur à la fois`);
+    const playerRows = byId("players-status").children;
+    assert.strictEqual(playerRows.length, 2, `${slug}: panneau joueurs incomplet`);
+    assert.ok(playerRows[0].classes.has("current"), `${slug}: porteur absent du panneau joueurs`);
 
     const flush = () => new Promise((r) => setImmediate(r));
     const sentAnswers = () => socketSent().filter((m) => m.type === "submitWord");

@@ -87,6 +87,71 @@
   min-width: 0;
 }
 
+/* Sur ordinateur, le jeu utilise enfin la largeur disponible : état des
+   joueurs à gauche, bombe au centre, historique toujours visible à droite. */
+.container { max-width: 1500px; }
+
+#screen-join,
+#screen-lobby,
+#screen-ended {
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.bomb-play-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.7fr) minmax(520px, 1.65fr) minmax(290px, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.bomb-side {
+  position: sticky;
+  top: 92px;
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+}
+
+.bomb-players-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.bomb-player-status {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.bomb-player-status.current {
+  outline: 1px solid var(--accent);
+  box-shadow: var(--shadow-glow);
+}
+
+.bomb-player-status.dead { opacity: 0.45; }
+.bomb-player-order { color: var(--text-muted); text-align: center; }
+.bomb-player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.bomb-player-lives { white-space: nowrap; font-size: 0.78rem; }
+
+@media (max-width: 1120px) {
+  .bomb-play-layout { grid-template-columns: minmax(180px, 0.7fr) minmax(480px, 1.5fr); }
+  .bomb-history-card { grid-column: 1 / -1; position: static; max-height: none; }
+}
+
+@media (max-width: 760px) {
+  .bomb-play-layout { grid-template-columns: 1fr; }
+  .bomb-game-card { grid-row: 1; }
+  .bomb-side { position: static; max-height: none; }
+  .bomb-players-card { grid-row: 2; }
+  .bomb-history-card { grid-row: 3; }
+}
+
 .bomb-log-anime {
   display: block;
   margin-top: 2px;

@@ -85,32 +85,40 @@
 
     <!-- Play phase -->
     <section id="screen-play" class="hidden">
-      <div class="card bomb-card">
-        <p id="play-instructions" class="muted small"></p>
+      <div class="bomb-play-layout">
+        <aside class="card bomb-side bomb-players-card">
+          <h3>Joueurs</h3>
+          <p class="muted small">Ordre de passage et vies restantes</p>
+          <div id="players-status" class="bomb-players-status"></div>
+        </aside>
+
+        <div class="card bomb-card bomb-game-card">
+          <p id="play-instructions" class="muted small"></p>
 
         <!-- La table : la bombe au centre, les joueurs autour, celui qui la
              tient est mis en avant. Les sièges sont générés par app.js. -->
-        <div class="bomb-arena">
-          <div class="bomb-ring"></div>
-          <div class="bomb-core">
-            <div class="bomb-icon">💣</div>
-            <div id="letter-display" class="bomb-letter-display">—</div>
+          <div class="bomb-arena">
+            <div class="bomb-ring"></div>
+            <div class="bomb-core">
+              <div class="bomb-icon">💣</div>
+              <div id="letter-display" class="bomb-letter-display">—</div>
+            </div>
+            <div id="bomb-seats"></div>
           </div>
-          <div id="bomb-seats"></div>
+
+          <h3 id="turn-banner" class="turn-banner"></h3>
+          <div id="last-answer" class="bomb-last-answer hidden"></div>
+          <div id="word-form" class="inline-form hidden">
+            <input id="word-input" type="text" maxlength="40" placeholder="Ta réponse" autocomplete="off" />
+            <button id="word-submit" class="btn">Envoyer</button>
+          </div>
+          <p id="wait-hint" class="muted small hidden"></p>
         </div>
 
-        <h3 id="turn-banner" class="turn-banner"></h3>
-        <div id="last-answer" class="bomb-last-answer hidden"></div>
-        <div id="word-form" class="inline-form hidden">
-          <input id="word-input" type="text" maxlength="40" placeholder="Ta réponse" autocomplete="off" />
-          <button id="word-submit" class="btn">Envoyer</button>
-        </div>
-        <p id="wait-hint" class="muted small hidden"></p>
-      </div>
-
-      <div class="card">
-        <h3>Réponses données</h3>
-        <div id="answers-log" class="bomb-log"></div>
+        <aside class="card bomb-side bomb-history-card">
+          <h3>Réponses données</h3>
+          <div id="answers-log" class="bomb-log"></div>
+        </aside>
       </div>
     </section>
 

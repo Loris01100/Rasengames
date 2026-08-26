@@ -21,6 +21,7 @@ import * as sync from "../src/games/sync/logic.ts";
 import { createEmptyRoom as emptySync } from "../src/games/sync/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
+import { switchGame } from "../src/lib/session.ts";
 
 // Les neuf Player partagent id/token/name/connected ; le reste (alive,
 // eliminated, found, number...) est passé par jeu dans `extra`.
@@ -516,6 +517,20 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   room.revealed[1] = true;
   room.revealedColor[1] = "assassin";
   assert.equal(codenames.cellColorFor(room, 1, "b"), "assassin", "une case révélée devient publique");
+}
+
+// --- Changement de jeu : le rôle d'hôte ne voyage plus -----------------------
+
+{
+  const messagesA: any[] = [];
+  const messagesB: any[] = [];
+  const sessions = [
+    { playerId: "a", recent: [], ws: { send: (raw: string) => messagesA.push(JSON.parse(raw)) } },
+    { playerId: "b", recent: [], ws: { send: (raw: string) => messagesB.push(JSON.parse(raw)) } },
+  ] as any;
+  switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" });
+  assert.equal(messagesA[0].asHost, undefined, "l'ancien hôte ne doit pas être désigné dans le nouveau jeu");
+  assert.equal(messagesB[0].asHost, undefined, "aucun joueur ne reçoit le rôle d'hôte à transférer");
 }
 
 // --- Même longueur d'onde : normalisation et groupes de réponses -----------

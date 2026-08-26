@@ -14,6 +14,7 @@
     wordSubmit: $("word-submit"),
     waitHint: $("wait-hint"),
     bombSeats: $("bomb-seats"),
+    playersStatus: $("players-status"),
     answersLog: $("answers-log"),
 
     endTitle: $("end-title"),
@@ -72,7 +73,7 @@
     row.appendChild(tag);
   }
 
-  function render(state) {
+  function render(state, previous) {
     Room.showSwitchGame(state.hostId === Room.playerId);
 
     if (state.phase === "lobby") {
@@ -80,14 +81,14 @@
       Room.renderLobby(state, decorateLives);
     } else if (state.phase === "play") {
       Room.showScreen("screen-play");
-      renderPlay(state);
+      renderPlay(state, previous);
     } else if (state.phase === "ended") {
       Room.showScreen("screen-ended");
       renderEnded(state);
     }
   }
 
-  function renderPlay(state) {
+  function renderPlay(state, previous) {
     const myTurn = state.turnId === Room.playerId;
 
     el.playInstructions.textContent =
@@ -109,9 +110,43 @@
     el.waitHint.classList.toggle("hidden", myTurn || !state.turnId);
     if (!myTurn && state.turnId) el.waitHint.textContent = `En attente que ${state.turnName} réponde...`;
 
+    // Le champ reçoit le clavier exactement au moment où la bombe arrive :
+    // il suffit de taper, sans clic préalable et sans voler le focus ensuite.
+    if (myTurn && previous?.turnId !== state.turnId) {
+      el.wordInput.focus({ preventScroll: true });
+    }
+
     renderSeats(state);
+    renderPlayersStatus(state);
 
     renderAnswersLog(state);
+  }
+
+  function renderPlayersStatus(state) {
+    el.playersStatus.innerHTML = "";
+    state.players.forEach((p, index) => {
+      const row = document.createElement("div");
+      row.className = "bomb-player-status";
+      if (p.id === state.turnId) row.classList.add("current");
+      if (p.eliminated) row.classList.add("dead");
+
+      const order = document.createElement("span");
+      order.className = "bomb-player-order";
+      order.textContent = p.id === state.turnId ? "💣" : String(index + 1);
+      row.appendChild(order);
+
+      const name = document.createElement("span");
+      name.className = "bomb-player-name";
+      name.textContent = p.name + (p.id === Room.playerId ? " (toi)" : "");
+      row.appendChild(name);
+
+      const lives = document.createElement("span");
+      lives.className = "bomb-player-lives";
+      lives.textContent = p.eliminated ? "💀" : "❤️".repeat(p.lives) + "🖤".repeat(Math.max(0, 2 - p.lives));
+      row.appendChild(lives);
+
+      el.playersStatus.appendChild(row);
+    });
   }
 
   // Les joueurs sont placés en cercle autour de la bombe : on voit d'un coup
@@ -336,7 +371,7 @@
     },
     onState: (s, prev) => {
       playSounds(prev, s);
-      render(s);
+      render(s, prev);
     },
   });
 })();

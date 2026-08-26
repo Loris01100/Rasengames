@@ -269,7 +269,7 @@ export class CodenamesRoom {
     const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
-    if (!room.hostId || msg.asHost === true) room.hostId = id;
+    if (!room.hostId) room.hostId = id;
     session.playerId = id;
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));

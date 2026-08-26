@@ -352,10 +352,37 @@
   el.wordInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitWord();
   });
-  function submitWord() {
+  async function submitWord() {
+    if (el.wordSubmit.disabled) return;
     const text = el.wordInput.value.trim();
     if (!text) return;
-    Room.send({ type: "submitWord", text, anilistRef: el.wordInput.dataset.anilistRef });
+
+    // Une suggestion choisie est une fiche personnage AniList exacte. Pour
+    // une saisie libre, on bloque tant qu'AniList ne confirme pas le nom : un
+    // mot inventé (ou un simple titre d'anime) ne peut plus lancer la manche.
+    const picked = el.wordInput.dataset.anilistRef;
+    const characterRef = picked?.startsWith("character:") ? picked : undefined;
+    if (!characterRef) {
+      const originalLabel = el.wordSubmit.textContent;
+      el.wordSubmit.disabled = true;
+      el.wordSubmit.textContent = "Vérification...";
+      try {
+        const check = await Anilist.exists(text, "character", true);
+        if (check === "notfound") {
+          Room.toast(`"${text}" ne correspond à aucun personnage AniList.`);
+          return;
+        }
+        if (check === "unknown") {
+          Room.toast("AniList est indisponible : réessaie dans un instant.");
+          return;
+        }
+      } finally {
+        el.wordSubmit.disabled = false;
+        el.wordSubmit.textContent = originalLabel;
+      }
+    }
+
+    Room.send({ type: "submitWord", text, anilistRef: characterRef });
   }
 
   el.guessSubmit.addEventListener("click", submitGuess);
@@ -377,7 +404,7 @@
   el.endRoundBtn.addEventListener("click", () => Room.send({ type: "endRound" }));
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
 
-  Suggest.attach(el.wordInput);
+  Suggest.attach(el.wordInput, () => "character");
 
   Room.init({
     slug: "whoami",

@@ -110,13 +110,13 @@ const Room = (() => {
     }
   }
 
-  function connect(code, name, token, asHost) {
+  function connect(code, name, token) {
     api.code = code.toUpperCase();
     const proto = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${proto}://${location.host}/ws/${cfg.slug}/${api.code}`);
 
     ws.addEventListener("open", () => {
-      send({ type: "join", name, token: token || undefined, asHost: !!asHost });
+      send({ type: "join", name, token: token || undefined });
     });
 
     ws.addEventListener("message", (event) => {
@@ -199,8 +199,7 @@ const Room = (() => {
       cfg.onState(msg.state, previous);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
-      const asHostParam = msg.asHost ? "&asHost=1" : "";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${asHostParam}`;
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}`;
     } else if (msg.type === "kicked") {
       // Token dropped so the auto-reconnect on the next page load doesn't
       // silently walk back into the salon we were just thrown out of.
@@ -525,7 +524,7 @@ const Room = (() => {
     const autojoinName = params.get("autojoin");
     if (autojoinName) {
       el.nameInput.value = autojoinName;
-      connect(code, autojoinName, undefined, params.get("asHost") === "1");
+      connect(code, autojoinName);
     }
   }
 

@@ -287,9 +287,7 @@ export class DetectiveRoom {
     const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
-    // asHost lets the player who triggered a switchGame reclaim host in the
-    // new room even if another player's join message happens to land first.
-    if (!room.hostId || msg.asHost === true) room.hostId = id;
+    if (!room.hostId) room.hostId = id;
     session.playerId = id;
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
