@@ -3,7 +3,7 @@ import { type RoomState, type Player, type Mode, createEmptyRoom } from "./types
 import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { pickRandomTheme } from "./themes";
 import { reportRoom } from "../../lib/registry";
-import { reassignHost } from "../../lib/host";
+import { reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   attachSession,
@@ -197,6 +197,12 @@ export class HundredRoom {
         break;
       case "kick":
         if (kickPlayer(this.sessions, session, room, msg)) {
+          await this.saveRoom();
+          this.broadcast();
+        }
+        break;
+      case "transferHost":
+        if (transferHost(session, room, msg)) {
           await this.saveRoom();
           this.broadcast();
         }

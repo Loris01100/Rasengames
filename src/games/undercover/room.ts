@@ -11,7 +11,7 @@ import {
 import { normalizeWord } from "../../lib/words";
 import { CATEGORY_LABELS, type WordCategory } from "./words";
 import { reportRoom } from "../../lib/registry";
-import { reassignHost } from "../../lib/host";
+import { reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   attachSession,
@@ -193,6 +193,12 @@ export class UndercoverRoom {
         break;
       case "kick":
         if (kickPlayer(this.sessions, session, room, msg)) {
+          await this.saveRoom();
+          this.broadcast();
+        }
+        break;
+      case "transferHost":
+        if (transferHost(session, room, msg)) {
           await this.saveRoom();
           this.broadcast();
         }

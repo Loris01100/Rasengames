@@ -2,7 +2,7 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, type LastChanceKind, createEmptyRoom } from "./types";
 import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, informedIds, pickGuesser, nextStep } from "./logic";
 import { reportRoom } from "../../lib/registry";
-import { reassignHost } from "../../lib/host";
+import { reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   attachSession,
@@ -177,6 +177,12 @@ export class NoteRoom {
         break;
       case "kick":
         if (kickPlayer(this.sessions, session, room, msg)) {
+          await this.saveRoom();
+          this.broadcast();
+        }
+        break;
+      case "transferHost":
+        if (transferHost(session, room, msg)) {
           await this.saveRoom();
           this.broadcast();
         }

@@ -335,13 +335,32 @@ const Room = (() => {
       api.state.hostId === api.playerId &&
       p.id !== api.playerId
     ) {
+      // Les deux boutons de l'hôte partagent le même conteneur : c'est lui qui
+      // porte le `margin-left: auto` qui les colle à droite de la ligne.
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+
+      if (p.connected !== false) {
+        const promote = document.createElement("button");
+        promote.className = "btn secondary small";
+        promote.textContent = "Passer hôte";
+        promote.addEventListener("click", () => {
+          if (confirm(`Donner le rôle d'hôte à ${p.name} ? Tu ne pourras plus lancer la partie.`)) {
+            send({ type: "transferHost", playerId: p.id });
+          }
+        });
+        actions.appendChild(promote);
+      }
+
       const kick = document.createElement("button");
-      kick.className = "btn secondary small kick-btn";
+      kick.className = "btn secondary small";
       kick.textContent = "Exclure";
       kick.addEventListener("click", () => {
         if (confirm(`Exclure ${p.name} du salon ?`)) send({ type: "kick", playerId: p.id });
       });
-      row.appendChild(kick);
+      actions.appendChild(kick);
+
+      row.appendChild(actions);
     }
 
     return row;

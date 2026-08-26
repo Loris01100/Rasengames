@@ -585,8 +585,15 @@ label {
   min-width: 0;
 }
 
-.player-row .kick-btn {
+/* Boutons d'hôte (« Passer hôte », « Exclure ») poussés au bout de la ligne. */
+.player-row .row-actions {
   margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.player-row .row-actions .btn {
   padding: 4px 10px;
   font-size: 0.75rem;
 }

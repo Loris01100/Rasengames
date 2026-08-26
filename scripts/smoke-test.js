@@ -413,6 +413,15 @@ function run(slug) {
       const tags = byId("players-list").children[1].children.map((c) => c.textContent);
       assert.ok(tags.includes("3 pts"), `${slug}: score cumulé absent de la ligne joueur (${tags})`);
 
+      // Passer la main : le bouton n'est rendu que sur les lignes des autres,
+      // et doit désigner le joueur de SA ligne, pas le premier venu.
+      const rowButton = (row, label) =>
+        row.children.flatMap((c) => c.children || []).find((c) => c.textContent === label);
+      assert.ok(!rowButton(byId("players-list").children[0], "Passer hôte"), `${slug}: « Passer hôte » sur sa propre ligne`);
+      rowButton(byId("players-list").children[2], "Passer hôte").dispatch("click");
+      const handover = socket.sent.find((m) => m.type === "transferHost");
+      assert.strictEqual(handover?.playerId, "p3", `${slug}: « Passer hôte » vise le mauvais joueur`);
+
       // Lien d'invitation : ?room=CODE est déjà géré au chargement.
       byId("lobby-code").parentNode.children.find((c) => c.id === "invite-btn").dispatch("click");
       assert.ok(byId("screen-join").classList.contains("hidden"), `${slug}: join screen still visible`);

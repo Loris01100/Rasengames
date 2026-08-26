@@ -13,7 +13,7 @@ import {
 import { sameWord } from "../../lib/words";
 import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
 import { reportRoom } from "../../lib/registry";
-import { reassignHost } from "../../lib/host";
+import { reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   attachSession,
@@ -190,6 +190,12 @@ export class BombRoom {
         break;
       case "kick":
         if (kickPlayer(this.sessions, session, room, msg)) {
+          await this.saveRoom();
+          this.broadcast();
+        }
+        break;
+      case "transferHost":
+        if (transferHost(session, room, msg)) {
           await this.saveRoom();
           this.broadcast();
         }

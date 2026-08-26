@@ -20,7 +20,7 @@ Chaque jeu est autonome et suit la même forme (`undercover/` et `hundred/` comm
 
 Chaque `room.ts` réimplémente sa propre plomberie session/join/reconnexion/broadcast plutôt que d'hériter d'une classe de base : les sémantiques de tour, de vote et de déconnexion divergent trop. Seul ce qui était *identique à l'octet près* dans les sept salons a été factorisé (typage générique/structurel, chaque `RoomState` garde sa forme) :
 - `lib/session.ts` — `Session`, `attachSession`, `broadcastState`, `sendError`, `nameTaken`, `promoteWaiting`, `kickPlayer`, `switchGame`.
-- `lib/host.ts` — `reassignHost`, typé sur les trois champs que tout `RoomState` partage.
+- `lib/host.ts` — `reassignHost` (départ subi) et `transferHost` (l'hôte passe la main à un joueur connecté, message `transferHost`, lobby seulement comme `kickPlayer`), typés sur les trois champs que tout `RoomState` partage.
 - `lib/letters.ts` — alphabet, validation et tirage des lettres autorisées (bombe et petit bac : l'hôte décoche des lettres au lobby, la sélection part avec `start` et est stockée dans `letters`).
 - `lib/throttle.ts` — taille et débit max des messages entrants ; rien n'authentifie un client et chaque message coûte une écriture d'état, au-delà du quota les messages sont ignorés sans fermer la socket.
 

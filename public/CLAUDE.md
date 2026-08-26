@@ -7,11 +7,12 @@
 
 Le global `Room`, chargé avant l'`app.js` de chaque jeu. Il possède le WebSocket et sa reconnexion, l'écran rejoindre/créer, l'identité en localStorage (dix derniers codes par jeu), le badge de salon, le toast, l'entête « changer de jeu », les lignes de joueurs et le lobby : `Room.init({ slug, minPlayers, maxPlayers, onState })`, puis `Room.send/toast/showScreen/playerRow/renderLobby/showSwitchGame`, plus `Room.playerId` / `Room.state` vivants. **Tout ce qui est identique d'un jeu à l'autre va ici**, pas copié dans un huitième `app.js`.
 
-Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnexion immédiate sur `visibilitychange`/`online` (le backoff monte à 30 s et ne doit pas faire attendre celui qui revient — cas mobile classique), et cinq choses qu'aucun jeu ne connaît :
+Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnexion immédiate sur `visibilitychange`/`online` (le backoff monte à 30 s et ne doit pas faire attendre celui qui revient — cas mobile classique), et six choses qu'aucun jeu ne connaît :
 - le bouton « Règles » du header — contenu pris dans le `<template id="rules">` de la page et déplacé dans un `<dialog>` natif (la top layer passe au-dessus des `.card` sans le contournement de `suggest.js` ; Échap et le fond assombri sont gratuits). `npm test` vérifie que chaque page en porte un.
 - le bouton « Revenir au lobby » de l'hôte (envoie `restart`, hors lobby seulement).
 - le bouton « copier le lien », construit en JS à côté de `#lobby-code` (`?room=CODE` était déjà géré au chargement).
 - l'étiquette de score cumulé (`state.scores`) sur chaque ligne de joueur.
+- les deux boutons d'hôte sur les lignes des *autres* joueurs au lobby (`.row-actions`) : « Passer hôte » (envoie `transferHost`, seulement si la cible est connectée) et « Exclure » (`kick`).
 - l'écran d'attente : un joueur arrivé en cours de partie est retenu côté serveur dans `room.waiting`, le client lui affiche un `#screen-waiting` généré au lieu d'appeler le `onState` du jeu.
 
 ## `js/anilist.js`

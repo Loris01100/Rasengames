@@ -18,7 +18,7 @@ import { createEmptyRoom as emptyDetective } from "../src/games/detective/types.
 import * as codenames from "../src/games/codenames/logic.ts";
 import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
-import { reassignHost } from "../src/lib/host.ts";
+import { reassignHost, transferHost } from "../src/lib/host.ts";
 
 // Les sept Player partagent id/token/name/connected ; le reste (alive,
 // eliminated, found, number...) est passé par jeu dans `extra`.
@@ -278,6 +278,38 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   room.players.c.connected = false;
   reassignHost(room, "c");
   assert.equal(room.hostId, "c", "plus personne en ligne : l'hôte reste, il reviendra avec son token");
+}
+
+// --- Hôte : passer la main volontairement ------------------------------------
+
+{
+  const room = emptyUndercover("TEST");
+  addPlayers(room, { a: {}, b: {}, c: { connected: false } });
+  room.hostId = "a";
+  // sendError écrit dans la socket : un faux ws suffit, on ne teste que l'état.
+  const errors: string[] = [];
+  const ws = { send: (raw: string) => errors.push(JSON.parse(raw).message) };
+  const asSession = (playerId: string) => ({ ws, playerId, recent: [] }) as any;
+
+  assert.equal(transferHost(asSession("b"), room, { playerId: "b" }), false, "seul l'hôte passe la main");
+  assert.equal(room.hostId, "a");
+
+  assert.equal(transferHost(asSession("a"), room, { playerId: "c" }), false, "pas vers un déconnecté");
+  assert.equal(transferHost(asSession("a"), room, { playerId: "zz" }), false, "cible inconnue");
+  assert.equal(transferHost(asSession("a"), room, { playerId: "a" }), false, "pas vers soi-même");
+  assert.equal(room.hostId, "a");
+
+  assert.equal(transferHost(asSession("a"), room, { playerId: "b" }), true);
+  assert.equal(room.hostId, "b", "b est le nouvel hôte");
+  assert.equal(
+    transferHost(asSession("a"), room, { playerId: "a" }),
+    false,
+    "l'ancien hôte ne peut plus reprendre la main tout seul",
+  );
+
+  room.phase = "clue";
+  assert.equal(transferHost(asSession("b"), room, { playerId: "a" }), false, "lobby seulement");
+  assert.equal(room.hostId, "b");
 }
 
 // --- Codenames : clés, assignation, résolution des pioches -------------------
