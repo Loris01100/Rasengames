@@ -140,10 +140,11 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
     d: { found: false },
   });
   assert.equal(whoami.nextTurn(room, "a"), "d", "trouvé et déconnecté sont sautés");
-  // Règle « celui qui trouve fait sauter le suivant » : deux appels chaînés,
-  // le second part d'un joueur devenu inéligible entre-temps.
+  // Le trouveur devient inéligible : la rotation repart quand même de sa
+  // position, et va au suivant — sans sauter personne au passage.
+  assert.equal(whoami.nextTurn(room, "b"), "d", "on repart de l'inéligible sans sauter");
   room.players.d.found = true;
-  assert.equal(whoami.nextTurn(room, whoami.nextTurn(room, "a")!), "a");
+  assert.equal(whoami.nextTurn(room, "d"), "a", "d a trouvé : la main revient à a");
 }
 
 {

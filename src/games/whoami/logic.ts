@@ -14,8 +14,8 @@ export function connectedIds(room: RoomState): string[] {
 // their word has no reason to keep asking questions. Anchored on afterId's
 // position in playerOrder (not on an index into the already-filtered list),
 // so it stays correct even when afterId itself just became ineligible —
-// which happens every time this is chained twice for the "find skips the
-// next person" rule below.
+// which is exactly the case when the player whose turn it was just found
+// their character and the turn has to move on from them.
 export function nextTurn(room: RoomState, afterId: string | null): string | null {
   const order = room.playerOrder;
   if (order.length === 0) return null;

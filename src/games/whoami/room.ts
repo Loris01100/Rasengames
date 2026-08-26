@@ -490,10 +490,11 @@ export class WhoamiRoom {
 
     if (msg.correct === true) {
       target.found = true;
-      // Une bonne réponse "coûte" le tour suivant : la personne qui aurait
-      // dû parler après passe le sien, pas seulement quand ça tombait déjà
-      // sur le tour du trouveur — donc deux pas, pas un.
-      room.turnId = nextTurn(room, nextTurn(room, room.turnId));
+      // Trouver ne coûte le tour de personne : on ne relance la rotation que
+      // si le tour en cours était justement celui du trouveur, qui vient de
+      // devenir inéligible. Sinon on laisse la main où elle est — sans quoi
+      // le joueur suivant verrait son tour sauté sans rien avoir fait.
+      if (room.turnId === targetId) room.turnId = nextTurn(room, targetId);
       this.maybeAdvancePhase(room);
     }
 
