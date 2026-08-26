@@ -146,11 +146,41 @@
 }
 
 /* Bloc-notes de la phase de jeu (local au navigateur, voir app.js). */
+.notes-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.notes-column {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--surface-2);
+}
+
+.notes-column-yes { border-color: color-mix(in srgb, #22c55e 45%, var(--border)); }
+.notes-column-no { border-color: color-mix(in srgb, #ef4444 45%, var(--border)); }
+
+.notes-column-title {
+  text-align: center;
+  font-weight: 700;
+}
+
 .notes-area {
   width: 100%;
   min-height: 120px;
   resize: vertical;
-  margin-bottom: 10px;
+  margin: 0;
   font-family: inherit;
   line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .notes-columns { gap: 8px; }
+  .notes-column { padding: 7px; }
 }

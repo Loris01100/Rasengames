@@ -14,7 +14,8 @@
     submitProgress: $("submit-progress"),
     submitCategory: $("submit-category"),
 
-    notesArea: $("notes-area"),
+    notesYesArea: $("notes-yes-area"),
+    notesNoArea: $("notes-no-area"),
     notesClear: $("notes-clear"),
 
     guessForm: $("guess-form"),
@@ -220,19 +221,44 @@
   // Bloc-notes : ce que les autres répondent à tes questions ne regarde que
   // toi, donc rien ne passe par le serveur — le texte vit dans le localStorage
   // du navigateur, par salon, et survit à un refresh en pleine manche.
-  const notesKey = () => `whoami:${Room.code}:notes`;
+  const legacyNotesKey = () => `whoami:${Room.code}:notes`;
+  const notesKey = (kind) => `whoami:${Room.code}:notes:${kind}`;
   let notesLoaded = false;
 
   function loadNotes() {
     if (notesLoaded || !Room.code) return;
     notesLoaded = true;
-    el.notesArea.value = localStorage.getItem(notesKey()) ?? "";
+    el.notesYesArea.value = localStorage.getItem(notesKey("yes")) ?? "";
+    el.notesNoArea.value = localStorage.getItem(notesKey("no")) ?? "";
+
+    // Migration transparente de l'ancien bloc unique : les lignes déjà
+    // marquées vont dans la bonne colonne, les autres restent côté validé.
+    if (!el.notesYesArea.value && !el.notesNoArea.value) {
+      const oldNotes = localStorage.getItem(legacyNotesKey());
+      if (oldNotes) {
+        const yes = [];
+        const no = [];
+        for (const line of oldNotes.split("\n")) {
+          const cleaned = line.replace(/\s*[✅✓❌✗]\s*$/, "");
+          if (/[❌✗]\s*$/.test(line)) no.push(cleaned);
+          else yes.push(cleaned);
+        }
+        el.notesYesArea.value = yes.join("\n");
+        el.notesNoArea.value = no.join("\n");
+        localStorage.setItem(notesKey("yes"), el.notesYesArea.value);
+        localStorage.setItem(notesKey("no"), el.notesNoArea.value);
+      }
+    }
   }
 
-  el.notesArea.addEventListener("input", () => localStorage.setItem(notesKey(), el.notesArea.value));
+  el.notesYesArea.addEventListener("input", () => localStorage.setItem(notesKey("yes"), el.notesYesArea.value));
+  el.notesNoArea.addEventListener("input", () => localStorage.setItem(notesKey("no"), el.notesNoArea.value));
   el.notesClear.addEventListener("click", () => {
-    el.notesArea.value = "";
-    localStorage.removeItem(notesKey());
+    el.notesYesArea.value = "";
+    el.notesNoArea.value = "";
+    localStorage.removeItem(notesKey("yes"));
+    localStorage.removeItem(notesKey("no"));
+    localStorage.removeItem(legacyNotesKey());
   });
 
   function renderPlay(state) {

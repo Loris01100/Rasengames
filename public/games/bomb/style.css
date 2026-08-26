@@ -84,6 +84,14 @@
 .bomb-log-text {
   flex: 1;
   font-weight: 700;
+  min-width: 0;
+}
+
+.bomb-log-anime {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .bomb-log-author {

@@ -21,6 +21,8 @@ export interface WordEntry {
   playerId: string;
   letter: string;
   text: string;
+  // Anime d'origine du personnage, résolu dans le navigateur via AniList.
+  anime?: string;
 }
 
 export interface RoomState {
@@ -36,6 +38,8 @@ export interface RoomState {
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
   turnId: string | null;
+  // Avant cette heure, une alarme ne peut pas exploser chez le nouveau joueur.
+  turnSafeUntil: number;
   letter: string | null;
   // Lettres autorisées au tirage, choisies par l'hôte au lobby.
   letters: string[];
@@ -58,6 +62,7 @@ export function createEmptyRoom(code: string): RoomState {
     scores: {},
     waiting: [],
     turnId: null,
+    turnSafeUntil: 0,
     letter: null,
     letters: [...ALPHABET],
     answers: [],

@@ -5,8 +5,10 @@ import {
   MIN_PLAYERS,
   QUESTION_COUNT,
   answererIds,
+  answererIdsForQuestion,
   calculateScores,
   connectedIds,
+  pickReferee,
   respondentIds,
 } from "./logic";
 import { reportRoom } from "../../lib/registry";
@@ -114,7 +116,7 @@ export class SyncRoom {
       case "join": await this.onJoin(session, room, msg); break;
       case "start": await this.onStart(session, room, msg); break;
       case "submitQuestions": await this.onSubmitQuestions(session, room, msg); break;
-      case "submitAnswers": await this.onSubmitAnswers(session, room, msg); break;
+      case "submitAnswer": await this.onSubmitAnswer(session, room, msg); break;
       case "revealNext": await this.onRevealNext(session, room); break;
       case "restart": await this.onRestart(session, room); break;
       case "transferHost":
@@ -229,8 +231,8 @@ export class SyncRoom {
       return;
     }
 
-    const refereeId = typeof msg.refereeId === "string" ? msg.refereeId : "";
-    if (!room.players[refereeId]?.connected) {
+    const requestedRefereeId = typeof msg.refereeId === "string" && msg.refereeId ? msg.refereeId : null;
+    if (requestedRefereeId && !room.players[requestedRefereeId]?.connected) {
       sendError(session.ws, "Choisis un arbitre connecté avant de démarrer.");
       return;
     }
@@ -241,7 +243,7 @@ export class SyncRoom {
       }
     }
 
-    room.refereeId = refereeId;
+    room.refereeId = pickReferee(room, requestedRefereeId);
     room.questions = [];
     room.answers = {};
     room.revealQuestion = 0;
@@ -274,21 +276,24 @@ export class SyncRoom {
     this.broadcast();
   }
 
-  private async onSubmitAnswers(session: Session, room: RoomState, msg: Record<string, unknown>) {
+  private async onSubmitAnswer(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "answering" || !session.playerId || session.playerId === room.refereeId) return;
     const player = room.players[session.playerId];
     if (!player?.connected || player.submitted) return;
-    if (!Array.isArray(msg.answers) || msg.answers.length !== QUESTION_COUNT) {
-      sendError(session.ws, `Réponds aux ${QUESTION_COUNT} questions.`);
+    const previous = room.answers[player.id] ?? [];
+    const question = Number(msg.question);
+    if (!Number.isInteger(question) || question !== previous.length || question >= QUESTION_COUNT) {
+      sendError(session.ws, "Cette question a déjà été validée ou n'est pas encore disponible.");
       return;
     }
-    const answers = msg.answers.map((value) => String(value).trim().slice(0, MAX_ANSWER_LENGTH));
-    if (answers.some((answer) => !answer)) {
-      sendError(session.ws, "Toutes les réponses doivent être remplies.");
+    const answer = String(msg.answer ?? "").trim().slice(0, MAX_ANSWER_LENGTH);
+    if (!answer) {
+      sendError(session.ws, "Écris une réponse avant de valider.");
       return;
     }
-    room.answers[player.id] = answers;
-    player.submitted = true;
+    previous.push(answer);
+    room.answers[player.id] = previous;
+    player.submitted = previous.length === QUESTION_COUNT;
     this.maybeStartReveal(room);
     await this.saveRoom();
     this.broadcast();
@@ -307,8 +312,8 @@ export class SyncRoom {
 
   private async onRevealNext(session: Session, room: RoomState) {
     if (room.phase !== "reveal" || session.playerId !== room.refereeId) return;
-    const ids = answererIds(room);
     const question = room.revealQuestion;
+    const ids = answererIdsForQuestion(room, question);
     const count = room.revealedCounts[question] ?? 0;
     if (count < ids.length) {
       room.revealedCounts[question] = count + 1;
@@ -386,13 +391,17 @@ export class SyncRoom {
   private buildView(room: RoomState, forPlayerId: string) {
     const refereeView = forPlayerId === room.refereeId;
     const ids = answererIds(room);
-    const answers = ids.map((id, position) => ({
+    const answers = ids.map((id) => ({
       playerId: id,
       values: room.answers[id].map((value, question) => {
+        const questionPosition = answererIdsForQuestion(room, question).indexOf(id);
         const revealed =
           room.phase === "ended" ||
           question < room.revealQuestion ||
-          (room.phase === "reveal" && question === room.revealQuestion && position < (room.revealedCounts[question] ?? 0));
+          (room.phase === "reveal" &&
+            question === room.revealQuestion &&
+            questionPosition >= 0 &&
+            questionPosition < (room.revealedCounts[question] ?? 0));
         return revealed ? value : null;
       }),
     }));
@@ -424,6 +433,7 @@ export class SyncRoom {
           isHost: player.id === room.hostId,
           isReferee: player.id === room.refereeId,
           submitted: player.submitted,
+          answerCount: room.answers[player.id]?.length ?? 0,
         })),
     };
   }

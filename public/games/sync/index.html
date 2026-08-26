@@ -54,7 +54,7 @@
 
     <section id="screen-lobby" class="card hidden">
       <h2>Salon <span id="lobby-code"></span></h2>
-      <p class="muted">Choisissez l'arbitre avant de lancer la partie.</p>
+      <p class="muted">Choisissez l'arbitre ou laissez le hasard décider avant de lancer la partie.</p>
       <div id="players-list" class="players-list"></div>
       <div id="host-settings" class="hidden">
         <label class="visibility-toggle">
@@ -91,21 +91,30 @@
     </section>
 
     <section id="screen-answering" class="hidden">
-      <div class="card">
+      <div id="player-answer-card" class="card narrow">
         <span id="answer-role" class="sync-role"></span>
-        <h2>Répondez sans vous concerter</h2>
-        <p class="muted small">Le but n'est pas de donner ta réponse préférée, mais celle que les autres choisiront aussi.</p>
+        <div id="answer-step" class="muted small"></div>
+        <h2 id="current-question"></h2>
+        <p class="muted small">Écris ce que les autres choisiront probablement, puis valide définitivement ta réponse.</p>
         <div id="answer-form">
-          <div class="sync-question"><label id="answer-label-1" for="answer-1"></label><input id="answer-1" type="text" maxlength="80" autocomplete="off" /></div>
-          <div class="sync-question"><label id="answer-label-2" for="answer-2"></label><input id="answer-2" type="text" maxlength="80" autocomplete="off" /></div>
-          <div class="sync-question"><label id="answer-label-3" for="answer-3"></label><input id="answer-3" type="text" maxlength="80" autocomplete="off" /></div>
-          <button id="answers-submit" class="btn">Valider mes réponses</button>
+          <input id="answer-input" type="text" maxlength="80" placeholder="Ta réponse" autocomplete="off" />
+          <button id="answers-submit" class="btn">Valider cette réponse</button>
         </div>
-        <p id="answer-wait" class="muted hidden">Réponses verrouillées. En attente des autres…</p>
+        <div id="answer-dots" class="sync-answer-dots" aria-label="Progression"></div>
+        <p id="answer-wait" class="muted hidden">Tes trois réponses sont verrouillées. En attente des autres…</p>
       </div>
       <div id="referee-live" class="card hidden">
-        <h3>Réponses reçues en direct</h3>
+        <div class="sync-referee-head">
+          <div>
+            <span class="sync-role">Table de l'arbitre</span>
+            <h2>Les réponses arrivent…</h2>
+            <p class="muted">Tu es le seul à les voir. Prépare ton ordre de révélation pendant que les joueurs réfléchissent.</p>
+          </div>
+          <div class="sync-referee-orb">👁️</div>
+        </div>
+        <div class="sync-progress-track"><span id="answer-progress-bar"></span></div>
         <p id="answer-progress" class="muted small"></p>
+        <div id="referee-players" class="sync-referee-players"></div>
         <div id="live-answers" class="sync-live-list"></div>
       </div>
     </section>
@@ -136,9 +145,9 @@
   <template id="rules">
     <h2>Même longueur d'onde</h2>
     <ol class="rules-steps">
-      <li>L'hôte choisit un arbitre avant de démarrer.</li>
+      <li>L'hôte choisit un arbitre, ou laisse le jeu le tirer au sort.</li>
       <li>L'arbitre écrit trois questions. Il ne répond pas.</li>
-      <li>Les autres répondent simultanément et sans se concerter.</li>
+      <li>Les autres répondent simultanément, une question après l'autre et sans se concerter.</li>
       <li>L'arbitre reçoit les réponses en privé, puis les révèle une par une.</li>
       <li>Pour chaque question, une réponse rapporte un point par autre joueur ayant écrit la même chose.</li>
     </ol>

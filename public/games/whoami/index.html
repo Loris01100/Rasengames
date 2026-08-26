@@ -121,7 +121,16 @@
       <div class="card">
         <h3>Bloc-notes</h3>
         <p class="muted small">Pour toi seul, gardé sur cet appareil : note ce que les réponses t'ont appris.</p>
-        <textarea id="notes-area" class="notes-area" rows="6" placeholder="Homme ✓&#10;Anime récent ✗&#10;Porte un masque ✓"></textarea>
+        <div class="notes-columns">
+          <label class="notes-column notes-column-yes" for="notes-yes-area">
+            <span class="notes-column-title">✅ Validé</span>
+            <textarea id="notes-yes-area" class="notes-area" rows="6" placeholder="Femme&#10;Porte un masque"></textarea>
+          </label>
+          <label class="notes-column notes-column-no" for="notes-no-area">
+            <span class="notes-column-title">❌ Éliminé</span>
+            <textarea id="notes-no-area" class="notes-area" rows="6" placeholder="Anime de bagarre&#10;Cheveux blonds"></textarea>
+          </label>
+        </div>
         <button id="notes-clear" class="btn secondary small">Effacer</button>
       </div>
 

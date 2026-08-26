@@ -28,7 +28,16 @@
   // chargement ni à la reconnexion.
   function playSounds(previous, state) {
     const myTurn = state.turnId === Room.playerId;
-    Sound.onChange("bomb:turn", `${state.phase}:${state.turnId}`, state.phase === "play" && myTurn ? "turn" : null);
+    if (
+      previous &&
+      state.phase === "play" &&
+      state.turnId &&
+      previous.turnId !== state.turnId
+    ) {
+      // Son distinct selon que la bombe arrive chez nous ou passe à quelqu'un
+      // d'autre. Le premier état et une simple reconnexion restent silencieux.
+      Sound.play(myTurn ? "turn" : "notify");
+    }
 
     if (previous && previous.phase === "play" && state.phase === "play") {
       // La bombe a explosé chez quelqu'un si les vies/l'élimination de
@@ -156,6 +165,12 @@
     const text = document.createElement("span");
     text.className = "bomb-log-text";
     text.textContent = last.text;
+    if (last.anime) {
+      const anime = document.createElement("small");
+      anime.className = "bomb-log-anime";
+      anime.textContent = last.anime;
+      text.appendChild(anime);
+    }
     el.lastAnswer.appendChild(text);
 
     const author = document.createElement("span");
@@ -188,6 +203,12 @@
       const text = document.createElement("span");
       text.className = "bomb-log-text";
       text.textContent = a.text;
+      if (a.anime) {
+        const anime = document.createElement("small");
+        anime.className = "bomb-log-anime";
+        anime.textContent = a.anime;
+        text.appendChild(anime);
+      }
       row.appendChild(text);
 
       const author = document.createElement("span");
@@ -264,9 +285,10 @@
     // tout le monde joue souvent derrière la même box).
     const picked = el.wordInput.dataset.anilistRef;
     if (picked) {
-      Room.send({ type: "submitWord", text });
+      Room.send({ type: "submitWord", text, anime: el.wordInput.dataset.anilistAnime });
       el.wordInput.value = "";
       delete el.wordInput.dataset.anilistRef;
+      delete el.wordInput.dataset.anilistAnime;
       return;
     }
 
@@ -283,9 +305,11 @@
       if (check === "unknown") {
         Room.toast("Vérification AniList indisponible, réponse envoyée sans validation.");
       }
-      Room.send({ type: "submitWord", text });
+      const anime = Room.state?.mode === "perso" ? await Anilist.animeOf(text) : null;
+      Room.send({ type: "submitWord", text, anime: anime ?? undefined });
       el.wordInput.value = "";
       delete el.wordInput.dataset.anilistRef;
+      delete el.wordInput.dataset.anilistAnime;
     } finally {
       el.wordSubmit.disabled = false;
       el.wordSubmit.textContent = originalLabel;

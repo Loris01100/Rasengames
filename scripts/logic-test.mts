@@ -525,13 +525,19 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   assert.equal(sync.normalizeAnswer("RÉM"), "rem");
 
   const room = emptySync("TEST");
+  addPlayers(room, { ref: {}, a: {}, b: {}, c: {} });
+  assert.equal(sync.pickReferee(room, "b"), "b", "l'arbitre choisi doit être respecté");
+  assert.ok(room.playerOrder.includes(sync.pickReferee(room) ?? ""), "l'arbitre aléatoire doit être connecté");
   room.refereeId = "ref";
-  room.playerOrder = ["ref", "a", "b", "c"];
   room.answers = {
     a: ["Itachi", "SNK", "Naruto"],
     b: ["itachi!", "One Piece", "Naruto"],
     c: ["Pain", "One Piece", "Bleach"],
   };
+  assert.deepEqual(sync.answererIdsForQuestion(room, 1), ["a", "b", "c"]);
+  room.answers.c = ["Pain"];
+  assert.deepEqual(sync.answererIdsForQuestion(room, 1), ["a", "b"], "une réponse partielle ne crée pas de révélation vide");
+  room.answers.c = ["Pain", "One Piece", "Bleach"];
   assert.deepEqual(sync.calculateScores(room), { a: 2, b: 3, c: 1 });
 }
 

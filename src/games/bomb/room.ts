@@ -31,6 +31,8 @@ const MAX_NAME_LENGTH = 20;
 // joueur nommé "toi" se confondait avec le suffixe "(toi)" des rendus).
 const MIN_NAME_LENGTH = 4;
 const MAX_WORD_LENGTH = 40;
+const MAX_ANIME_LENGTH = 80;
+const MIN_TURN_MS = 2_000;
 const VALID_MODES: Mode[] = ["perso", "anime"];
 
 export class BombRoom {
@@ -91,6 +93,7 @@ export class BombRoom {
       this.room.mode = VALID_MODES.includes(this.room.mode) ? this.room.mode : "perso";
       this.room.eliminationOrder ??= [];
       this.room.letters ??= [...ALPHABET];
+      this.room.turnSafeUntil ??= 0;
     }
     return this.room;
   }
@@ -156,6 +159,7 @@ export class BombRoom {
       // le tour tout de suite, la mèche continue de courir sans être touchée.
       if (this.room.phase === "play" && this.room.turnId === player.id) {
         this.advanceTurn(this.room);
+        await this.protectNewTurn(this.room);
       }
       await this.saveRoom();
       this.broadcast();
@@ -329,6 +333,7 @@ export class BombRoom {
     const ids = connectedAliveIds(room);
     room.letters = parseLetters(msg.letters);
     room.turnId = ids[Math.floor(Math.random() * ids.length)] ?? null;
+    room.turnSafeUntil = Date.now() + MIN_TURN_MS;
     room.letter = pickLetter(room.letters);
     room.phase = "play";
 
@@ -350,6 +355,7 @@ export class BombRoom {
     }
 
     const text = String(msg.text ?? "").trim().slice(0, MAX_WORD_LENGTH);
+    const anime = String(msg.anime ?? "").trim().slice(0, MAX_ANIME_LENGTH);
     if (!text) {
       sendError(session.ws, "Réponse vide.");
       return;
@@ -369,8 +375,9 @@ export class BombRoom {
       return;
     }
 
-    room.answers.push({ playerId: session.playerId, letter: room.letter, text });
+    room.answers.push({ playerId: session.playerId, letter: room.letter, text, ...(anime ? { anime } : {}) });
     this.advanceTurn(room);
+    await this.protectNewTurn(room);
     await this.saveRoom();
     this.broadcast();
   }
@@ -384,6 +391,16 @@ export class BombRoom {
     await this.state.storage.setAlarm(Date.now() + randomBombDelay());
   }
 
+  // La mèche globale continue de courir, mais si elle devait finir moins de
+  // deux secondes après un passage, on ne déplace que sa fin à cette limite.
+  private async protectNewTurn(room: RoomState): Promise<void> {
+    room.turnSafeUntil = Date.now() + MIN_TURN_MS;
+    const alarm = await this.state.storage.getAlarm();
+    if (alarm === null || alarm < room.turnSafeUntil) {
+      await this.state.storage.setAlarm(room.turnSafeUntil);
+    }
+  }
+
   // Réveillé par le runtime à l'heure fixée par scheduleBomb(), même si ce
   // Durable Object avait été déchargé entre-temps — c'est ce qui rend la mèche
   // fiable sans qu'aucun client n'ait à la faire tourner lui-même.
@@ -394,6 +411,13 @@ export class BombRoom {
     // la liste publique) et pouvait planter sur un room.scores absent.
     const room = await this.loadRoom("");
     if (room.phase !== "play") return;
+
+    // Filet de sécurité contre la course entre une réponse et une alarme déjà
+    // en file d'attente : le nouveau porteur garde réellement ses 2 secondes.
+    if (Date.now() < room.turnSafeUntil) {
+      await this.state.storage.setAlarm(room.turnSafeUntil);
+      return;
+    }
 
     const holder = room.turnId ? room.players[room.turnId] : null;
     if (holder) {
@@ -420,6 +444,7 @@ export class BombRoom {
     // La personne qui vient de se faire éliminer ne peut plus recevoir la
     // bombe : on repart d'après elle pour que le suivant soit forcément en vie.
     room.turnId = nextTurn(room, holder?.id ?? room.turnId);
+    room.turnSafeUntil = Date.now() + MIN_TURN_MS;
     room.letter = room.turnId ? pickLetter(room.letters) : null;
 
     // Plus personne de connecté pour tenir la bombe : la manche s'arrête là.
@@ -450,6 +475,7 @@ export class BombRoom {
     room.eliminationOrder = [];
     room.winnerId = null;
     room.turnId = null;
+    room.turnSafeUntil = 0;
     room.letter = null;
     promoteWaiting(room);
     room.phase = "lobby";

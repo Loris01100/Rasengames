@@ -172,6 +172,7 @@ const Anilist = (() => {
     const characters = (direct.length > 0 ? direct : rows).slice(0, 6).map((r) => ({
       name: r.name,
       ref: `character:${r.id}`,
+      anime: r.anime,
       from: r.byName || !r.alias ? r.anime : `alias : ${r.alias}${r.anime ? ` — ${r.anime}` : ""}`,
     }));
 
@@ -193,7 +194,7 @@ const Anilist = (() => {
       const data = await query(MEDIA_CHARACTERS, { id: mediaId });
       const from = data?.Media?.title?.romaji ?? "";
       return (data?.Media?.characters?.nodes ?? [])
-        .map((c) => ({ name: c.name?.full ?? "", ref: `character:${c.id}`, from }))
+        .map((c) => ({ name: c.name?.full ?? "", ref: `character:${c.id}`, anime: from, from }))
         .filter((c) => c.name);
     });
   }

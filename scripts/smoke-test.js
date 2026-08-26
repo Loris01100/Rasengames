@@ -201,7 +201,8 @@ const PHASE_CHECKS = {
     assert.ok(!seats[1].classes.has("current"), `${slug}: un seul porteur à la fois`);
 
     const flush = () => new Promise((r) => setImmediate(r));
-    const sentWords = () => socketSent().filter((m) => m.type === "submitWord").map((m) => m.text);
+    const sentAnswers = () => socketSent().filter((m) => m.type === "submitWord");
+    const sentWords = () => sentAnswers().map((m) => m.text);
 
     byId("word-input").value = "Sdfsdfsdf";
     byId("word-submit").dispatch("click");
@@ -219,10 +220,29 @@ const PHASE_CHECKS = {
     const before = fetchCount();
     byId("word-input").value = "Shouyou Hinata";
     byId("word-input").dataset.anilistRef = "character:1";
+    byId("word-input").dataset.anilistAnime = "Haikyuu!!";
     byId("word-submit").dispatch("click");
     await flush();
     assert.deepStrictEqual(sentWords(), ["Shouyou Hinata", "Shouyou Hinata"], `${slug}: mot choisi dans la liste`);
+    assert.strictEqual(sentAnswers().at(-1).anime, "Haikyuu!!", `${slug}: anime d'origine absent de la réponse`);
     assert.strictEqual(fetchCount(), before, `${slug}: un mot déjà choisi ne doit pas redemander AniList`);
+
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "play", hostId: "p1", mode: "perso", letter: "T",
+        players: [
+          { id: "p1", name: "Alice", connected: true, lives: 2 },
+          { id: "p2", name: "Bob", connected: true, lives: 1 },
+        ],
+        turnId: "p2",
+        answers: [{ playerId: "p1", name: "Alice", letter: "S", text: "Shouyou Hinata", anime: "Haikyuu!!" }],
+      },
+    });
+    const lastText = byId("last-answer").children.find((c) => c.classes.has("bomb-log-text"));
+    assert.strictEqual(lastText.children[0]?.textContent, "Haikyuu!!", `${slug}: anime absent de la dernière réponse`);
+    const logText = byId("answers-log").children[0].children.find((c) => c.classes.has("bomb-log-text"));
+    assert.strictEqual(logText.children[0]?.textContent, "Haikyuu!!", `${slug}: anime absent de l'historique`);
   },
 
   // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.

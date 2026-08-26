@@ -6,14 +6,19 @@
     questionWait: $("question-wait"),
     questionInputs: [$("question-1"), $("question-2"), $("question-3")],
     questionsSubmit: $("questions-submit"),
+    playerAnswerCard: $("player-answer-card"),
     answerRole: $("answer-role"),
+    answerStep: $("answer-step"),
+    currentQuestion: $("current-question"),
     answerForm: $("answer-form"),
     answerWait: $("answer-wait"),
-    answerLabels: [$("answer-label-1"), $("answer-label-2"), $("answer-label-3")],
-    answerInputs: [$("answer-1"), $("answer-2"), $("answer-3")],
+    answerInput: $("answer-input"),
+    answerDots: $("answer-dots"),
     answersSubmit: $("answers-submit"),
     refereeLive: $("referee-live"),
     answerProgress: $("answer-progress"),
+    answerProgressBar: $("answer-progress-bar"),
+    refereePlayers: $("referee-players"),
     liveAnswers: $("live-answers"),
     revealStep: $("reveal-step"),
     revealQuestion: $("reveal-question"),
@@ -26,6 +31,7 @@
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
   };
+  let sentAnswerCount = null;
 
   function playerName(state, id) {
     return state.players.find((player) => player.id === id)?.name ?? "Joueur";
@@ -34,6 +40,10 @@
   function fillRefereeSelect(players) {
     const keep = el.refereeSelect.value;
     el.refereeSelect.innerHTML = "";
+    const random = document.createElement("option");
+    random.value = "";
+    random.textContent = "🎲 Aléatoire";
+    el.refereeSelect.appendChild(random);
     for (const player of players.filter((candidate) => candidate.connected)) {
       const option = document.createElement("option");
       option.value = player.id;
@@ -45,10 +55,16 @@
 
   function render(state) {
     Room.showSwitchGame(state.hostId === Room.playerId);
+    if (state.phase !== "answering") {
+      sentAnswerCount = null;
+      el.answersSubmit.disabled = false;
+    }
     if (state.phase === "lobby") {
       Room.showScreen("screen-lobby");
       Room.renderLobby(state);
       fillRefereeSelect(state.players);
+      el.answerInput.value = "";
+      for (const input of el.questionInputs) input.value = "";
     } else if (state.phase === "questions") {
       Room.showScreen("screen-questions");
       renderQuestions(state);
@@ -73,52 +89,117 @@
   function renderAnswering(state) {
     const isReferee = state.refereeId === Room.playerId;
     const me = state.players.find((player) => player.id === Room.playerId);
-    const canAnswer = !isReferee && !me?.submitted;
+    const answerCount = me?.answerCount ?? 0;
+    const canAnswer = !isReferee && answerCount < 3;
+    if (sentAnswerCount != null && answerCount > sentAnswerCount) {
+      sentAnswerCount = null;
+      el.answersSubmit.disabled = false;
+      el.answerInput.focus();
+    }
 
-    el.answerRole.textContent = isReferee ? "Tu es l'arbitre" : "À toi de jouer";
+    el.playerAnswerCard.classList.toggle("hidden", isReferee);
+    el.answerRole.textContent = "À toi de jouer";
     el.answerForm.classList.toggle("hidden", !canAnswer);
     el.answerWait.classList.toggle("hidden", isReferee || canAnswer);
-    for (let index = 0; index < 3; index++) {
-      el.answerLabels[index].textContent = `${index + 1}. ${state.questions[index] ?? ""}`;
-    }
+    el.answerStep.textContent = canAnswer ? `Question ${answerCount + 1} sur 3` : "3 réponses sur 3";
+    el.currentQuestion.textContent = canAnswer ? state.questions[answerCount] ?? "" : "C'est envoyé !";
+    renderAnswerDots(answerCount);
 
     el.refereeLive.classList.toggle("hidden", !isReferee);
     if (!isReferee) return;
     const respondents = state.players.filter((player) => player.connected && player.id !== state.refereeId);
-    const submitted = respondents.filter((player) => player.submitted).length;
-    el.answerProgress.textContent = `${submitted}/${respondents.length} joueurs ont validé`;
+    const received = respondents.reduce((sum, player) => sum + (player.answerCount ?? 0), 0);
+    const total = respondents.length * 3;
+    el.answerProgress.textContent = `${received}/${total} réponses reçues`;
+    el.answerProgressBar.style.width = `${total ? Math.round((received / total) * 100) : 0}%`;
+    renderRefereePlayers(respondents);
     renderLiveAnswers(state);
+  }
+
+  function renderAnswerDots(answerCount) {
+    el.answerDots.innerHTML = "";
+    for (let index = 0; index < 3; index++) {
+      const dot = document.createElement("span");
+      dot.className = "sync-answer-dot";
+      if (index < answerCount) dot.classList.add("done");
+      if (index === answerCount) dot.classList.add("current");
+      dot.textContent = index < answerCount ? "✓" : String(index + 1);
+      el.answerDots.appendChild(dot);
+    }
+  }
+
+  function renderRefereePlayers(players) {
+    el.refereePlayers.innerHTML = "";
+    for (const player of players) {
+      const row = document.createElement("div");
+      row.className = "sync-referee-player";
+      const name = document.createElement("strong");
+      name.textContent = player.name;
+      const status = document.createElement("span");
+      const count = player.answerCount ?? 0;
+      status.textContent = count === 3 ? "Prêt ✓" : `Question ${count + 1}`;
+      if (count === 3) status.className = "done";
+      row.appendChild(name);
+      row.appendChild(status);
+      el.refereePlayers.appendChild(row);
+    }
   }
 
   function renderLiveAnswers(state) {
     el.liveAnswers.innerHTML = "";
-    for (const entry of state.refereeAnswers ?? []) {
-      const row = document.createElement("div");
-      row.className = "sync-live-player";
-      const name = document.createElement("strong");
-      name.textContent = playerName(state, entry.playerId);
-      row.appendChild(name);
-      const values = document.createElement("div");
-      values.className = "sync-live-values";
-      entry.values.forEach((answer, index) => {
-        const value = document.createElement("span");
-        value.textContent = `${index + 1}. ${answer ?? "—"}`;
-        values.appendChild(value);
-      });
-      row.appendChild(values);
-      el.liveAnswers.appendChild(row);
-    }
+    state.questions.forEach((question, index) => {
+      const card = document.createElement("div");
+      card.className = "sync-live-question";
+      const title = document.createElement("h3");
+      title.textContent = `${index + 1}. ${question}`;
+      card.appendChild(title);
+      const entries = (state.refereeAnswers ?? []).filter((entry) => entry.values[index] != null);
+      if (entries.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "muted small";
+        empty.textContent = "Aucune réponse pour l'instant…";
+        card.appendChild(empty);
+      }
+      for (const entry of entries) {
+        const answer = document.createElement("div");
+        answer.className = "sync-live-answer";
+        const name = document.createElement("span");
+        name.textContent = playerName(state, entry.playerId);
+        const value = document.createElement("strong");
+        value.textContent = entry.values[index];
+        answer.appendChild(name);
+        answer.appendChild(value);
+        card.appendChild(answer);
+      }
+      el.liveAnswers.appendChild(card);
+    });
+  }
+
+  function entriesForQuestion(state, question) {
+    return (state.answers ?? []).filter((entry) => entry.values.length > question);
   }
 
   function visibleEntriesForQuestion(state, question) {
-    return (state.answers ?? []).filter((entry) => entry.values[question] != null);
+    return entriesForQuestion(state, question).filter((entry) => entry.values[question] != null);
+  }
+
+  function submitCurrentAnswer() {
+    const state = Room.state;
+    const me = state?.players?.find((player) => player.id === Room.playerId);
+    const question = me?.answerCount ?? 0;
+    const answer = el.answerInput.value.trim();
+    if (!answer || question >= 3 || sentAnswerCount != null) return;
+    sentAnswerCount = question;
+    el.answersSubmit.disabled = true;
+    Room.send({ type: "submitAnswer", question, answer });
+    el.answerInput.value = "";
   }
 
   function renderReveal(state) {
     const question = state.revealQuestion ?? 0;
     const isReferee = state.refereeId === Room.playerId;
     const entries = visibleEntriesForQuestion(state, question);
-    const total = (state.answers ?? []).length;
+    const total = entriesForQuestion(state, question).length;
     el.revealStep.textContent = `Question ${question + 1} sur 3`;
     el.revealQuestion.textContent = state.questions[question] ?? "";
     el.revealedAnswers.innerHTML = "";
@@ -201,10 +282,9 @@
     Room.send({ type: "submitQuestions", questions });
   });
 
-  el.answersSubmit.addEventListener("click", () => {
-    const answers = el.answerInputs.map((input) => input.value.trim());
-    if (answers.some((answer) => !answer)) return Room.toast("Réponds aux trois questions.");
-    Room.send({ type: "submitAnswers", answers });
+  el.answersSubmit.addEventListener("click", submitCurrentAnswer);
+  el.answerInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") submitCurrentAnswer();
   });
 
   el.revealNext.addEventListener("click", () => Room.send({ type: "revealNext" }));
@@ -214,7 +294,7 @@
     slug: "sync",
     minPlayers: 3,
     maxPlayers: 10,
-    onStart: () => ({ refereeId: el.refereeSelect.value }),
+    onStart: () => ({ refereeId: el.refereeSelect.value || undefined }),
     onState: (state, previous) => {
       playSounds(previous, state);
       render(state);

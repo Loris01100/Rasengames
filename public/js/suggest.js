@@ -56,6 +56,8 @@ const Suggest = (() => {
       input.value = chosen.name;
       if (chosen.ref) input.dataset.anilistRef = chosen.ref;
       else delete input.dataset.anilistRef;
+      if (chosen.anime) input.dataset.anilistAnime = chosen.anime;
+      else delete input.dataset.anilistAnime;
       close();
       input.focus();
     }
@@ -126,6 +128,7 @@ const Suggest = (() => {
     input.addEventListener("input", () => {
       // Typing again invalidates the entry that was picked before.
       delete input.dataset.anilistRef;
+      delete input.dataset.anilistAnime;
       const q = input.value.trim();
       clearTimeout(timer);
       if (q.length < MIN_CHARS) return close();

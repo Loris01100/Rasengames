@@ -12,8 +12,19 @@ export function respondentIds(room: RoomState): string[] {
   return connectedIds(room).filter((id) => id !== room.refereeId);
 }
 
+export function pickReferee(room: RoomState, requestedId?: string | null): string | null {
+  const ids = connectedIds(room);
+  if (requestedId && ids.includes(requestedId)) return requestedId;
+  if (ids.length === 0) return null;
+  return ids[Math.floor(Math.random() * ids.length)];
+}
+
 export function answererIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => id !== room.refereeId && room.answers[id]);
+}
+
+export function answererIdsForQuestion(room: RoomState, question: number): string[] {
+  return answererIds(room).filter((id) => room.answers[id]?.[question] != null);
 }
 
 export function normalizeAnswer(answer: string): string {

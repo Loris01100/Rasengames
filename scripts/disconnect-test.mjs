@@ -29,6 +29,14 @@ function join(slug, code, name) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+async function waitUntil(client, predicate, label) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (predicate(client.last())) return client.last();
+    await sleep(50);
+  }
+  throw new Error(`délai dépassé : ${label}`);
+}
+
 for (const slug of GAMES) {
   const res = await fetch(`${BASE}/api/${slug}/create`, { method: "POST" });
   const { code } = await res.json();
@@ -82,27 +90,51 @@ console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length
     questions: ["Le plus stylé ?", "Le plus beau ?", "Le meilleur héros ?"],
   }));
   await sleep(200);
-  host.ws.send(JSON.stringify({ type: "submitAnswers", answers: ["Itachi", "SNK", "Naruto"] }));
-  await sleep(200);
+  host.ws.send(JSON.stringify({ type: "submitAnswer", question: 0, answer: "Itachi" }));
+  await waitUntil(host, (state) => state?.players.find((player) => player.name === "Hote1")?.answerCount === 1, "première réponse hôte");
+  await waitUntil(p2, (state) => state?.players.find((player) => player.name === "Hote1")?.answerCount === 1, "progression publique hôte");
+  await waitUntil(referee, (state) => state?.refereeAnswers?.flatMap((entry) => entry.values).length === 1, "réponse privée arbitre");
 
   const publicValues = p2.last().answers.flatMap((entry) => entry.values).filter(Boolean);
   const privateValues = referee.last().refereeAnswers.flatMap((entry) => entry.values).filter(Boolean);
-  if (publicValues.length !== 0 || privateValues.length !== 3) {
+  if (publicValues.length !== 0 || privateValues.length !== 1) {
     throw new Error("sync: les réponses en attente ne sont pas privées à l'arbitre");
   }
 
-  p2.ws.send(JSON.stringify({ type: "submitAnswers", answers: ["itachi!", "One Piece", "Naruto"] }));
-  await sleep(200);
-  if (host.last().phase !== "reveal") throw new Error("sync: la révélation n'a pas démarré");
+  host.ws.send(JSON.stringify({ type: "submitAnswer", question: 1, answer: "SNK" }));
+  await waitUntil(host, (state) => state?.players.find((player) => player.name === "Hote1")?.answerCount === 2, "deuxième réponse hôte");
+  host.ws.send(JSON.stringify({ type: "submitAnswer", question: 2, answer: "Naruto" }));
+  await waitUntil(host, (state) => state?.players.find((player) => player.name === "Hote1")?.answerCount === 3, "troisième réponse hôte");
+  p2.ws.send(JSON.stringify({ type: "submitAnswer", question: 0, answer: "itachi!" }));
+  await waitUntil(p2, (state) => state?.players.find((player) => player.name === "Invite1")?.answerCount === 1, "première réponse invité");
+  p2.ws.send(JSON.stringify({ type: "submitAnswer", question: 1, answer: "One Piece" }));
+  await waitUntil(p2, (state) => state?.players.find((player) => player.name === "Invite1")?.answerCount === 2, "deuxième réponse invité");
+  p2.ws.send(JSON.stringify({ type: "submitAnswer", question: 2, answer: "Naruto" }));
+  await waitUntil(p2, (state) => state?.phase === "reveal", "début de la révélation");
+  if (p2.last().phase !== "reveal") {
+    throw new Error(`sync: la révélation n'a pas démarré (${JSON.stringify({
+      phase: p2.last().phase,
+      players: p2.last().players.map((player) => ({ name: player.name, answerCount: player.answerCount })),
+    })})`);
+  }
 
   referee.ws.send(JSON.stringify({ type: "revealNext" }));
-  await referee.next();
+  await waitUntil(host, (state) => state?.phase === "reveal" && state.revealedCounts?.[0] === 1, "première révélation");
   const firstReveal = host.last().answers.filter((entry) => entry.values[0] != null);
   if (firstReveal.length !== 1) throw new Error("sync: plus d'une réponse révélée par clic");
 
   for (let click = 0; click < 8; click++) {
+    const before = JSON.stringify({
+      phase: referee.last()?.phase,
+      question: referee.last()?.revealQuestion,
+      counts: referee.last()?.revealedCounts,
+    });
     referee.ws.send(JSON.stringify({ type: "revealNext" }));
-    await referee.next();
+    await waitUntil(referee, (state) => JSON.stringify({
+      phase: state?.phase,
+      question: state?.revealQuestion,
+      counts: state?.revealedCounts,
+    }) !== before, `révélation ${click + 2}`);
   }
   if (host.last().phase !== "ended") throw new Error("sync: la partie ne se termine pas après trois questions");
   const respondentScores = Object.values(host.last().scores).sort((a, b) => a - b);
