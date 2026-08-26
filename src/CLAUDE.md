@@ -18,7 +18,7 @@ Chaque jeu est autonome et suit la même forme (`undercover/` et `hundred/` comm
 - `room.ts` — la classe Durable Object : un tableau `sessions: {ws, playerId}[]` en mémoire et un `RoomState` en cache (`this.room`), lu/écrit via `loadRoom()`/`saveRoom()`. Tout message qui change l'état finit par `saveRoom()` + `broadcast()`. `broadcast()` envoie à chaque socket une vue *personnalisée* via `buildView(room, playerId)` — c'est là que l'information cachée est filtrée par destinataire avant sérialisation.
 - Les données statiques du jeu (`words.ts`, `themes.ts`, etc.).
 
-Chaque `room.ts` réimplémente sa propre plomberie session/join/reconnexion/broadcast plutôt que d'hériter d'une classe de base : les sémantiques de tour, de vote et de déconnexion divergent trop. Seul ce qui était *identique à l'octet près* dans les sept salons a été factorisé (typage générique/structurel, chaque `RoomState` garde sa forme) :
+Chaque `room.ts` réimplémente sa propre plomberie session/join/reconnexion/broadcast plutôt que d'hériter d'une classe de base : les sémantiques de tour, de vote et de déconnexion divergent trop. Seul ce qui était *identique à l'octet près* dans les neuf salons a été factorisé (typage générique/structurel, chaque `RoomState` garde sa forme) :
 - `lib/session.ts` — `Session`, `attachSession`, `broadcastState`, `sendError`, `nameTaken`, `promoteWaiting`, `kickPlayer`, `switchGame`.
 - `lib/host.ts` — `reassignHost` (départ subi) et `transferHost` (l'hôte passe la main à un joueur connecté, message `transferHost`, lobby seulement comme `kickPlayer`), typés sur les trois champs que tout `RoomState` partage.
 - `lib/letters.ts` — alphabet, validation et tirage des lettres autorisées (bombe et petit bac : l'hôte décoche des lettres au lobby, la sélection part avec `start` et est stockée dans `letters`).
@@ -46,4 +46,4 @@ La vue envoie `endsIn` (durée restante) et non `endsAt` : l'horloge d'un télé
 
 ## Stockage
 
-`wrangler.toml` utilise `new_sqlite_classes` pour les sept classes de salon comme pour la registry — défaut actuel des nouveaux projets Workers, et ce que `wrangler dev` provisionne en local.
+`wrangler.toml` utilise `new_sqlite_classes` pour les neuf classes de salon comme pour la registry — défaut actuel des nouveaux projets Workers, et ce que `wrangler dev` provisionne en local.

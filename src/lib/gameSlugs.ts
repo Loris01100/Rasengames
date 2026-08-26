@@ -10,5 +10,6 @@ export const GAME_SLUGS = [
   "note",
   "bomb",
   "codenames",
+  "sync",
 ] as const;
 export type GameSlug = (typeof GAME_SLUGS)[number];

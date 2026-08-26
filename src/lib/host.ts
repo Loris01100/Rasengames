@@ -3,7 +3,7 @@ import { sendError, type Session } from "./session";
 // L'hôte est le seul à pouvoir démarrer, relancer, exclure, changer de jeu ou
 // de visibilité : s'il ferme son onglet sans successeur, le salon devient
 // inutilisable pour tous les autres. Typage structurel plutôt qu'un helper par
-// jeu — les huit RoomState partagent déjà ces trois champs.
+// jeu — les neuf RoomState partagent déjà ces trois champs.
 interface HostRoom {
   hostId: string | null;
   playerOrder: string[];

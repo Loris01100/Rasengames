@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Trois questions, des réponses secrètes et un seul objectif : penser exactement comme les autres." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Même longueur d'onde · RasenGames" />
+  <meta property="og:description" content="Trois questions, des réponses secrètes et un seul objectif : penser exactement comme les autres." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/sync/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>Même longueur d'onde · RasenGames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/sync/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+    <div id="switch-game" class="switch-game hidden">
+      <select id="switch-game-select"></select>
+      <button id="switch-game-btn" class="btn secondary small">Changer de jeu</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast hidden"></div>
+
+    <section id="screen-join" class="card narrow">
+      <h1>Même longueur d'onde</h1>
+      <p class="muted">L'arbitre invente trois questions. Les autres répondent en secret et marquent des points lorsqu'ils ont pensé à la même chose. 3 joueurs minimum.</p>
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
+      <div class="join-actions">
+        <label class="visibility-toggle">
+          <input id="create-public" type="checkbox" />
+          <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
+        </label>
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Choisissez l'arbitre avant de lancer la partie.</p>
+      <div id="players-list" class="players-list"></div>
+      <div id="host-settings" class="hidden">
+        <label class="visibility-toggle">
+          <input id="public-toggle" type="checkbox" />
+          <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
+        </label>
+        <div class="sync-option">
+          <label for="referee-select">Arbitre</label>
+          <select id="referee-select"></select>
+        </div>
+        <button id="start-btn" class="btn">Démarrer la partie</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte choisisse l'arbitre...</p>
+    </section>
+
+    <section id="screen-questions" class="card narrow hidden">
+      <div id="question-form" class="hidden">
+        <span class="sync-role">Tu es l'arbitre</span>
+        <h2>Écris tes trois questions</h2>
+        <p class="muted small">Privilégie les questions d'opinion auxquelles tout le monde peut répondre.</p>
+        <label for="question-1">Question 1</label>
+        <textarea id="question-1" maxlength="140" rows="2" placeholder="Quel membre de l'Akatsuki est le plus stylé ?"></textarea>
+        <label for="question-2">Question 2</label>
+        <textarea id="question-2" maxlength="140" rows="2" placeholder="Quel est le plus bel anime ?"></textarea>
+        <label for="question-3">Question 3</label>
+        <textarea id="question-3" maxlength="140" rows="2" placeholder="Quel personnage serait le meilleur colocataire ?"></textarea>
+        <button id="questions-submit" class="btn">Envoyer les questions</button>
+      </div>
+      <div id="question-wait" class="hidden">
+        <h2>L'arbitre prépare les questions…</h2>
+        <p class="muted">Tu les découvriras toutes en même temps.</p>
+      </div>
+    </section>
+
+    <section id="screen-answering" class="hidden">
+      <div class="card">
+        <span id="answer-role" class="sync-role"></span>
+        <h2>Répondez sans vous concerter</h2>
+        <p class="muted small">Le but n'est pas de donner ta réponse préférée, mais celle que les autres choisiront aussi.</p>
+        <div id="answer-form">
+          <div class="sync-question"><label id="answer-label-1" for="answer-1"></label><input id="answer-1" type="text" maxlength="80" autocomplete="off" /></div>
+          <div class="sync-question"><label id="answer-label-2" for="answer-2"></label><input id="answer-2" type="text" maxlength="80" autocomplete="off" /></div>
+          <div class="sync-question"><label id="answer-label-3" for="answer-3"></label><input id="answer-3" type="text" maxlength="80" autocomplete="off" /></div>
+          <button id="answers-submit" class="btn">Valider mes réponses</button>
+        </div>
+        <p id="answer-wait" class="muted hidden">Réponses verrouillées. En attente des autres…</p>
+      </div>
+      <div id="referee-live" class="card hidden">
+        <h3>Réponses reçues en direct</h3>
+        <p id="answer-progress" class="muted small"></p>
+        <div id="live-answers" class="sync-live-list"></div>
+      </div>
+    </section>
+
+    <section id="screen-reveal" class="hidden">
+      <div class="card sync-reveal-card">
+        <span class="sync-role">Révélation</span>
+        <div id="reveal-step" class="muted small"></div>
+        <h2 id="reveal-question"></h2>
+        <div id="revealed-answers" class="sync-revealed"></div>
+        <button id="reveal-next" class="btn hidden"></button>
+        <p id="reveal-wait" class="muted hidden">L'arbitre choisit le rythme des révélations…</p>
+      </div>
+    </section>
+
+    <section id="screen-ended" class="hidden">
+      <div class="card">
+        <h2>Résultats</h2>
+        <p id="end-reason" class="muted hidden"></p>
+        <div id="score-list" class="sync-score-list"></div>
+        <button id="restart-btn" class="btn hidden">Retour au lobby</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte revienne au lobby…</p>
+      </div>
+      <div id="end-answers" class="sync-end-answers"></div>
+    </section>
+  </main>
+
+  <template id="rules">
+    <h2>Même longueur d'onde</h2>
+    <ol class="rules-steps">
+      <li>L'hôte choisit un arbitre avant de démarrer.</li>
+      <li>L'arbitre écrit trois questions. Il ne répond pas.</li>
+      <li>Les autres répondent simultanément et sans se concerter.</li>
+      <li>L'arbitre reçoit les réponses en privé, puis les révèle une par une.</li>
+      <li>Pour chaque question, une réponse rapporte un point par autre joueur ayant écrit la même chose.</li>
+    </ol>
+    <p class="muted small">Majuscules, accents et ponctuation ne changent pas la comparaison.</p>
+  </template>
+  <script src="/js/sound.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/room-client.js"></script>
+  <script src="/games/sync/app.js"></script>
+</body>
+</html>

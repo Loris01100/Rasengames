@@ -17,10 +17,12 @@ import * as detective from "../src/games/detective/logic.ts";
 import { createEmptyRoom as emptyDetective } from "../src/games/detective/types.ts";
 import * as codenames from "../src/games/codenames/logic.ts";
 import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.ts";
+import * as sync from "../src/games/sync/logic.ts";
+import { createEmptyRoom as emptySync } from "../src/games/sync/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
 
-// Les sept Player partagent id/token/name/connected ; le reste (alive,
+// Les neuf Player partagent id/token/name/connected ; le reste (alive,
 // eliminated, found, number...) est passé par jeu dans `extra`.
 function addPlayers<R extends { players: Record<string, any>; playerOrder: string[] }>(
   room: R,
@@ -514,6 +516,23 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   room.revealed[1] = true;
   room.revealedColor[1] = "assassin";
   assert.equal(codenames.cellColorFor(room, 1, "b"), "assassin", "une case révélée devient publique");
+}
+
+// --- Même longueur d'onde : normalisation et groupes de réponses -----------
+
+{
+  assert.equal(sync.normalizeAnswer("  L'Attaque des Titans ! "), "l attaque des titans");
+  assert.equal(sync.normalizeAnswer("RÉM"), "rem");
+
+  const room = emptySync("TEST");
+  room.refereeId = "ref";
+  room.playerOrder = ["ref", "a", "b", "c"];
+  room.answers = {
+    a: ["Itachi", "SNK", "Naruto"],
+    b: ["itachi!", "One Piece", "Naruto"],
+    c: ["Pain", "One Piece", "Bleach"],
+  };
+  assert.deepEqual(sync.calculateScores(room), { a: 2, b: 3, c: 1 });
 }
 
 console.log("logic: ok");

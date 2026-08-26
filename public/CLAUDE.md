@@ -5,7 +5,7 @@
 
 ## `js/room-client.js`
 
-Le global `Room`, chargé avant l'`app.js` de chaque jeu. Il possède le WebSocket et sa reconnexion, l'écran rejoindre/créer, l'identité en localStorage (dix derniers codes par jeu), le badge de salon, le toast, l'entête « changer de jeu », les lignes de joueurs et le lobby : `Room.init({ slug, minPlayers, maxPlayers, onState })`, puis `Room.send/toast/showScreen/playerRow/renderLobby/showSwitchGame`, plus `Room.playerId` / `Room.state` vivants. **Tout ce qui est identique d'un jeu à l'autre va ici**, pas copié dans un huitième `app.js`.
+Le global `Room`, chargé avant l'`app.js` de chaque jeu. Il possède le WebSocket et sa reconnexion, l'écran rejoindre/créer, l'identité en localStorage (dix derniers codes par jeu), le badge de salon, le toast, l'entête « changer de jeu », les lignes de joueurs et le lobby : `Room.init({ slug, minPlayers, maxPlayers, onState })`, puis `Room.send/toast/showScreen/playerRow/renderLobby/showSwitchGame`, plus `Room.playerId` / `Room.state` vivants. **Tout ce qui est identique d'un jeu à l'autre va ici**, pas copié dans un neuvième `app.js`.
 
 Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnexion immédiate sur `visibilitychange`/`online` (le backoff monte à 30 s et ne doit pas faire attendre celui qui revient — cas mobile classique), et six choses qu'aucun jeu ne connaît :
 - le bouton « Règles » du header — contenu pris dans le `<template id="rules">` de la page et déplacé dans un `<dialog>` natif (la top layer passe au-dessus des `.card` sans le contournement de `suggest.js` ; Échap et le fond assombri sont gratuits). `npm test` vérifie que chaque page en porte un.

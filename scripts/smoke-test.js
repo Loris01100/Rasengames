@@ -9,7 +9,7 @@ const vm = require("vm");
 const assert = require("assert");
 
 const ROOT = path.join(__dirname, "..", "public");
-const GAMES = ["bac", "bomb", "detective", "hundred", "note", "undercover", "whoami", "codenames"];
+const GAMES = ["bac", "bomb", "codenames", "detective", "hundred", "note", "sync", "undercover", "whoami"];
 
 // What each game's "start" message must carry beyond its type.
 const START_KEYS = {
@@ -18,6 +18,7 @@ const START_KEYS = {
   detective: ["type"],
   hundred: ["type", "mode", "theme"],
   note: ["type", "guesserId"],
+  sync: ["type", "refereeId"],
   undercover: ["type", "settings"],
   whoami: ["type", "submitMode"],
   codenames: ["type"],
@@ -264,7 +265,7 @@ const PHASE_CHECKS = {
 function run(slug) {
   const html = fs.readFileSync(path.join(ROOT, "games", slug, "index.html"), "utf8");
   // Chaque page de jeu doit porter ses règles (reprises par room-client.js dans
-  // le <dialog> du bouton Règles) et ses balises de partage : un huitième jeu
+  // le <dialog> du bouton Règles) et ses balises de partage : un neuvième jeu
   // ajouté sans elles se voit ici plutôt que dans une conversation de groupe.
   assert.match(html, /<template id="rules">[\s\S]*?<li>[\s\S]*?<\/template>/, slug + ': pas de <template id="rules"> avec des étapes');
   assert.match(html, /property="og:image"/, slug + ': pas de balises de partage (og:)');
@@ -409,7 +410,7 @@ function run(slug) {
       assert.strictEqual(byId("start-btn").disabled, false, `${slug}: start should be enabled with 3 players`);
       assert.ok(!byId("screen-lobby").classList.contains("hidden"), `${slug}: lobby screen hidden`);
 
-      // Score cumulé du salon, rendu par le client partagé pour les sept jeux.
+      // Score cumulé du salon, rendu par le client partagé pour les neuf jeux.
       const tags = byId("players-list").children[1].children.map((c) => c.textContent);
       assert.ok(tags.includes("3 pts"), `${slug}: score cumulé absent de la ligne joueur (${tags})`);
 
@@ -438,7 +439,7 @@ function run(slug) {
       // The "changer de jeu" select must offer the five other games, in order,
       // and switch to the one actually selected.
       const options = byId("switch-game-select").children.map((o) => o.value);
-      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames"]; // room-client.js
+      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"]; // room-client.js
       assert.deepStrictEqual(options, menuOrder.filter((g) => g !== slug), `${slug}: switch-game options`);
       byId("switch-game-select").value = options[2];
       byId("switch-game-btn").dispatch("click");
@@ -447,6 +448,7 @@ function run(slug) {
 
       // Start must carry the game's lobby settings, not a bare {type:"start"}.
       if (byId("guesser-select")) byId("guesser-select").value = "p2"; // note: optional field
+      if (byId("referee-select")) byId("referee-select").value = "p2";
       byId("start-btn").dispatch("click");
       const start = socket.sent.find((m) => m.type === "start");
       assert.ok(start, `${slug}: start button sent nothing`);

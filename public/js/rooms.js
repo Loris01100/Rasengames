@@ -13,6 +13,7 @@
     note: { label: "Le jeu de la note", icon: "🔟" },
     bomb: { label: "Alphabombe", icon: "💣" },
     codenames: { label: "Codenames Anime", icon: "🗂️" },
+    sync: { label: "Même longueur d'onde", icon: "🧠" },
   };
 
   function roomRow(room) {

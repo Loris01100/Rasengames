@@ -7,7 +7,7 @@
 //
 // Pas dans `npm test` : ça demande un serveur en face (cf. CLAUDE.md).
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
-const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb"];
+const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"];
 
 function join(slug, code, name) {
   const ws = new WebSocket(`${BASE.replace("http", "ws")}/ws/${slug}/${code}`);
@@ -55,7 +55,66 @@ for (const slug of GAMES) {
   console.log(`${slug}: ok`);
 }
 
-console.log("l'hôte est réattribué à sa déconnexion dans les 7 jeux");
+console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length} jeux`);
+
+// Même longueur d'onde : l'arbitre choisi avant le départ reçoit les réponses
+// en privé, tandis que les joueurs ne les découvrent qu'au rythme des clics de
+// révélation. Le dernier clic doit calculer les scores et terminer la partie.
+{
+  const { code } = await (await fetch(`${BASE}/api/sync/create`, { method: "POST" })).json();
+  const host = join("sync", code, "Hote1");
+  await host.next();
+  const p2 = join("sync", code, "Invite1");
+  const referee = join("sync", code, "Arbitre1");
+  await p2.next();
+  await referee.next();
+  await sleep(300);
+
+  const refereeId = host.last().players.find((p) => p.name === "Arbitre1")?.id;
+  host.ws.send(JSON.stringify({ type: "start", refereeId }));
+  await sleep(200);
+  if (host.last().phase !== "questions" || host.last().refereeId !== refereeId) {
+    throw new Error("sync: l'arbitre choisi dans le lobby n'a pas été conservé");
+  }
+
+  referee.ws.send(JSON.stringify({
+    type: "submitQuestions",
+    questions: ["Le plus stylé ?", "Le plus beau ?", "Le meilleur héros ?"],
+  }));
+  await sleep(200);
+  host.ws.send(JSON.stringify({ type: "submitAnswers", answers: ["Itachi", "SNK", "Naruto"] }));
+  await sleep(200);
+
+  const publicValues = p2.last().answers.flatMap((entry) => entry.values).filter(Boolean);
+  const privateValues = referee.last().refereeAnswers.flatMap((entry) => entry.values).filter(Boolean);
+  if (publicValues.length !== 0 || privateValues.length !== 3) {
+    throw new Error("sync: les réponses en attente ne sont pas privées à l'arbitre");
+  }
+
+  p2.ws.send(JSON.stringify({ type: "submitAnswers", answers: ["itachi!", "One Piece", "Naruto"] }));
+  await sleep(200);
+  if (host.last().phase !== "reveal") throw new Error("sync: la révélation n'a pas démarré");
+
+  referee.ws.send(JSON.stringify({ type: "revealNext" }));
+  await referee.next();
+  const firstReveal = host.last().answers.filter((entry) => entry.values[0] != null);
+  if (firstReveal.length !== 1) throw new Error("sync: plus d'une réponse révélée par clic");
+
+  for (let click = 0; click < 8; click++) {
+    referee.ws.send(JSON.stringify({ type: "revealNext" }));
+    await referee.next();
+  }
+  if (host.last().phase !== "ended") throw new Error("sync: la partie ne se termine pas après trois questions");
+  const respondentScores = Object.values(host.last().scores).sort((a, b) => a - b);
+  if (JSON.stringify(respondentScores) !== JSON.stringify([2, 2])) {
+    throw new Error(`sync: scores inattendus ${JSON.stringify(host.last().scores)}`);
+  }
+
+  host.ws.close();
+  p2.ws.close();
+  referee.ws.close();
+  console.log("sync: arbitre, confidentialité, révélations et scores validés");
+}
 
 // Deuxième garde-fou : une phase qui attend "tout le monde" ne doit pas rester
 // bloquée sur quelqu'un qui est parti. 1 à 100, phase "propose" : deux joueurs

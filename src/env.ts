@@ -8,5 +8,6 @@ export interface Env {
   NOTE_ROOM: DurableObjectNamespace;
   BOMB_ROOM: DurableObjectNamespace;
   CODENAMES_ROOM: DurableObjectNamespace;
+  SYNC_ROOM: DurableObjectNamespace;
   LOBBY_REGISTRY: DurableObjectNamespace;
 }

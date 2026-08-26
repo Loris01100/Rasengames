@@ -16,7 +16,7 @@ Pile volontairement minimale : Workers + Durable Objects pour l'état temps rée
 npm run dev            # wrangler dev — Durable Objects + assets statiques en local
 npm run deploy         # déploiement manuel (secours)
 npm run typecheck      # tsc --noEmit
-npm test               # words-test.mts (règle "même mot") + logic-test.mts (les 7 logic.ts) + smoke-test.js (les 7 frontends contre un DOM bouchon)
+npm test               # words-test.mts (règle "même mot") + logic-test.mts (les 9 logic.ts) + smoke-test.js (les 9 frontends contre un DOM bouchon)
 npm run loc            # lignes de code par poste
 node scripts/disconnect-test.mjs   # exige un `npm run dev` en face : hôte réattribué, phase débloquée, sonde /exists
 ```

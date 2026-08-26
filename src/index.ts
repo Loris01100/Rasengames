@@ -8,6 +8,7 @@ import { NoteRoom } from "./games/note/room";
 import { BombRoom } from "./games/bomb/room";
 import { CodenamesRoom } from "./games/codenames/room";
 import { WORDS as CODENAMES_WORDS } from "./games/codenames/words";
+import { SyncRoom } from "./games/sync/room";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
 
@@ -20,6 +21,7 @@ export {
   NoteRoom,
   BombRoom,
   CodenamesRoom,
+  SyncRoom,
   LobbyRegistry,
 };
 
@@ -37,6 +39,7 @@ const GAMES: GameRoute[] = [
   { slug: "note", namespace: (env) => env.NOTE_ROOM },
   { slug: "bomb", namespace: (env) => env.BOMB_ROOM },
   { slug: "codenames", namespace: (env) => env.CODENAMES_ROOM },
+  { slug: "sync", namespace: (env) => env.SYNC_ROOM },
 ];
 
 export default {
