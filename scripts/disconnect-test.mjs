@@ -78,6 +78,28 @@ for (const slug of GAMES) {
 
 console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length} jeux`);
 
+// Un clic normal sur « Rejoindre » pendant une manche regarde la partie au
+// lieu de créer un joueur en attente invisible du mode spectateur.
+{
+  const { code } = await (await fetch(`${BASE}/api/whoami/create`, { method: "POST" })).json();
+  const host = join("whoami", code, "Hote1");
+  await host.next();
+  const guest = join("whoami", code, "Invite1");
+  await guest.next();
+  host.ws.send(JSON.stringify({ type: "start", submitMode: "libre" }));
+  await waitUntil(host, (state) => state?.phase === "submit", "début de Qui suis-je");
+
+  const late = join("whoami", code, "Retard1");
+  const state = await late.next();
+  if (!state.spectator || state.players.length !== 2 || state.waiting.length) {
+    throw new Error(`whoami: l'arrivée tardive n'est pas spectatrice (${JSON.stringify(state)})`);
+  }
+
+  host.ws.close();
+  guest.ws.close();
+  late.ws.close();
+}
+
 // Même longueur d'onde : l'arbitre choisi avant le départ reçoit les réponses
 // en privé, tandis que les joueurs ne les découvrent qu'au rythme des clics de
 // révélation. Le dernier clic doit calculer les scores et terminer la partie.

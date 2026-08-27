@@ -155,7 +155,16 @@
 
 /* La phase de jeu occupe la largeur de l'écran : informations personnelles à
    gauche, actions au centre et cartes des autres toujours visibles à droite. */
-.container { max-width: 1500px; }
+.container {
+  max-width: 1500px;
+  padding-bottom: 12px;
+}
+
+#screen-play { margin-top: -12px; }
+
+#screen-play .card {
+  padding: 18px;
+}
 
 #screen-join,
 #screen-lobby,
@@ -177,6 +186,8 @@
   flex-direction: column;
   gap: 16px;
 }
+
+#host-round-actions .btn { width: 100%; }
 
 .whoami-actions-column,
 .whoami-others-card {
@@ -213,12 +224,19 @@
 
 .notes-area {
   width: 100%;
-  min-height: 120px;
+  height: 96px;
+  min-height: 96px;
   resize: vertical;
   margin: 0;
   font-family: inherit;
   line-height: 1.5;
 }
+
+body.spectator-mode .whoami-play-layout {
+  grid-template-columns: minmax(240px, 0.45fr) minmax(560px, 1fr);
+}
+
+body.spectator-mode .whoami-actions-column { position: static; }
 
 @media (max-width: 1180px) {
   .whoami-play-layout {

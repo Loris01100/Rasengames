@@ -13,7 +13,7 @@ Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnex
 - le bouton « copier le lien », construit en JS à côté de `#lobby-code` (`?room=CODE` était déjà géré au chargement).
 - l'étiquette de score cumulé (`state.scores`) sur chaque ligne de joueur.
 - les deux boutons d'hôte sur les lignes des *autres* joueurs au lobby (`.row-actions`) : « Passer hôte » (envoie `transferHost`, seulement si la cible est connectée) et « Exclure » (`kick`).
-- l'écran d'attente : un joueur arrivé en cours de partie est retenu côté serveur dans `room.waiting`, le client lui affiche un `#screen-waiting` généré au lieu d'appeler le `onState` du jeu.
+- le mode spectateur : une arrivée sans ancien token pendant une partie devient automatiquement spectatrice ; elle voit l'état courant sans entrer dans `players` ni pouvoir envoyer d'action.
 
 ## `js/anilist.js`
 
