@@ -153,6 +153,46 @@
   margin: 10px 0;
 }
 
+/* La phase de jeu occupe la largeur de l'écran : informations personnelles à
+   gauche, actions au centre et cartes des autres toujours visibles à droite. */
+.container { max-width: 1500px; }
+
+#screen-join,
+#screen-lobby,
+#screen-submit,
+#screen-ended {
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.whoami-play-layout {
+  display: grid;
+  grid-template-columns: minmax(430px, 1.2fr) minmax(260px, 0.72fr) minmax(390px, 1.08fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.whoami-play-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.whoami-actions-column,
+.whoami-others-card {
+  position: sticky;
+  top: 92px;
+}
+
+.whoami-others-card {
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+}
+
+.whoami-me-card h2 {
+  margin-block: 8px 12px;
+}
+
 .notes-column {
   display: flex;
   flex-direction: column;
@@ -178,6 +218,27 @@
   margin: 0;
   font-family: inherit;
   line-height: 1.5;
+}
+
+@media (max-width: 1180px) {
+  .whoami-play-layout {
+    grid-template-columns: minmax(420px, 1.2fr) minmax(280px, 0.8fr);
+  }
+
+  .whoami-others-card {
+    grid-column: 1 / -1;
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .whoami-play-layout { grid-template-columns: 1fr; }
+  .whoami-actions-column,
+  .whoami-others-card { position: static; max-height: none; }
+  .whoami-actions-column { grid-row: 1; }
+  .whoami-play-column:not(.whoami-actions-column) { grid-row: 2; }
+  .whoami-others-card { grid-row: 3; }
 }
 
 @media (max-width: 520px) {

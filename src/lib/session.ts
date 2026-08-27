@@ -9,6 +9,8 @@ import { GAME_SLUGS } from "./gameSlugs";
 export interface Session {
   ws: WebSocket;
   playerId: string;
+  spectator: boolean;
+  spectatorName: string;
   // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
   recent: number[];
 }
@@ -29,7 +31,7 @@ export function attachSession(
   onMessage: (session: Session, raw: string | ArrayBuffer) => Promise<void>,
   onClose: (session: Session) => void,
 ): void {
-  const session: Session = { ws, playerId: "", recent: [] };
+  const session: Session = { ws, playerId: "", spectator: false, spectatorName: "", recent: [] };
   sessions.push(session);
 
   ws.addEventListener("message", (event) => {
@@ -51,15 +53,47 @@ export function broadcastState<R>(
   buildView: (room: R, playerId: string) => unknown,
 ): void {
   if (!room) return;
+  const spectatorCount = sessions.filter((session) => session.spectator).length;
   for (const session of sessions) {
     if (!session.playerId) continue;
     const view = buildView(room, session.playerId);
+    const state = {
+      ...(view as Record<string, unknown>),
+      spectator: session.spectator,
+      spectatorCount,
+    };
     try {
-      session.ws.send(JSON.stringify({ type: "state", state: view }));
+      session.ws.send(JSON.stringify({ type: "state", state }));
     } catch {
       // socket already gone; the close handler will clean it up
     }
   }
+}
+
+// Un spectateur est une session éphémère : aucune place dans `players`, aucun
+// token persistant, aucun rôle et aucune action de jeu. Son identifiant factice
+// permet malgré tout de réutiliser les vues personnalisées existantes.
+export function handleSpectatorMessage(
+  session: Session,
+  msg: Record<string, unknown>,
+): "continue" | "joined" | "blocked" {
+  if (session.spectator) {
+    sendError(session.ws, "Le mode spectateur est en lecture seule.");
+    return "blocked";
+  }
+  if (msg.type !== "join" || msg.spectator !== true || session.playerId) return "continue";
+
+  const name = String(msg.name ?? "").trim();
+  if (name.length < 4 || name.length > 20) {
+    sendError(session.ws, "Le pseudo doit contenir entre 4 et 20 caractères.");
+    return "blocked";
+  }
+
+  session.playerId = `spectator:${crypto.randomUUID()}`;
+  session.spectator = true;
+  session.spectatorName = name;
+  session.ws.send(JSON.stringify({ type: "joined", playerId: session.playerId, spectator: true }));
+  return "joined";
 }
 
 export function nameTaken(

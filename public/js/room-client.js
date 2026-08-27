@@ -40,6 +40,7 @@ const Room = (() => {
     playerId: null,
     code: null,
     state: null,
+    spectator: false,
   };
 
   function toast(message) {
@@ -86,6 +87,7 @@ const Room = (() => {
     for (const old of codes.slice(10)) {
       localStorage.removeItem(storageKey(old, "token"));
       localStorage.removeItem(storageKey(old, "name"));
+      localStorage.removeItem(storageKey(old, "spectator"));
     }
     localStorage.setItem(key, JSON.stringify(codes.slice(0, 10)));
   }
@@ -105,18 +107,23 @@ const Room = (() => {
   }
 
   function send(payload) {
+    if (api.spectator && payload.type !== "join") {
+      toast("Le mode spectateur est en lecture seule.");
+      return;
+    }
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(payload));
     }
   }
 
-  function connect(code, name, token) {
+  function connect(code, name, token, spectator = false) {
     api.code = code.toUpperCase();
+    api.spectator = spectator;
     const proto = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${proto}://${location.host}/ws/${cfg.slug}/${api.code}`);
 
     ws.addEventListener("open", () => {
-      send({ type: "join", name, token: token || undefined });
+      send({ type: "join", name, token: token || undefined, spectator: spectator || undefined });
     });
 
     ws.addEventListener("message", (event) => {
@@ -152,7 +159,7 @@ const Room = (() => {
     clearTimeout(reconnectTimer);
     const token = localStorage.getItem(storageKey(api.code, "token"));
     const name = localStorage.getItem(storageKey(api.code, "name"));
-    if (api.code && token && name) connect(api.code, name, token);
+    if (api.code && name && (api.spectator || token)) connect(api.code, name, token, api.spectator);
   }
 
   // Backoff : un onglet oublié en arrière-plan (ou un salon supprimé) tapait
@@ -162,7 +169,7 @@ const Room = (() => {
     reconnectTimer = setTimeout(() => {
       const token = localStorage.getItem(storageKey(api.code, "token"));
       const name = localStorage.getItem(storageKey(api.code, "name"));
-      if (api.code && token && name) connect(api.code, name, token);
+      if (api.code && name && (api.spectator || token)) connect(api.code, name, token, api.spectator);
     }, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   }
@@ -170,14 +177,23 @@ const Room = (() => {
   function handleServerMessage(msg) {
     if (msg.type === "joined") {
       api.playerId = msg.playerId;
+      api.spectator = msg.spectator === true;
       reconnectDelay = 2000;
       const name = el.nameInput.value.trim() || "Joueur";
-      localStorage.setItem(storageKey(api.code, "token"), msg.token);
+      if (api.spectator) {
+        localStorage.removeItem(storageKey(api.code, "token"));
+        localStorage.setItem(storageKey(api.code, "spectator"), "1");
+      } else {
+        localStorage.setItem(storageKey(api.code, "token"), msg.token);
+        localStorage.removeItem(storageKey(api.code, "spectator"));
+      }
       localStorage.setItem(storageKey(api.code, "name"), name);
       localStorage.setItem(`${cfg.slug}:lastName`, name);
       rememberRoom(api.code);
       const params = new URLSearchParams(location.search);
       params.set("room", api.code);
+      if (api.spectator) params.set("spectator", "1");
+      else params.delete("spectator");
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
       el.roomBadge.textContent = api.code;
       el.roomBadge.classList.remove("hidden");
@@ -189,6 +205,7 @@ const Room = (() => {
       const previous = api.state;
       api.state = msg.state;
       renderWaitingBadge(msg.state);
+      renderSpectators(msg.state);
       renderBackToLobby(msg.state);
       // Arrivé en cours de partie : le serveur ne nous envoie rien de la manche
       // en cours (on n'y est pas), donc le jeu n'a rien à rendre.
@@ -197,9 +214,11 @@ const Room = (() => {
         return;
       }
       cfg.onState(msg.state, previous);
+      applySpectatorMode();
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}`;
+      const spectator = api.spectator ? "&spectator=1" : "";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}`;
     } else if (msg.type === "kicked") {
       // Token dropped so the auto-reconnect on the next page load doesn't
       // silently walk back into the salon we were just thrown out of.
@@ -251,6 +270,24 @@ const Room = (() => {
     const count = (state.waiting ?? []).filter((w) => w.id !== api.playerId).length;
     el.waitingBadge.textContent = count ? `${count} en attente` : "";
     el.waitingBadge.classList.toggle("hidden", count === 0);
+  }
+
+  function renderSpectators(state) {
+    const count = state.spectatorCount ?? 0;
+    el.spectatorBadge.textContent = api.spectator
+      ? `👁 Spectateur${count > 1 ? ` · ${count}` : ""}`
+      : count
+        ? `👁 ${count} spectateur${count > 1 ? "s" : ""}`
+        : "";
+    el.spectatorBadge.classList.toggle("hidden", count === 0);
+  }
+
+  function applySpectatorMode() {
+    document.body.classList.toggle("spectator-mode", api.spectator);
+    if (!api.spectator) return;
+    for (const control of document.querySelectorAll("main button, main input, main textarea, main select")) {
+      control.disabled = true;
+    }
   }
 
   // Les règles vivent dans un <template id="rules"> de la page du jeu, et le
@@ -422,6 +459,11 @@ const Room = (() => {
     el.waitingBadge.id = "waiting-badge";
     el.roomBadge.parentNode.appendChild(el.waitingBadge);
 
+    el.spectatorBadge = document.createElement("span");
+    el.spectatorBadge.className = "badge spectator-badge hidden";
+    el.spectatorBadge.id = "spectator-badge";
+    el.roomBadge.parentNode.appendChild(el.spectatorBadge);
+
     el.backToLobbyBtn = document.createElement("button");
     el.backToLobbyBtn.className = "btn secondary small hidden";
     el.backToLobbyBtn.id = "back-to-lobby-btn";
@@ -437,6 +479,12 @@ const Room = (() => {
     el.inviteBtn.textContent = "Copier le lien";
     el.inviteBtn.addEventListener("click", copyInvite);
     el.lobbyCode.parentNode.appendChild(el.inviteBtn);
+
+    el.spectateBtn = document.createElement("button");
+    el.spectateBtn.className = "btn secondary spectator-join-btn";
+    el.spectateBtn.id = "spectate-btn";
+    el.spectateBtn.textContent = "👁 Regarder en spectateur";
+    el.joinBtn.parentNode.parentNode.appendChild(el.spectateBtn);
 
     initRules();
 
@@ -477,6 +525,18 @@ const Room = (() => {
       connect(code, name);
     });
 
+    el.spectateBtn.addEventListener("click", async () => {
+      const name = el.nameInput.value.trim();
+      const code = el.codeInput.value.trim().toUpperCase();
+      if (name.length < MIN_NAME_LENGTH) return toast(NAME_TOO_SHORT);
+      if (!code) return toast("Entre un code de salon.");
+      el.spectateBtn.disabled = true;
+      const exists = await roomExists(code);
+      el.spectateBtn.disabled = false;
+      if (!exists) return toast("Aucun salon avec ce code. Vérifie les lettres.");
+      connect(code, name, undefined, true);
+    });
+
     el.codeInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") el.joinBtn.click();
     });
@@ -515,6 +575,12 @@ const Room = (() => {
     el.codeInput.value = code;
     const token = localStorage.getItem(storageKey(code, "token"));
     const savedName = localStorage.getItem(storageKey(code, "name"));
+    const spectatorFromUrl = params.get("spectator") === "1";
+    if (spectatorFromUrl && savedName) {
+      el.nameInput.value = savedName;
+      connect(code, savedName, undefined, true);
+      return;
+    }
     if (token && savedName) {
       el.nameInput.value = savedName;
       connect(code, savedName, token);
@@ -524,7 +590,7 @@ const Room = (() => {
     const autojoinName = params.get("autojoin");
     if (autojoinName) {
       el.nameInput.value = autojoinName;
-      connect(code, autojoinName);
+      connect(code, autojoinName, undefined, spectatorFromUrl);
     }
   }
 

@@ -493,6 +493,24 @@ label {
   flex: 1;
 }
 
+.spectator-join-btn {
+  width: 100%;
+}
+
+.spectator-badge {
+  color: #c6b5ff;
+  border-color: rgba(139, 92, 246, 0.65);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+body.spectator-mode main button:disabled,
+body.spectator-mode main input:disabled,
+body.spectator-mode main textarea:disabled,
+body.spectator-mode main select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .toast {
   position: fixed;
   top: 16px;

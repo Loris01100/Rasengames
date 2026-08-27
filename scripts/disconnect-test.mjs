@@ -9,7 +9,7 @@
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
 const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"];
 
-function join(slug, code, name) {
+function join(slug, code, name, spectator = false) {
   const ws = new WebSocket(`${BASE.replace("http", "ws")}/ws/${slug}/${code}`);
   const states = [];
   const waiters = [];
@@ -19,7 +19,7 @@ function join(slug, code, name) {
     states.push(msg.state);
     for (const resolve of waiters.splice(0)) resolve(msg.state);
   });
-  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "join", name })));
+  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "join", name, spectator })));
   return {
     ws,
     last: () => states[states.length - 1],
@@ -51,6 +51,19 @@ for (const slug of GAMES) {
   if (!hostId || guest.last().players.length !== 2) {
     throw new Error(`${slug}: lobby incomplet (${JSON.stringify(guest.last().players)})`);
   }
+
+  const spectator = join(slug, code, "Public1", true);
+  const spectatorState = await spectator.next();
+  await waitUntil(guest, (state) => state?.spectatorCount === 1, "arrivée du spectateur");
+  if (!spectatorState.spectator || spectatorState.players.length !== 2 || spectatorState.waiting?.length) {
+    throw new Error(`${slug}: le spectateur a pris une place (${JSON.stringify(spectatorState)})`);
+  }
+
+  spectator.ws.send(JSON.stringify({ type: "restart" }));
+  await sleep(100);
+  if (guest.last().phase !== "lobby") throw new Error(`${slug}: un spectateur a pu agir`);
+  spectator.ws.close();
+  await waitUntil(guest, (state) => state?.spectatorCount === 0, "départ du spectateur");
 
   host.ws.close();
   const after = await guest.next();

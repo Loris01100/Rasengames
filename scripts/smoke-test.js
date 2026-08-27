@@ -427,6 +427,11 @@ function run(slug) {
   byId("create-btn").dispatch("click");
   assert.ok(!socket, `${slug}: a 3-letter name should not create a room`);
 
+  const spectatorButton = byId("join-btn").parentNode.parentNode.children.find(
+    (child) => child.id === "spectate-btn"
+  );
+  assert.ok(spectatorButton?.listeners.click?.length, `${slug}: bouton spectateur absent ou inactif`);
+
   // Create a room the way a host does, then walk the server messages.
   byId("name-input").value = "Alice";
   byId("create-public").checked = true;

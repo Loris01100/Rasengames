@@ -9,6 +9,7 @@ import {
   type Session,
   attachSession,
   broadcastState,
+  handleSpectatorMessage,
   kickPlayer,
   nameTaken,
   promoteWaiting,
@@ -138,6 +139,10 @@ export class BacRoom {
 
   private async handleClose(session: Session) {
     this.sessions = this.sessions.filter((s) => s !== session);
+    if (session.spectator) {
+      this.broadcast();
+      return;
+    }
     if (!this.room || !session.playerId) return;
 
     const stillHere = this.sessions.some((s) => s.playerId === session.playerId);
@@ -174,6 +179,12 @@ export class BacRoom {
 
     // fetch() always loads the room before a session can send messages.
     const room = this.room!;
+
+    const spectatorResult = handleSpectatorMessage(session, msg);
+    if (spectatorResult !== "continue") {
+      if (spectatorResult === "joined") this.broadcast();
+      return;
+    }
 
     switch (msg.type) {
       case "join":

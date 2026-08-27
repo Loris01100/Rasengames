@@ -102,56 +102,62 @@
 
     <!-- Play phase -->
     <section id="screen-play" class="hidden">
-      <div class="card">
-        <div class="muted small">Ton mot</div>
-        <h2>???</h2>
-        <p class="muted small">Demande aux autres à voix haute pour deviner. Ils ne répondent que par oui ou non. Quand tu penses savoir, tape le nom ci-dessous.</p>
-        <div id="guess-form" class="inline-form">
-          <input id="guess-input" type="text" maxlength="40" placeholder="Je pense être..." autocomplete="off" />
-          <button id="guess-submit" class="btn">Valider</button>
+      <div class="whoami-play-layout">
+        <div class="whoami-play-column">
+          <div class="card whoami-me-card">
+            <div class="muted small">Ton mot</div>
+            <h2>???</h2>
+            <p class="muted small">Demande aux autres à voix haute pour deviner. Ils ne répondent que par oui ou non. Quand tu penses savoir, tape le nom ci-dessous.</p>
+            <div id="guess-form" class="inline-form">
+              <input id="guess-input" type="text" maxlength="40" placeholder="Je pense être..." autocomplete="off" />
+              <button id="guess-submit" class="btn">Valider</button>
+            </div>
+            <p id="pending-hint" class="muted small hidden"></p>
+            <p id="cooldown-hint" class="muted small hidden"></p>
+            <p id="found-hint" class="muted small hidden">Trouvé ! 🎉 En attente des autres...</p>
+            <div id="my-attempts"></div>
+            <p id="my-questions" class="muted small"></p>
+            <p id="play-progress" class="muted small"></p>
+          </div>
+
+          <div class="card whoami-notes-card">
+            <h3>Bloc-notes</h3>
+            <p class="muted small">Pour toi seul, gardé sur cet appareil.</p>
+            <div class="notes-columns">
+              <label class="notes-column notes-column-yes" for="notes-yes-area">
+                <span class="notes-column-title">✅ Validé</span>
+                <textarea id="notes-yes-area" class="notes-area" rows="5" placeholder="Femme&#10;Porte un masque"></textarea>
+              </label>
+              <label class="notes-column notes-column-no" for="notes-no-area">
+                <span class="notes-column-title">❌ Éliminé</span>
+                <textarea id="notes-no-area" class="notes-area" rows="5" placeholder="Anime de bagarre&#10;Cheveux blonds"></textarea>
+              </label>
+            </div>
+            <button id="notes-clear" class="btn secondary small">Effacer</button>
+          </div>
         </div>
-        <p id="pending-hint" class="muted small hidden"></p>
-        <p id="cooldown-hint" class="muted small hidden"></p>
-        <p id="found-hint" class="muted small hidden">Trouvé ! 🎉 En attente des autres...</p>
-        <div id="my-attempts"></div>
-        <p id="my-questions" class="muted small"></p>
-        <p id="play-progress" class="muted small"></p>
-      </div>
 
-      <div class="card">
-        <h3>Bloc-notes</h3>
-        <p class="muted small">Pour toi seul, gardé sur cet appareil : note ce que les réponses t'ont appris.</p>
-        <div class="notes-columns">
-          <label class="notes-column notes-column-yes" for="notes-yes-area">
-            <span class="notes-column-title">✅ Validé</span>
-            <textarea id="notes-yes-area" class="notes-area" rows="6" placeholder="Femme&#10;Porte un masque"></textarea>
-          </label>
-          <label class="notes-column notes-column-no" for="notes-no-area">
-            <span class="notes-column-title">❌ Éliminé</span>
-            <textarea id="notes-no-area" class="notes-area" rows="6" placeholder="Anime de bagarre&#10;Cheveux blonds"></textarea>
-          </label>
+        <div class="whoami-play-column whoami-actions-column">
+          <div class="card whoami-turn-card">
+            <h3 id="turn-banner" class="turn-banner"></h3>
+            <button id="asked-btn" class="btn secondary small hidden">J'ai posé ma question ✓</button>
+          </div>
+
+          <div id="validate-panel" class="card hidden">
+            <h3>Propositions à valider</h3>
+            <p class="muted small">Dis si le nom proposé est le bon — le jeu ne tranche pas tout seul.</p>
+            <div id="validate-list"></div>
+          </div>
+
+          <div id="host-round-actions" class="card hidden">
+            <button id="end-round-btn" class="btn secondary small">Terminer la manche</button>
+          </div>
         </div>
-        <button id="notes-clear" class="btn secondary small">Effacer</button>
-      </div>
 
-      <div class="card">
-        <h3 id="turn-banner" class="turn-banner"></h3>
-        <button id="asked-btn" class="btn secondary small hidden">J'ai posé ma question ✓</button>
-      </div>
-
-      <div id="validate-panel" class="card hidden">
-        <h3>Propositions à valider</h3>
-        <p class="muted small">Dis si le nom proposé est le bon — le jeu ne tranche pas tout seul.</p>
-        <div id="validate-list"></div>
-      </div>
-
-      <div class="card">
-        <h3>Les autres</h3>
-        <div id="others-grid" class="whoami-grid"></div>
-      </div>
-
-      <div id="host-round-actions" class="card hidden">
-        <button id="end-round-btn" class="btn secondary small">Terminer la manche</button>
+        <aside class="card whoami-others-card">
+          <h3>Les autres</h3>
+          <div id="others-grid" class="whoami-grid"></div>
+        </aside>
       </div>
     </section>
 
