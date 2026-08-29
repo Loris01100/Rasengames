@@ -4,6 +4,8 @@ Guide de ce dépôt pour Codex. Tout en français, commentaires de code compris.
 
 **Détails par zone, chargés à la demande** : [src/AGENTS.md](src/AGENTS.md) (backend, Durable Objects, pièges de salon) et [public/AGENTS.md](public/AGENTS.md) (frontend, AniList, pièges CSS). Les lire avant de toucher à ces dossiers ; ne pas y dupliquer ce fichier-ci.
 
+**Documentation fonctionnelle** : [docs/](docs/README.md) explique *ce que fait* le produit — [architecture.md](docs/architecture.md) (parcours d'un joueur, routes, salons, protocole WebSocket, registre des parties publiques, front), [salon.md](docs/salon.md) (le cycle de vie d'un salon, commun aux huit jeux) et une fiche par mini-jeu dans [docs/jeux/](docs/jeux/README.md) (règles, phases, réglages de l'hôte, barème, information cachée, messages). Les AGENTS.md disent comment travailler dans le dépôt, `docs/` dit comment le site se joue. **Toute modification des règles, du barème ou des réglages d'un jeu se répercute dans sa fiche** (et, si elle est visible par le joueur, dans son `<template id="rules">`).
+
 ## De quoi il s'agit
 
 RasenGames est une plateforme de jeux d'ambiance sur thème anime/manga, jouée entre amis depuis le web sur des appareils séparés (un onglet par joueur, pas de compte). Déployée sur Cloudflare Workers à l'adresse `rasengames.reesch.com`. Tout nouveau contenu est thématisé anime/manga par défaut, sauf consigne contraire.
@@ -27,4 +29,4 @@ La CI (`.github/workflows/ci.yml`) lance typecheck + `npm test`, rien d'autre, e
 
 ## Ajouter un mini-jeu
 
-Créer `src/games/<slug>/` (voir `src/AGENTS.md`), ajouter une entrée à `GAMES` dans `src/index.ts`, le binding dans l'interface `Env` de `src/env.ts`, puis dans `wrangler.toml` à la fois un `durable_objects.bindings` **et** une nouvelle entrée `migrations` (`new_sqlite_classes`). Côté client, `public/games/<slug>/{index.html,style.css,app.js}`.
+Créer `src/games/<slug>/` (voir `src/AGENTS.md`), ajouter une entrée à `GAMES` dans `src/index.ts`, le binding dans l'interface `Env` de `src/env.ts`, puis dans `wrangler.toml` à la fois un `durable_objects.bindings` **et** une nouvelle entrée `migrations` (`new_sqlite_classes`). Côté client, `public/games/<slug>/{index.html,style.css,app.js}`. Enfin, une fiche `docs/jeux/<slug>.md` et sa ligne dans les deux tableaux récapitulatifs ([docs/README.md](docs/README.md), [docs/jeux/README.md](docs/jeux/README.md)).
