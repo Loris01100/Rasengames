@@ -181,19 +181,26 @@
   function renderRoleCard(state) {
     const you = state.you;
     if (!you) return;
-    const text = you.word ? you.word : you.role === "mrwhite" ? "Tu es Mr. White (pas de mot !)" : "—";
-    el.wordDisplay.textContent = wordHidden ? "•••••" : text;
-    el.wordDisplay.classList.toggle("hidden-word", wordHidden);
+    const mrWhiteReveal =
+      state.phase === "ended" && you.role === "mrwhite"
+        ? `Civils : ${state.civilianWord} · Undercover : ${state.undercoverWord}`
+        : null;
+    const text = mrWhiteReveal ?? (you.word ? you.word : you.role === "mrwhite" ? "Tu es Mr. White (pas de mot !)" : "—");
+    const hideWord = wordHidden && state.phase !== "ended";
+    el.wordDisplay.textContent = hideWord ? "•••••" : text;
+    el.wordDisplay.classList.toggle("hidden-word", hideWord);
 
-    showWordImage(el.wordImage, !wordHidden && you.word, state);
+    showWordImage(el.wordImage, !hideWord && you.word, state);
 
-    el.wordHint.textContent = !wordHidden && you.word && you.wordHint ? you.wordHint : "";
+    el.wordHint.textContent = !hideWord && you.word && you.wordHint ? you.wordHint : "";
 
-    el.roleHint.textContent = you.role === "mrwhite"
-      ? "Bluffe : tu n'as pas de mot, essaie de deviner celui des civils si tu es démasqué."
-      : you.role === "undercover"
-        ? "Ton mot ressemble à celui des civils, mais n'est pas identique."
-        : "Décris ton mot sans le dire directement.";
+    el.roleHint.textContent = mrWhiteReveal
+      ? "La partie est terminée : voici les deux mots de la manche."
+      : you.role === "mrwhite"
+        ? "Bluffe : tu n'as pas de mot, essaie de deviner celui des civils si tu es démasqué."
+        : you.role === "undercover"
+          ? "Ton mot ressemble à celui des civils, mais n'est pas identique."
+          : "Décris ton mot sans le dire directement.";
   }
 
   function renderPlayersMini(state) {

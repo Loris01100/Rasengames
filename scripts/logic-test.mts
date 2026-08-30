@@ -17,6 +17,7 @@ import * as detective from "../src/games/detective/logic.ts";
 import { createEmptyRoom as emptyDetective } from "../src/games/detective/types.ts";
 import * as codenames from "../src/games/codenames/logic.ts";
 import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.ts";
+import { WORDS as codenamesWords } from "../src/games/codenames/words.ts";
 import * as sync from "../src/games/sync/logic.ts";
 import { createEmptyRoom as emptySync } from "../src/games/sync/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
@@ -519,7 +520,15 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   assert.equal(codenames.cellColorFor(room, 1, "b"), "assassin", "une case révélée devient publique");
 }
 
-// --- Changement de jeu : le rôle d'hôte ne voyage plus -----------------------
+{
+  const seen = new Set<string>();
+  const duplicates = codenamesWords
+    .map((entry) => entry.word)
+    .filter((word) => seen.has(word) || !seen.add(word));
+  assert.deepEqual(duplicates, [], "le plateau Codenames ne doit pas pouvoir tirer deux cartes identiques");
+}
+
+// --- Changement de jeu : salon neuf et hôte conservé -------------------------
 
 {
   const messagesA: any[] = [];
@@ -528,9 +537,20 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
     { playerId: "a", recent: [], ws: { send: (raw: string) => messagesA.push(JSON.parse(raw)) } },
     { playerId: "b", recent: [], ws: { send: (raw: string) => messagesB.push(JSON.parse(raw)) } },
   ] as any;
-  switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" });
-  assert.equal(messagesA[0].asHost, undefined, "l'ancien hôte ne doit pas être désigné dans le nouveau jeu");
-  assert.equal(messagesB[0].asHost, undefined, "aucun joueur ne reçoit le rôle d'hôte à transférer");
+  const namespace = {
+    idFromName: (code: string) => code,
+    get: () => ({ fetch: async () => Response.json({ exists: false }) }),
+  };
+  const env = {
+    UNDERCOVER_ROOM: namespace, HUNDRED_ROOM: namespace, BAC_ROOM: namespace,
+    WHOAMI_ROOM: namespace, DETECTIVE_ROOM: namespace, NOTE_ROOM: namespace,
+    BOMB_ROOM: namespace, CODENAMES_ROOM: namespace, SYNC_ROOM: namespace,
+  } as any;
+  await switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" }, env);
+  assert.equal(messagesA[0].preserveHost, true, "l'ancien hôte doit être désigné dans le nouveau jeu");
+  assert.equal(messagesB[0].preserveHost, false, "un invité ne doit pas récupérer le rôle d'hôte");
+  assert.notEqual(messagesA[0].code, "TEST", "le jeu cible doit recevoir un salon neuf");
+  assert.equal(messagesA[0].code, messagesB[0].code, "tout le groupe doit recevoir le même nouveau code");
 }
 
 // --- Même longueur d'onde : normalisation et groupes de réponses -----------

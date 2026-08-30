@@ -277,6 +277,53 @@ const PHASE_CHECKS = {
     assert.strictEqual(logText.children[0]?.textContent, "Haikyuu!!", `${slug}: anime absent de l'historique`);
   },
 
+  // Même longueur d'onde : ceux qui patientent doivent savoir précisément
+  // quel joueur est en train de rédiger les questions.
+  sync(send, byId, slug) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "questions", hostId: "p1", refereeId: "p2",
+        players: [
+          { id: "p1", name: "Alice", connected: true },
+          { id: "p2", name: "Arbitre", connected: true },
+        ],
+      },
+    });
+    assert.strictEqual(
+      byId("question-wait-title").textContent,
+      "Arbitre prépare les questions…",
+      `${slug}: le nom de l'arbitre n'est pas affiché pendant l'attente`,
+    );
+  },
+
+  // Undercover : le résumé final doit être impossible à manquer pour Mr White,
+  // jusque dans sa carte personnelle qui affichait encore « pas de mot ».
+  undercover(send, byId, slug) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "ended", hostId: "p1", round: 1, winner: "civilians",
+        players: [
+          { id: "p1", name: "Alice", connected: true, alive: true, role: "mrwhite" },
+          { id: "p2", name: "Bob", connected: true, alive: true, role: "civilian", word: "Naruto" },
+        ],
+        you: { id: "p1", role: "mrwhite", alive: true },
+        turnOrder: [], currentTurnPlayerId: null, clues: [], clueHistory: [],
+        votesCast: 0, votesNeeded: 0, myVote: null, lastVoteResult: null,
+        eliminatedHistory: [], pendingGuesserId: null,
+        civilianWord: "Naruto", undercoverWord: "Boruto",
+        civilianWordHint: null, undercoverWordHint: null,
+        settings: { category: "anime" }, wordCategory: "anime",
+      },
+    });
+    assert.strictEqual(
+      byId("word-display").textContent,
+      "Civils : Naruto · Undercover : Boruto",
+      `${slug}: Mr White ne voit pas les mots à la fin`,
+    );
+  },
+
   // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.
   hundred(send, byId, slug) {
     // La variante de la manche doit être lisible en haut de l'écran, pas
@@ -502,6 +549,8 @@ function run(slug) {
       byId("switch-game-btn").dispatch("click");
       const switched = socket.sent.find((m) => m.type === "switchGame");
       assert.strictEqual(switched?.slug, options[2], `${slug}: switched to the wrong game`);
+      send({ type: "switchGame", slug: options[2], code: "ABCD", preserveHost: true });
+      assert.match(sandbox.location.href, /[?&]host=1(?:&|$)/, `${slug}: statut d'hôte perdu pendant la redirection`);
 
       // Start must carry the game's lobby settings, not a bare {type:"start"}.
       if (byId("guesser-select")) byId("guesser-select").value = "p2"; // note: optional field

@@ -25,6 +25,7 @@ import { reportRoom } from "../../lib/registry";
 import { reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
+  assignHostAfterSwitch,
   attachSession,
   broadcastState,
   handleSpectatorMessage,
@@ -214,7 +215,7 @@ export class CodenamesRoom {
         await this.onSetVisibility(session, room, msg);
         break;
       case "switchGame":
-        switchGame(this.sessions, session, room, msg);
+        await switchGame(this.sessions, session, room, msg, this.env);
         break;
       default:
         sendError(session.ws, `Type de message inconnu: ${String(msg.type)}`);
@@ -280,7 +281,7 @@ export class CodenamesRoom {
     const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
-    if (!room.hostId) room.hostId = id;
+    assignHostAfterSwitch(room, id, msg);
     session.playerId = id;
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));

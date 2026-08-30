@@ -116,14 +116,20 @@ const Room = (() => {
     }
   }
 
-  function connect(code, name, token, spectator = false) {
+  function connect(code, name, token, spectator = false, preserveHost = false) {
     api.code = code.toUpperCase();
     api.spectator = spectator;
     const proto = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${proto}://${location.host}/ws/${cfg.slug}/${api.code}`);
 
     ws.addEventListener("open", () => {
-      send({ type: "join", name, token: token || undefined, spectator: spectator || undefined });
+      send({
+        type: "join",
+        name,
+        token: token || undefined,
+        spectator: spectator || undefined,
+        preserveHost: preserveHost || undefined,
+      });
     });
 
     ws.addEventListener("message", (event) => {
@@ -218,7 +224,8 @@ const Room = (() => {
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
       const spectator = api.spectator ? "&spectator=1" : "";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}`;
+      const preserveHost = msg.preserveHost ? "&host=1" : "";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}${preserveHost}`;
     } else if (msg.type === "kicked") {
       // Token dropped so the auto-reconnect on the next page load doesn't
       // silently walk back into the salon we were just thrown out of.
@@ -590,7 +597,7 @@ const Room = (() => {
     const autojoinName = params.get("autojoin");
     if (autojoinName) {
       el.nameInput.value = autojoinName;
-      connect(code, autojoinName, undefined, spectatorFromUrl);
+      connect(code, autojoinName, undefined, spectatorFromUrl, params.get("host") === "1");
     }
   }
 

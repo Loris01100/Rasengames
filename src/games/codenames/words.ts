@@ -115,15 +115,18 @@ export const WORDS: WordEntry[] = [
   // Titres de série : le mot se désigne déjà lui-même, l'indice confirme
   // juste que c'est bien un anime/manga et pas autre chose.
   ...group("Anime", [
-    "Digimon", "Doraemon", "Conan", "Evangelion", "Gundam", "Haikyuu", "Bleach", "One Piece",
+    "Digimon", "Evangelion", "Haikyuu", "Bleach", "One Piece",
     "Dragon Ball", "Jujutsu Kaisen", "Chainsaw Man", "Spy x Family", "Demon Slayer",
     "My Hero Academia", "Attack on Titan", "Hunter x Hunter", "Code Geass", "Sword Art Online",
     "Vinland Saga", "Fairy Tail", "Fullmetal Alchemist", "Mob Psycho", "One Punch Man",
-    "Steins;Gate", "Cowboy Bebop", "JoJo", "Tokyo Ghoul", "Made in Abyss", "Re:Zero",
+    "Steins;Gate", "Cowboy Bebop", "JoJo", "Tokyo Ghoul", "Re:Zero",
     "Konosuba", "Overlord", "Toradora", "Your Name", "A Silent Voice", "Berserk", "Slam Dunk",
-    "Inuyasha", "Sailor Moon", "Yu-Gi-Oh", "Pokémon", "Violet Evergarden", "Kaguya-sama",
+    "Inuyasha", "Sailor Moon", "Yu-Gi-Oh", "Pokémon", "Violet Evergarden", "Love is War",
     "Black Clover", "Fire Force", "Dr. Stone", "Assassination Classroom", "Blue Exorcist",
-    "Monster", "Psycho-Pass", "Kill la Kill", "Fist of the North Star", "Rurouni Kenshin",
-    "Yu Yu Hakusho", "Trigun", "Hellsing", "Elfen Lied", "Tokyo Revengers",
+    "Monster", "Psycho-Pass", "Kill la Kill", "Yu Yu Hakusho", "Trigun", "Elfen Lied", "Tokyo Revengers", "Monogatari",
+    "Solo Leveling", "Blue Lock", "Dandadan", "Kaiju No. 8", "Horimiya",
+    "Oshi no Ko", "The Apothecary Diaries", "Mashle", "Wind Breaker", "Hell's Paradise",
+    "Cyberpunk Edgerunners", "Bocchi the Rock", "Delicious in Dungeon", "My Dress-Up Darling",
+    "Mushoku Tensei", "The Eminence in Shadow", "Sakamoto Days", "Zom 100",
   ]),
 ];

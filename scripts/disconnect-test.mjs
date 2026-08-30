@@ -9,21 +9,35 @@
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
 const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"];
 
-function join(slug, code, name, spectator = false) {
+function join(slug, code, name, spectator = false, preserveHost = false) {
   const ws = new WebSocket(`${BASE.replace("http", "ws")}/ws/${slug}/${code}`);
   const states = [];
   const waiters = [];
+  const messages = [];
+  const messageWaiters = [];
   ws.addEventListener("message", (e) => {
     const msg = JSON.parse(e.data);
+    messages.push(msg);
+    for (const waiter of [...messageWaiters]) {
+      if (waiter.type !== msg.type) continue;
+      messageWaiters.splice(messageWaiters.indexOf(waiter), 1);
+      waiter.resolve(msg);
+    }
     if (msg.type !== "state") return;
     states.push(msg.state);
     for (const resolve of waiters.splice(0)) resolve(msg.state);
   });
-  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "join", name, spectator })));
+  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "join", name, spectator, preserveHost })));
   return {
     ws,
     last: () => states[states.length - 1],
     next: () => new Promise((resolve) => waiters.push(resolve)),
+    nextMessage: (type) => {
+      const existing = messages.find((message) => message.type === type);
+      return existing
+        ? Promise.resolve(existing)
+        : new Promise((resolve) => messageWaiters.push({ type, resolve }));
+    },
   };
 }
 
@@ -77,6 +91,44 @@ for (const slug of GAMES) {
 }
 
 console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length} jeux`);
+
+// Changement de jeu : même si un invité rejoint le nouveau Durable Object en
+// premier, l'ancien hôte doit récupérer son rôle à son arrivée.
+{
+  const { code: oldCode } = await (await fetch(`${BASE}/api/bomb/create`, { method: "POST" })).json();
+  const sourceHost = join("bomb", oldCode, "Hote1");
+  await sourceHost.next();
+  const sourceGuest = join("bomb", oldCode, "Invite1");
+  await sourceGuest.next();
+  sourceHost.ws.send(JSON.stringify({ type: "switchGame", slug: "sync" }));
+  const [hostRedirect, guestRedirect] = await Promise.all([
+    sourceHost.nextMessage("switchGame"),
+    sourceGuest.nextMessage("switchGame"),
+  ]);
+  if (hostRedirect.code === oldCode || hostRedirect.code !== guestRedirect.code) {
+    throw new Error("switchGame: le jeu cible n'a pas reçu un salon neuf commun");
+  }
+  if (!hostRedirect.preserveHost || guestRedirect.preserveHost) {
+    throw new Error("switchGame: le marqueur d'hôte est incorrect");
+  }
+
+  const guest = join("sync", guestRedirect.code, "Invite1");
+  await guest.next();
+  const host = join("sync", hostRedirect.code, "Hote1", false, hostRedirect.preserveHost);
+  await host.next();
+  const state = await waitUntil(
+    guest,
+    (current) => current?.players.some((player) => player.name === "Hote1"),
+    "arrivée différée de l'ancien hôte",
+  );
+  const hostName = state.players.find((player) => player.id === state.hostId)?.name;
+  if (hostName !== "Hote1") throw new Error(`switchGame: l'hôte est devenu ${hostName ?? "inconnu"}`);
+  sourceGuest.ws.close();
+  sourceHost.ws.close();
+  guest.ws.close();
+  host.ws.close();
+  console.log("switchGame: l'ancien hôte garde son rôle même s'il arrive après un invité");
+}
 
 // Même longueur d'onde : l'arbitre choisi avant le départ reçoit les réponses
 // en privé, tandis que les joueurs ne les découvrent qu'au rythme des clics de

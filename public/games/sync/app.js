@@ -4,6 +4,7 @@
     refereeSelect: $("referee-select"),
     questionForm: $("question-form"),
     questionWait: $("question-wait"),
+    questionWaitTitle: $("question-wait-title"),
     questionInputs: [$("question-1"), $("question-2"), $("question-3")],
     questionsSubmit: $("questions-submit"),
     playerAnswerCard: $("player-answer-card"),
@@ -84,6 +85,7 @@
     const isReferee = state.refereeId === Room.playerId;
     el.questionForm.classList.toggle("hidden", !isReferee);
     el.questionWait.classList.toggle("hidden", isReferee);
+    el.questionWaitTitle.textContent = `${playerName(state, state.refereeId)} prépare les questions…`;
   }
 
   function renderAnswering(state) {
