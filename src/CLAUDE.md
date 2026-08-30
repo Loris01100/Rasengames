@@ -34,7 +34,7 @@ Une alarme (`bomb`, `bac`) passe par `loadRoom()` et jamais par `storage.get("ro
 
 ## Manches, scores et retardataires
 
-Chaque `RoomState` porte `scores` (cumul sur les manches du salon, attribué en fin de manche — la règle diffère par jeu) et `waiting` (joueurs arrivés en cours de partie). Les joueurs en attente sont délibérément tenus *hors* de `players`/`playerOrder` pour que la manche en cours ne les voie pas ; `promoteWaiting()` les fait entrer quand `onRestart` ramène au lobby. Les deux champs sont rétro-remplis dans `loadRoom()` (`??=`) : les salons persistés avant leur existence sont relus tels quels.
+Chaque `RoomState` porte `scores` (cumul sur les manches du salon, attribué en fin de manche — la règle diffère par jeu) et conserve `waiting` pour relire les anciens salons persistés. Toute nouvelle arrivée sans token pendant une manche est désormais une session spectatrice éphémère, hors de `players`/`playerOrder` et en lecture seule ; `promoteWaiting()` ne sert plus qu'aux retardataires déjà persistés avant ce changement.
 
 ## Identité du joueur / reconnexion
 

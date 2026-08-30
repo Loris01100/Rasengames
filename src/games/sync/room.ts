@@ -114,7 +114,7 @@ export class SyncRoom {
       return;
     }
     const room = this.room!;
-    const spectatorResult = handleSpectatorMessage(session, msg);
+    const spectatorResult = handleSpectatorMessage(session, msg, room.phase !== "lobby");
     if (spectatorResult !== "continue") {
       if (spectatorResult === "joined") this.broadcast();
       return;

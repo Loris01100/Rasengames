@@ -41,13 +41,12 @@
     info.appendChild(meta);
     row.appendChild(info);
 
-    // Une partie en cours se rejoint aussi : le serveur met le nouveau venu
-    // dans sa file d'attente et le fait entrer à la fin de la manche (écran
-    // d'attente géré par room-client.js).
+    // Une partie en cours reste visible sans perturber la manche : le serveur
+    // transforme automatiquement le nouveau venu en spectateur.
     const join = document.createElement("a");
     join.className = open ? "btn small" : "btn secondary small";
     join.href = `/games/${room.slug}/?room=${room.code}`;
-    join.textContent = open ? "Rejoindre" : "Rejoindre (manche suivante)";
+    join.textContent = open ? "Rejoindre" : "Regarder la partie";
     row.appendChild(join);
 
     return row;

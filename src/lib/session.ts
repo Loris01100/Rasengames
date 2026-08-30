@@ -78,12 +78,14 @@ export function broadcastState<R>(
 export function handleSpectatorMessage(
   session: Session,
   msg: Record<string, unknown>,
+  gameInProgress: boolean,
 ): "continue" | "joined" | "blocked" {
   if (session.spectator) {
     sendError(session.ws, "Le mode spectateur est en lecture seule.");
     return "blocked";
   }
-  if (msg.type !== "join" || msg.spectator !== true || session.playerId) return "continue";
+  const shouldSpectate = msg.spectator === true || (gameInProgress && !msg.token);
+  if (msg.type !== "join" || !shouldSpectate || session.playerId) return "continue";
 
   const name = String(msg.name ?? "").trim();
   if (name.length < 4 || name.length > 20) {

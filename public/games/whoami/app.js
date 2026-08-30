@@ -31,6 +31,8 @@
     playProgress: $("play-progress"),
     turnBanner: $("turn-banner"),
     askedBtn: $("asked-btn"),
+    meCard: document.querySelector(".whoami-me-card"),
+    othersTitle: $("others-title"),
     othersGrid: $("others-grid"),
     endRoundBtn: $("end-round-btn"),
     hostRoundActions: $("host-round-actions"),
@@ -89,8 +91,11 @@
 
     const you = state.players.find((p) => p.id === Room.playerId);
     const ready = !!you?.ready;
-    el.wordForm.classList.toggle("hidden", ready);
-    el.wordDoneHint.classList.toggle("hidden", !ready);
+    el.wordForm.classList.toggle("hidden", Room.spectator || ready);
+    el.wordDoneHint.classList.toggle("hidden", !Room.spectator && !ready);
+    el.wordDoneHint.textContent = Room.spectator
+      ? "Tu regardes la préparation de la manche."
+      : "Envoyé ! En attente des autres...";
 
     el.submitCategory.classList.toggle("hidden", state.submitMode !== "categorie" || !state.category);
     el.submitCategory.textContent = `Catégorie imposée : ${state.category}`;
@@ -262,7 +267,7 @@
   });
 
   function renderPlay(state) {
-    loadNotes();
+    if (!Room.spectator) loadNotes();
 
     const you = state.players.find((p) => p.id === Room.playerId);
     const isHost = state.hostId === Room.playerId;
@@ -270,6 +275,8 @@
 
     const pending = you?.pendingGuess ?? null;
     const cooldown = Math.max(0, (you?.nextGuessAt ?? 0) - (you?.questionsAsked ?? 0));
+    el.meCard.parentNode.classList.toggle("hidden", Room.spectator);
+    el.othersTitle.textContent = Room.spectator ? "La partie" : "Les autres";
     el.guessForm.classList.toggle("hidden", !!you?.found || !!pending || cooldown > 0);
     el.pendingHint.classList.toggle("hidden", !pending);
     el.pendingHint.textContent = pending ? `"${pending}" — en attente de validation...` : "";
