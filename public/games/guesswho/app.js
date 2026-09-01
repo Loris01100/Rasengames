@@ -20,6 +20,7 @@
 
   let renderedLobbyPlayers = "";
   let renderedRound = null;
+  let imageLoadGeneration = 0;
   let eliminated = new Set();
   const IMAGE_SEARCH_NAMES = { "Levi Ackerman": "Levi" };
 
@@ -115,30 +116,44 @@
     return card;
   }
 
-  async function loadBoardImages(jobs) {
+  async function loadBoardImages(jobs, generation) {
     // `setCharacterImages` économise le quota AniList avec une seule requête.
     // Le repli individuel couvre un ancien anilist.js encore en cache et une
     // éventuelle requête groupée refusée : la grille ne reste jamais vide.
     if (typeof Anilist.setCharacterImages === "function") {
       await Anilist.setCharacterImages(jobs.map((job) => ({ img: job.image, name: job.name })));
     }
-    const missing = jobs.filter((job) => job.image.classList.contains("hidden"));
-    for (let index = 0; index < missing.length; index += 3) {
-      await Promise.all(
-        missing.slice(index, index + 3).map((job) =>
-          Anilist.setImage(job.image, job.name, "character")
-        )
-      );
+    // AniList limite les recherches par adresse IP : plusieurs joueurs d'un
+    // même salon peuvent donc partager le quota. Les pauses couvrent le temps
+    // de réouverture du quota sans recharger les portraits déjà trouvés.
+    const retryDelays = [0, 3000, 12000, 30000, 60000];
+    for (const delay of retryDelays) {
+      if (generation !== imageLoadGeneration) return;
+      if (delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      if (generation !== imageLoadGeneration) return;
+      const missing = jobs.filter((job) => job.image.classList.contains("hidden"));
+      if (missing.length === 0) return;
+      for (let index = 0; index < missing.length; index += 2) {
+        if (generation !== imageLoadGeneration) return;
+        await Promise.all(
+          missing.slice(index, index + 2).map((job) =>
+            Anilist.setImage(job.image, job.name, "character")
+          )
+        );
+      }
     }
   }
 
   function renderBoard(state, container, interactive) {
+    const generation = ++imageLoadGeneration;
     container.innerHTML = "";
     const imageJobs = [];
     for (const character of state.board ?? []) {
       container.appendChild(makeCharacterCard(state, character, interactive, imageJobs));
     }
-    void loadBoardImages(imageJobs);
+    void loadBoardImages(imageJobs, generation);
   }
 
   function showCharacter(container, character) {
