@@ -13,10 +13,42 @@ const Anilist = (() => {
   const ENDPOINT = "https://graphql.anilist.co";
   const TIMEOUT_MS = 5000;
 
-  // Names repeat a lot inside one game (same word rendered on several
-  // screens, same prefix retyped), so one cache per tab is enough to keep
-  // the request count low.
+  // Le cache mémoire évite les doublons dans l'onglet. Les URLs d'images
+  // réussies sont aussi conservées dans le navigateur : une actualisation ne
+  // doit pas redemander les vingt portraits et épuiser le quota AniList.
   const cache = new Map();
+  const IMAGE_STORAGE_KEY = "rasengames:anilist-images:v1";
+  const storedImages = (() => {
+    try {
+      if (typeof localStorage === "undefined") return {};
+      const value = JSON.parse(localStorage.getItem(IMAGE_STORAGE_KEY) || "{}");
+      return value && typeof value === "object" ? value : {};
+    } catch {
+      return {};
+    }
+  })();
+
+  function storedImage(key) {
+    const value = storedImages[key];
+    return typeof value === "string" && value.startsWith("https://") ? value : null;
+  }
+
+  function rememberImage(key, url) {
+    if (!url || storedImages[key] === url) return url;
+    storedImages[key] = url;
+    const keys = Object.keys(storedImages);
+    for (const oldKey of keys.slice(0, Math.max(0, keys.length - 300))) {
+      delete storedImages[oldKey];
+    }
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(IMAGE_STORAGE_KEY, JSON.stringify(storedImages));
+      }
+    } catch {
+      // Le jeu continue normalement si le stockage privé est indisponible.
+    }
+    return url;
+  }
 
   async function query(graphql, variables) {
     const controller = new AbortController();
@@ -59,9 +91,13 @@ const Anilist = (() => {
     const [type, rawId] = String(ref).split(":");
     const id = Number(rawId);
     if (!id || (type !== "character" && type !== "anime")) return null;
-    return cached(`ref:${type}:${id}`, async () => {
+    const key = `ref:${type}:${id}`;
+    const saved = storedImage(key);
+    if (saved) return saved;
+    return cached(key, async () => {
       const data = await query(type === "anime" ? IMAGE_BY_ANIME_ID : IMAGE_BY_CHARACTER_ID, { id });
-      return (type === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large) ?? null;
+      const url = (type === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large) ?? null;
+      return rememberImage(key, url);
     });
   }
 
@@ -101,13 +137,15 @@ const Anilist = (() => {
     const trimmed = (name || "").trim();
     if (!trimmed) return null;
     const key = `image:${kind}:${trimmed.toLowerCase()}`;
+    const saved = storedImage(key);
+    if (saved) return saved;
     const url = await cached(key, async () => {
       const order = kind === "anime" ? ["anime", "character"] : ["character", "anime"];
       for (const step of order) {
         const data = await query(step === "anime" ? IMAGE_ANIME : IMAGE_CHARACTER, { search: trimmed });
         const url =
           step === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large;
-        if (url) return url;
+        if (url) return rememberImage(key, url);
       }
       return null;
     });
@@ -142,10 +180,14 @@ const Anilist = (() => {
     if (clean.length === 0) return 0;
 
     const names = [...new Set(clean.map(({ name }) => name))];
+    const urls = new Map(
+      names.map((name) => [name, storedImage(`image:character:${name.toLowerCase()}`)])
+    );
+    const missingNames = names.filter((name) => !urls.get(name));
     const variables = {};
     const declarations = [];
     const fields = [];
-    names.forEach((name, index) => {
+    missingNames.forEach((name, index) => {
       variables[`q${index}`] = name;
       declarations.push(`$q${index}: String`);
       fields.push(`c${index}: Character(search: $q${index}) { image { large } }`);
@@ -156,18 +198,21 @@ const Anilist = (() => {
       img.dataset.for = `batch|${name}`;
     }
 
-    const key = `images:characters:${names.join("|").toLowerCase()}`;
-    const data = await cached(key, () =>
-      query(`query (${declarations.join(", ")}) { ${fields.join(" ")} }`, variables)
-    );
-    if (!data) {
-      cache.delete(key);
-      return 0;
+    if (missingNames.length > 0) {
+      const key = `images:characters:${missingNames.join("|").toLowerCase()}`;
+      const data = await cached(key, () =>
+        query(`query (${declarations.join(", ")}) { ${fields.join(" ")} }`, variables)
+      );
+      if (!data) {
+        cache.delete(key);
+      } else {
+        missingNames.forEach((name, index) => {
+          const imageKey = `image:character:${name.toLowerCase()}`;
+          const url = data[`c${index}`]?.image?.large ?? null;
+          urls.set(name, rememberImage(imageKey, url));
+        });
+      }
     }
-
-    const urls = new Map(
-      names.map((name, index) => [name, data[`c${index}`]?.image?.large ?? null])
-    );
     let loaded = 0;
     for (const { img, name } of clean) {
       const url = urls.get(name);
