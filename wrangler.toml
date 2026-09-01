@@ -45,6 +45,10 @@ name = "SYNC_ROOM"
 class_name = "SyncRoom"
 
 [[durable_objects.bindings]]
+name = "GUESSWHO_ROOM"
+class_name = "GuessWhoRoom"
+
+[[durable_objects.bindings]]
 name = "LOBBY_REGISTRY"
 class_name = "LobbyRegistry"
 
@@ -83,6 +87,10 @@ new_sqlite_classes = ["CodenamesRoom"]
 [[migrations]]
 tag = "v9"
 new_sqlite_classes = ["SyncRoom"]
+
+[[migrations]]
+tag = "v10"
+new_sqlite_classes = ["GuessWhoRoom"]
 
 # Custom domain: once reesch.com is active on this Cloudflare account,
 # uncomment and deploy again (or attach the route from the dashboard).

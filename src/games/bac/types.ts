@@ -1,6 +1,7 @@
 import { ALPHABET } from "../../lib/letters";
 
 export type Phase = "lobby" | "play" | "review" | "ended";
+export type RoundDuration = "short" | "normal" | "long";
 
 export interface Player {
   id: string;
@@ -41,6 +42,10 @@ export interface RoomState {
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
   categories: string[]; // selected category ids, kept across rounds
+  // Les catégories personnalisées utilisent un identifiant interne stable ;
+  // ce dictionnaire permet à tous les joueurs d'afficher le même libellé.
+  categoryLabels: Record<string, string>;
+  duration: RoundDuration;
   letter: string | null;
   // Lettres autorisées au tirage, choisies par l'hôte au lobby.
   letters: string[];
@@ -59,6 +64,8 @@ export function createEmptyRoom(code: string): RoomState {
     scores: {},
     waiting: [],
     categories: [],
+    categoryLabels: {},
+    duration: "normal",
     letter: null,
     letters: [...ALPHABET],
     stoppedBy: null,

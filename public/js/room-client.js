@@ -1,6 +1,6 @@
 // Shared room plumbing for every game's app.js (no bundler, so one global object).
 //
-// Owns everything that was copy-pasted identically in the nine app.js files:
+// Owns everything that was copy-pasted identically in the app.js files:
 // the WebSocket + reconnection, the join/create screen, localStorage identity,
 // the room badge, the "changer de jeu" header, the toast, the player rows and
 // the lobby. Each app.js keeps only its own game screens and messages.
@@ -26,6 +26,7 @@ const Room = (() => {
     { slug: "bomb", label: "Alphabombe" },
     { slug: "codenames", label: "Codenames Anime" },
     { slug: "sync", label: "Même longueur d'onde" },
+    { slug: "guesswho", label: "Qui est-ce ?" },
   ];
 
   const el = {};
@@ -240,7 +241,7 @@ const Room = (() => {
 
   // ---- shared rendering ----
 
-  // Créé à la volée : aucun jeu n'a besoin de connaître cet écran, et les neuf
+  // Créé à la volée : aucun jeu n'a besoin de connaître cet écran, et les
   // index.html n'ont pas à porter une section identique.
   let waitingScreen = null;
   function showWaitingScreen() {
@@ -263,7 +264,7 @@ const Room = (() => {
     waitingScreen.classList.remove("hidden");
   }
 
-  // Sortie de secours de l'hôte, valable pour les neuf jeux (tous acceptent
+  // Sortie de secours de l'hôte, valable pour tous les jeux (tous acceptent
   // "restart" depuis n'importe quelle phase sauf le lobby) : un joueur parti
   // en pleine manche sans revenir peut laisser une phase en attente de lui.
   function renderBackToLobby(state) {

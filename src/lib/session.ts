@@ -2,7 +2,7 @@ import { GAME_SLUGS } from "./gameSlugs";
 import type { Env } from "../env";
 import { createRoomCode } from "./rooms";
 
-// La plomberie de session strictement identique dans les neuf `room.ts` :
+// La plomberie de session strictement identique dans les `room.ts` :
 // vérifiée au diff, ces fonctions y étaient copiées à l'octet près. Même
 // critère que `host.ts` — on ne factorise que ce qui ne diverge pas d'un jeu
 // à l'autre (les tours, les votes et les phases, eux, restent chez chaque
@@ -198,6 +198,7 @@ export async function switchGame(
     bomb: env.BOMB_ROOM,
     codenames: env.CODENAMES_ROOM,
     sync: env.SYNC_ROOM,
+    guesswho: env.GUESSWHO_ROOM,
   };
   const code = await createRoomCode(namespaces[slug], slug);
   for (const s of sessions) {

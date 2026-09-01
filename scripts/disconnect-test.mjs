@@ -7,7 +7,7 @@
 //
 // Pas dans `npm test` : ça demande un serveur en face (cf. CLAUDE.md).
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
-const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"];
+const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync", "guesswho"];
 
 function join(slug, code, name, spectator = false, preserveHost = false) {
   const ws = new WebSocket(`${BASE.replace("http", "ws")}/ws/${slug}/${code}`);

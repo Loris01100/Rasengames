@@ -9,6 +9,7 @@ import { BombRoom } from "./games/bomb/room";
 import { CodenamesRoom } from "./games/codenames/room";
 import { WORDS as CODENAMES_WORDS } from "./games/codenames/words";
 import { SyncRoom } from "./games/sync/room";
+import { GuessWhoRoom } from "./games/guesswho/room";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
 
@@ -22,6 +23,7 @@ export {
   BombRoom,
   CodenamesRoom,
   SyncRoom,
+  GuessWhoRoom,
   LobbyRegistry,
 };
 
@@ -40,6 +42,7 @@ const GAMES: GameRoute[] = [
   { slug: "bomb", namespace: (env) => env.BOMB_ROOM },
   { slug: "codenames", namespace: (env) => env.CODENAMES_ROOM },
   { slug: "sync", namespace: (env) => env.SYNC_ROOM },
+  { slug: "guesswho", namespace: (env) => env.GUESSWHO_ROOM },
 ];
 
 export default {

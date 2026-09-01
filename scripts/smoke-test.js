@@ -9,11 +9,11 @@ const vm = require("vm");
 const assert = require("assert");
 
 const ROOT = path.join(__dirname, "..", "public");
-const GAMES = ["bac", "bomb", "codenames", "detective", "hundred", "note", "sync", "undercover", "whoami"];
+const GAMES = ["bac", "bomb", "codenames", "detective", "guesswho", "hundred", "note", "sync", "undercover", "whoami"];
 
 // What each game's "start" message must carry beyond its type.
 const START_KEYS = {
-  bac: ["type", "categories", "letters"],
+  bac: ["type", "categories", "customCategories", "duration", "letters"],
   bomb: ["type", "mode", "letters"],
   detective: ["type"],
   hundred: ["type", "mode", "theme"],
@@ -22,6 +22,7 @@ const START_KEYS = {
   undercover: ["type", "settings"],
   whoami: ["type", "submitMode"],
   codenames: ["type"],
+  guesswho: ["type", "guesserId"],
 };
 
 // Stands in for a checked lobby checkbox/radio (bac categories, note kind…).
@@ -498,23 +499,24 @@ function run(slug) {
         `${slug}: public room checkbox did not reach the server`
       );
 
-      const players = [
+      let players = [
         { id: "p1", name: "Alice", connected: true, isHost: true },
         { id: "p2", name: "Bob", connected: true },
         { id: "p3", name: "Carl", connected: true },
       ];
+      if (slug === "guesswho") players = players.slice(0, 2);
       send({
         type: "state",
         state: { code: "ABCD", phase: "lobby", hostId: "p1", visibility: "public", players, scores: { p2: 3 }, settings: { undercoverCount: 1, mrWhiteCount: 0, category: "anime" } },
       });
 
       assert.strictEqual(byId("lobby-code").textContent, "ABCD");
-      assert.strictEqual(byId("players-list").children.length, 3);
+      assert.strictEqual(byId("players-list").children.length, players.length);
       assert.strictEqual(byId("public-toggle").checked, true);
-      assert.strictEqual(byId("start-btn").disabled, false, `${slug}: start should be enabled with 3 players`);
+      assert.strictEqual(byId("start-btn").disabled, false, `${slug}: start should be enabled with enough players`);
       assert.ok(!byId("screen-lobby").classList.contains("hidden"), `${slug}: lobby screen hidden`);
 
-      // Score cumulé du salon, rendu par le client partagé pour les neuf jeux.
+      // Score cumulé du salon, rendu par le client partagé pour tous les jeux.
       const tags = byId("players-list").children[1].children.map((c) => c.textContent);
       assert.ok(tags.includes("3 pts"), `${slug}: score cumulé absent de la ligne joueur (${tags})`);
 
@@ -523,9 +525,9 @@ function run(slug) {
       const rowButton = (row, label) =>
         row.children.flatMap((c) => c.children || []).find((c) => c.textContent === label);
       assert.ok(!rowButton(byId("players-list").children[0], "Passer hôte"), `${slug}: « Passer hôte » sur sa propre ligne`);
-      rowButton(byId("players-list").children[2], "Passer hôte").dispatch("click");
+      rowButton(byId("players-list").children[players.length - 1], "Passer hôte").dispatch("click");
       const handover = socket.sent.find((m) => m.type === "transferHost");
-      assert.strictEqual(handover?.playerId, "p3", `${slug}: « Passer hôte » vise le mauvais joueur`);
+      assert.strictEqual(handover?.playerId, players[players.length - 1].id, `${slug}: « Passer hôte » vise le mauvais joueur`);
 
       // Lien d'invitation : ?room=CODE est déjà géré au chargement.
       byId("lobby-code").parentNode.children.find((c) => c.id === "invite-btn").dispatch("click");
@@ -543,7 +545,7 @@ function run(slug) {
       // The "changer de jeu" select must offer the five other games, in order,
       // and switch to the one actually selected.
       const options = byId("switch-game-select").children.map((o) => o.value);
-      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"]; // room-client.js
+      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync", "guesswho"]; // room-client.js
       assert.deepStrictEqual(options, menuOrder.filter((g) => g !== slug), `${slug}: switch-game options`);
       byId("switch-game-select").value = options[2];
       byId("switch-game-btn").dispatch("click");

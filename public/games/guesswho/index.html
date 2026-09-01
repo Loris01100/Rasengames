@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Le jeu Qui est-ce revisité avec des personnages d'anime et de manga." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Qui est-ce ? · RasenGames" />
+  <meta property="og:description" content="Pose des questions, élimine les suspects et retrouve le personnage secret." />
+  <meta property="og:url" content="https://rasengames.reesch.com/games/guesswho/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>Qui est-ce ? · RasenGames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/games/guesswho/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="room-badge" class="badge hidden"></span>
+    <div id="switch-game" class="switch-game hidden">
+      <select id="switch-game-select"></select>
+      <button id="switch-game-btn" class="btn secondary small">Changer de jeu</button>
+    </div>
+  </header>
+
+  <main class="container guesswho-container">
+    <div id="toast" class="toast hidden"></div>
+
+    <section id="screen-join" class="card narrow">
+      <h1>Qui est-ce ?</h1>
+      <p class="muted">Un duel anime : pose des questions à voix haute, élimine les suspects et retrouve le personnage secret.</p>
+      <label for="name-input">Ton pseudo</label>
+      <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex : Loris (4 caractères min.)" autocomplete="off" />
+      <div class="join-actions">
+        <label class="visibility-toggle">
+          <input id="create-public" type="checkbox" />
+          <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
+        </label>
+        <button id="create-btn" class="btn">Créer un salon</button>
+        <div class="divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" placeholder="Code du salon" autocomplete="off" style="text-transform:uppercase" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-lobby" class="card hidden">
+      <h2>Salon <span id="lobby-code"></span></h2>
+      <p class="muted">Il faut exactement deux joueurs. Les autres peuvent regarder en spectateur.</p>
+      <div id="players-list" class="players-list"></div>
+      <div id="host-settings" class="hidden">
+        <label class="visibility-toggle">
+          <input id="public-toggle" type="checkbox" />
+          <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
+        </label>
+        <h3>Réglages</h3>
+        <label for="guesser-select">Qui devine ?</label>
+        <select id="guesser-select">
+          <option value="random">Au hasard</option>
+        </select>
+        <button id="start-btn" class="btn">Distribuer les personnages</button>
+        <p id="start-hint" class="muted small"></p>
+      </div>
+      <p id="waiting-host" class="muted hidden">En attente que l'hôte démarre la partie...</p>
+    </section>
+
+    <section id="screen-play" class="hidden">
+      <div class="game-status card">
+        <div>
+          <p id="role-kicker" class="eyebrow"></p>
+          <h2 id="role-title"></h2>
+          <p id="role-help" class="muted"></p>
+        </div>
+        <div id="secret-card" class="secret-card hidden">
+          <img id="secret-image" class="hidden" alt="" />
+          <div><span class="muted small">Personnage secret</span><strong id="secret-name"></strong><span id="secret-anime" class="muted small"></span></div>
+        </div>
+      </div>
+      <div id="character-board" class="character-board"></div>
+    </section>
+
+    <section id="screen-ended" class="hidden">
+      <div class="card result-card">
+        <p class="eyebrow">Résultat</p>
+        <h2 id="result-title"></h2>
+        <p id="result-detail" class="muted"></p>
+        <div id="result-character" class="result-character"></div>
+        <button id="restart-btn" class="btn hidden">Rejouer</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance un duel...</p>
+      </div>
+      <div id="ended-board" class="character-board ended-board"></div>
+    </section>
+  </main>
+
+  <template id="rules">
+    <h2>Qui est-ce ?</h2>
+    <p class="muted">Le célèbre jeu de déduction, avec des personnages d'anime et de manga.</p>
+    <ol class="rules-steps">
+      <li>L'hôte choisit qui devine. L'autre joueur reçoit secrètement un personnage parmi les vingt cartes.</li>
+      <li>Le devineur pose des questions auxquelles on répond seulement par oui ou non : anime récent, cheveux blonds, possède un pouvoir…</li>
+      <li>Sur son écran, le devineur clique sur ✕ pour retourner les cartes éliminées. Ces choix restent personnels.</li>
+      <li>Quand il pense avoir trouvé, il clique sur « C'est lui ». Une bonne réponse lui donne 1 point ; sinon le point revient à l'autre joueur.</li>
+    </ol>
+  </template>
+  <script src="/js/sound.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/anilist.js"></script>
+  <script src="/js/room-client.js"></script>
+  <script src="/games/guesswho/app.js"></script>
+</body>
+</html>

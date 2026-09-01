@@ -19,6 +19,8 @@
   const el = {
 
     categoryCheckboxes: $("category-checkboxes"),
+    customCategories: $("custom-categories"),
+    durationSelect: $("duration-select"),
     letterCheckboxes: $("letter-checkboxes"),
 
     playLetter: $("play-letter"),
@@ -157,7 +159,7 @@
       row.className = "answer-row";
 
       const label = document.createElement("label");
-      label.textContent = CATEGORY_LABELS[catId] ?? catId;
+      label.textContent = state.categoryLabels?.[catId] ?? CATEGORY_LABELS[catId] ?? catId;
       row.appendChild(label);
 
       const input = document.createElement("input");
@@ -240,7 +242,7 @@
       const tr = document.createElement("tr");
       const th = document.createElement("th");
       th.className = "category-name";
-      th.textContent = CATEGORY_LABELS[catResult.category] ?? catResult.category;
+      th.textContent = state.categoryLabels?.[catResult.category] ?? CATEGORY_LABELS[catResult.category] ?? catResult.category;
       tr.appendChild(th);
 
       for (const p of players) {
@@ -314,7 +316,12 @@
         Room.toast("Laisse au moins une lettre.");
         return null;
       }
-      return { categories, letters };
+      const customCategories = el.customCategories.value
+        .split(/[,\n]/)
+        .map((label) => label.trim())
+        .filter(Boolean)
+        .slice(0, 8);
+      return { categories, customCategories, duration: el.durationSelect.value, letters };
     },
     onState: (s) => { playSounds(s); render(s); },
   });

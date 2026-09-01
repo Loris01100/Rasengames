@@ -1,0 +1,172 @@
+.guesswho-container {
+  max-width: 1500px;
+}
+
+#screen-play,
+#screen-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#guesser-select {
+  margin: 6px 0 18px;
+}
+
+.game-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.game-status h2,
+.result-card h2 {
+  margin: 0;
+}
+
+.secret-card,
+.result-character {
+  align-items: center;
+  background: rgba(139, 92, 246, .1);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 10px;
+}
+
+.secret-card img,
+.result-character img {
+  border-radius: 10px;
+  height: 78px;
+  object-fit: cover;
+  width: 60px;
+}
+
+.secret-card div,
+.result-character div {
+  display: flex;
+  flex-direction: column;
+}
+
+.character-board {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(5, minmax(145px, 1fr));
+}
+
+.character-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transition: opacity .18s, transform .18s, border-color .18s;
+}
+
+.character-card.target {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px rgba(62, 207, 142, .2);
+}
+
+.character-card.guessed-wrong {
+  border-color: var(--danger);
+}
+
+.character-card.eliminated {
+  filter: grayscale(1);
+  opacity: .28;
+  transform: scale(.96);
+}
+
+.character-image-wrap {
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, rgba(139, 92, 246, .2), rgba(236, 72, 153, .12));
+  overflow: hidden;
+  position: relative;
+}
+
+.character-image-wrap img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.character-initial {
+  align-items: center;
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  height: 100%;
+  justify-content: center;
+}
+
+.character-info {
+  min-height: 72px;
+  padding: 9px 10px;
+}
+
+.character-info strong,
+.character-info span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+
+.character-actions button {
+  flex: 1;
+  padding: 7px 5px;
+}
+
+.eliminate-btn.active {
+  color: var(--success);
+}
+
+.result-card {
+  text-align: center;
+}
+
+.result-character {
+  justify-content: center;
+  margin: 18px auto;
+  max-width: 340px;
+  text-align: left;
+}
+
+@media (max-width: 1050px) {
+  .character-board { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .game-status { align-items: stretch; flex-direction: column; }
+  .character-board { gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .character-info { min-height: 62px; padding: 7px; }
+  .character-info strong { font-size: .82rem; }
+  .character-info span { font-size: .68rem; }
+  .character-actions { flex-direction: column; padding: 0 6px 6px; }
+  .character-actions button { font-size: .7rem; }
+}
+
+@media (max-width: 420px) {
+  .character-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

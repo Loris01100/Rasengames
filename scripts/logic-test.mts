@@ -20,11 +20,13 @@ import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.
 import { WORDS as codenamesWords } from "../src/games/codenames/words.ts";
 import * as sync from "../src/games/sync/logic.ts";
 import { createEmptyRoom as emptySync } from "../src/games/sync/types.ts";
+import * as guesswho from "../src/games/guesswho/logic.ts";
+import { createEmptyRoom as emptyGuessWho } from "../src/games/guesswho/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
 import { switchGame } from "../src/lib/session.ts";
 
-// Les neuf Player partagent id/token/name/connected ; le reste (alive,
+// Les Player partagent id/token/name/connected ; le reste (alive,
 // eliminated, found, number...) est passé par jeu dans `extra`.
 function addPlayers<R extends { players: Record<string, any>; playerOrder: string[] }>(
   room: R,
@@ -522,10 +524,23 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
 
 {
   const seen = new Set<string>();
-  const duplicates = codenamesWords
+const duplicates = codenamesWords
     .map((entry) => entry.word)
     .filter((word) => seen.has(word) || !seen.add(word));
   assert.deepEqual(duplicates, [], "le plateau Codenames ne doit pas pouvoir tirer deux cartes identiques");
+}
+
+// --- Qui est-ce ? : grille et attribution des rôles ------------------------
+
+{
+  const room = emptyGuessWho("TEST");
+  addPlayers(room, { a: {}, b: {} });
+  assert.equal(guesswho.pickGuesser(room, "b"), "b", "le devineur choisi dans le lobby doit être respecté");
+  assert.equal(guesswho.findOtherPlayer(room, "b"), "a", "l'autre joueur doit faire deviner");
+
+  const board = guesswho.drawBoard(undefined, () => 0.42);
+  assert.equal(board.length, guesswho.BOARD_SIZE, "la grille doit contenir vingt personnages");
+  assert.equal(new Set(board.map((card) => card.id)).size, board.length, "une grille ne doit pas contenir de doublon");
 }
 
 // --- Changement de jeu : salon neuf et hôte conservé -------------------------
@@ -545,6 +560,7 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
     UNDERCOVER_ROOM: namespace, HUNDRED_ROOM: namespace, BAC_ROOM: namespace,
     WHOAMI_ROOM: namespace, DETECTIVE_ROOM: namespace, NOTE_ROOM: namespace,
     BOMB_ROOM: namespace, CODENAMES_ROOM: namespace, SYNC_ROOM: namespace,
+    GUESSWHO_ROOM: namespace,
   } as any;
   await switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" }, env);
   assert.equal(messagesA[0].preserveHost, true, "l'ancien hôte doit être désigné dans le nouveau jeu");

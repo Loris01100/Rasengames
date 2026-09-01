@@ -1,8 +1,8 @@
 import type { Env } from "../../env";
-import { type RoomState, type Player, createEmptyRoom } from "./types";
+import { type RoomState, type Player, type RoundDuration, createEmptyRoom } from "./types";
 import { buildRoundResult, recomputeScores } from "./logic";
 import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
-import { CATEGORY_IDS } from "./categories";
+import { CATEGORY_IDS, CATEGORY_LABELS } from "./categories";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost, transferHost } from "../../lib/host";
 import {
@@ -27,7 +27,13 @@ const MAX_ANSWER_LENGTH = 40;
 // Une manche ne peut pas durer indéfiniment : si personne ne crie stop (joueur
 // parti manger, table bloquée sur une catégorie), l'alarme du Durable Object la
 // termine toute seule.
-const ROUND_MS = 10 * 60 * 1000;
+const ROUND_DURATIONS: Record<RoundDuration, number> = {
+  short: 5 * 60 * 1000,
+  normal: 10 * 60 * 1000,
+  long: 15 * 60 * 1000,
+};
+const MAX_CUSTOM_CATEGORIES = 8;
+const MAX_CATEGORY_LENGTH = 36;
 const ANSWER_SAVE_DELAY_MS = 2000;
 // Crier stop fige la manche pour tout le monde, donc on l'interdit tant qu'on
 // n'a pas soi-même rempli l'essentiel de sa grille.
@@ -93,6 +99,8 @@ export class BacRoom {
       this.room.scores ??= {};
       this.room.waiting ??= [];
       this.room.letters ??= [...ALPHABET];
+      this.room.categoryLabels ??= {};
+      this.room.duration ??= "normal";
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -317,10 +325,31 @@ export class BacRoom {
 
     const rawCategories = Array.isArray(msg.categories) ? msg.categories : [];
     const categories = [...new Set(rawCategories.filter((c): c is string => typeof c === "string" && CATEGORY_IDS.has(c)))];
+    const seenLabels = new Set(categories.map((id) => CATEGORY_LABELS[id].toLocaleLowerCase("fr")));
+    const customLabels = (Array.isArray(msg.customCategories) ? msg.customCategories : [])
+      .filter((label): label is string => typeof label === "string")
+      .map((label) => label.trim().replace(/\s+/g, " ").slice(0, MAX_CATEGORY_LENGTH))
+      .filter((label) => {
+        const normalized = label.toLocaleLowerCase("fr");
+        if (!normalized || seenLabels.has(normalized)) return false;
+        seenLabels.add(normalized);
+        return true;
+      })
+      .slice(0, MAX_CUSTOM_CATEGORIES);
+    const categoryLabels: Record<string, string> = Object.fromEntries(
+      categories.map((id) => [id, CATEGORY_LABELS[id]])
+    );
+    for (const [index, label] of customLabels.entries()) {
+      const id = `custom:${index}`;
+      categories.push(id);
+      categoryLabels[id] = label;
+    }
     if (categories.length === 0) {
       sendError(session.ws, "Choisis au moins une catégorie.");
       return;
     }
+    const duration: RoundDuration =
+      msg.duration === "short" || msg.duration === "long" ? msg.duration : "normal";
 
     for (const id of [...room.playerOrder]) {
       if (!room.players[id]?.connected) {
@@ -331,10 +360,12 @@ export class BacRoom {
     }
 
     room.categories = categories;
+    room.categoryLabels = categoryLabels;
+    room.duration = duration;
     room.letters = parseLetters(msg.letters);
     room.letter = pickLetter(room.letters);
     room.stoppedBy = null;
-    room.endsAt = Date.now() + ROUND_MS;
+    room.endsAt = Date.now() + ROUND_DURATIONS[duration];
     room.result = null;
     for (const player of Object.values(room.players)) {
       player.answers = {};
@@ -487,6 +518,8 @@ export class BacRoom {
       hostId: room.hostId,
       players,
       categories: room.categories,
+      categoryLabels: room.categoryLabels,
+      duration: room.duration,
       letter: room.phase === "lobby" ? null : room.letter,
       // Durée restante et pas instant absolu : l'horloge du téléphone d'un
       // joueur peut être décalée de plusieurs minutes, ce qui affichait un
