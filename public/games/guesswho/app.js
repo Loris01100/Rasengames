@@ -5,6 +5,8 @@
     roleKicker: $("role-kicker"),
     roleTitle: $("role-title"),
     roleHelp: $("role-help"),
+    turnCounts: $("turn-counts"),
+    endTurnBtn: $("end-turn-btn"),
     secretCard: $("secret-card"),
     secretImage: $("secret-image"),
     secretName: $("secret-name"),
@@ -43,6 +45,10 @@
     return IMAGE_SEARCH_NAMES[character.name] ?? character.name;
   }
 
+  function imageRef(character) {
+    return character.anilistRef ?? null;
+  }
+
   function playerName(state, id) {
     return state.players.find((player) => player.id === id)?.name ?? "Un joueur";
   }
@@ -69,13 +75,13 @@
       : "random";
   }
 
-  function makeCharacterCard(state, character, interactive, imageJobs) {
+  function makeCharacterCard(state, character, interactive, canGuess, imageJobs) {
     const card = document.createElement("article");
     card.className = "character-card";
     card.dataset.characterId = character.id;
     if (eliminated.has(character.id)) card.classList.add("eliminated");
-    if (state.targetId === character.id) card.classList.add("target");
-    if (state.guessedId === character.id && state.guessedId !== state.targetId) card.classList.add("guessed-wrong");
+    if (state.revealedTargetId === character.id) card.classList.add("target");
+    if (state.guessedId === character.id && state.guessedId !== state.revealedTargetId) card.classList.add("guessed-wrong");
 
     const imageWrap = document.createElement("div");
     imageWrap.className = "character-image-wrap";
@@ -86,7 +92,7 @@
     image.alt = character.name;
     imageWrap.appendChild(initial);
     imageWrap.appendChild(image);
-    imageJobs.push({ image, name: imageSearchName(character) });
+    imageJobs.push({ image, name: imageSearchName(character), ref: imageRef(character) });
     card.appendChild(imageWrap);
 
     const info = document.createElement("div");
@@ -116,14 +122,14 @@
         eliminate.textContent = isEliminated ? "↩" : "✕";
         eliminate.title = isEliminated ? "Remettre cette carte" : "Éliminer cette carte";
         eliminate.setAttribute("aria-label", eliminate.title);
-        guess.disabled = isEliminated;
+        guess.disabled = isEliminated || !canGuess;
       });
       const guess = document.createElement("button");
-      guess.className = "btn small";
+      guess.className = "btn small guess-btn";
       guess.textContent = "✓";
       guess.title = `Tenter ${character.name}`;
       guess.setAttribute("aria-label", guess.title);
-      guess.disabled = eliminated.has(character.id);
+      guess.disabled = eliminated.has(character.id) || !canGuess;
       guess.addEventListener("click", () => {
         if (confirm(`Tu tentes ${character.name} ? La réponse sera définitive.`)) {
           Room.send({ type: "guess", characterId: character.id });
@@ -140,8 +146,14 @@
     // `setCharacterImages` économise le quota AniList avec une seule requête.
     // Le repli individuel couvre un ancien anilist.js encore en cache et une
     // éventuelle requête groupée refusée : la grille ne reste jamais vide.
+    await Promise.all(
+      jobs.filter((job) => job.ref).map((job) =>
+        Anilist.setImage(job.image, job.name, "character", job.ref)
+      )
+    );
     if (typeof Anilist.setCharacterImages === "function") {
-      await Anilist.setCharacterImages(jobs.map((job) => ({ img: job.image, name: job.name })));
+      const searchable = jobs.filter((job) => !job.ref);
+      await Anilist.setCharacterImages(searchable.map((job) => ({ img: job.image, name: job.name })));
     }
     // AniList limite les recherches par adresse IP : plusieurs joueurs d'un
     // même salon peuvent donc partager le quota. Les pauses couvrent le temps
@@ -159,19 +171,19 @@
         if (generation !== imageLoadGeneration) return;
         await Promise.all(
           missing.slice(index, index + 2).map((job) =>
-            Anilist.setImage(job.image, job.name, "character")
+            Anilist.setImage(job.image, job.name, "character", job.ref)
           )
         );
       }
     }
   }
 
-  function renderBoard(state, container, interactive) {
+  function renderBoard(state, container, interactive, canGuess = false) {
     const generation = ++imageLoadGeneration;
     container.innerHTML = "";
     const imageJobs = [];
     for (const character of state.board ?? []) {
-      container.appendChild(makeCharacterCard(state, character, interactive, imageJobs));
+      container.appendChild(makeCharacterCard(state, character, interactive, canGuess, imageJobs));
     }
     void loadBoardImages(imageJobs, generation);
   }
@@ -191,51 +203,76 @@
     info.appendChild(anime);
     container.appendChild(image);
     container.appendChild(info);
-    Anilist.setImage(image, imageSearchName(character), "character");
+    Anilist.setImage(image, imageSearchName(character), "character", imageRef(character));
+  }
+
+  function updateGuessAvailability(canGuess) {
+    for (const card of el.board.querySelectorAll(".character-card")) {
+      const button = card.querySelector(".guess-btn");
+      if (button) button.disabled = !canGuess || eliminated.has(card.dataset.characterId);
+    }
+  }
+
+  function questionLabel(count) {
+    return `${count} question${count > 1 ? "s" : ""}`;
   }
 
   function renderPlay(state) {
-    if (renderedRound !== state.round) {
+    const newRound = renderedRound !== state.round;
+    if (newRound) {
       renderedRound = state.round;
       eliminated = new Set();
     }
-    const isGuesser = Room.playerId === state.guesserId;
-    const isClueGiver = Room.playerId === state.clueGiverId;
-    const target = state.board.find((card) => card.id === state.targetId);
-    el.roleKicker.textContent = Room.spectator ? "Mode spectateur" : isGuesser ? "Tu devines" : "Tu fais deviner";
-    el.roleTitle.textContent = isGuesser
-      ? `Interroge ${playerName(state, state.clueGiverId)}`
-      : isClueGiver
-        ? `Fais deviner à ${playerName(state, state.guesserId)}`
-        : `${playerName(state, state.guesserId)} cherche le personnage`;
-    el.roleHelp.textContent = isGuesser
-      ? "Pose des questions à voix haute. Élimine les cartes impossibles, puis tente ta réponse."
-      : isClueGiver
-        ? "Garde le personnage secret et réponds seulement par oui ou non."
-        : "Le personnage secret reste caché jusqu'au résultat.";
-    el.secretCard.classList.toggle("hidden", !isClueGiver || !target);
-    if (isClueGiver && target) {
+    const isPlayer = state.players.some((player) => player.id === Room.playerId);
+    const isMyTurn = Room.playerId === state.currentTurnId;
+    const activeName = playerName(state, state.currentTurnId);
+    const opponent = state.players.find((player) => player.id !== Room.playerId);
+    const target = state.board.find((card) => card.id === state.ownTargetId);
+    el.roleKicker.textContent = Room.spectator ? "Mode spectateur" : isMyTurn ? "À toi de jouer" : `Au tour de ${activeName}`;
+    el.roleTitle.textContent = Room.spectator
+      ? `${activeName} pose une question`
+      : isMyTurn
+        ? `Pose une question à ${opponent?.name ?? "l'autre joueur"}`
+        : `Réponds à ${activeName}`;
+    el.roleHelp.textContent = isMyTurn
+      ? "Pose une seule question, élimine tes suspects puis passe la main ou tente un personnage."
+      : "Tu peux éliminer des cartes pendant l'attente, mais seul le joueur actif peut tenter une réponse.";
+    el.turnCounts.textContent = state.players
+      .map((player) => `${player.name} : ${questionLabel(state.questionCounts?.[player.id] ?? 0)}`)
+      .join(" · ");
+    el.endTurnBtn.classList.toggle("hidden", !isPlayer || Room.spectator);
+    el.endTurnBtn.disabled = !isMyTurn;
+    el.endTurnBtn.textContent = isMyTurn ? "J'ai posé ma question" : `En attente de ${activeName}`;
+    el.secretCard.classList.toggle("hidden", !isPlayer || !target || Room.spectator);
+    if (isPlayer && target && !Room.spectator) {
       el.secretName.textContent = target.name;
       el.secretAnime.textContent = target.anime;
-      Anilist.setImage(el.secretImage, imageSearchName(target), "character");
+      Anilist.setImage(el.secretImage, imageSearchName(target), "character", imageRef(target));
     }
-    renderBoard(state, el.board, isGuesser && !Room.spectator);
+    if (newRound) {
+      renderBoard(state, el.board, isPlayer && !Room.spectator, isMyTurn);
+    } else {
+      updateGuessAvailability(isMyTurn);
+    }
   }
 
   function renderEnded(state) {
-    const target = state.board.find((card) => card.id === state.targetId);
+    const target = state.board.find((card) => card.id === state.revealedTargetId);
     const guessed = state.board.find((card) => card.id === state.guessedId);
-    const correct = state.guessedId === state.targetId;
-    el.resultTitle.textContent = correct ? `${playerName(state, state.guesserId)} a trouvé !` : `${playerName(state, state.clueGiverId)} remporte le point !`;
+    const correct = state.guessedId === state.revealedTargetId;
+    const guessedBy = playerName(state, state.guessedById);
+    const questionCount = state.questionCounts?.[state.guessedById] ?? 0;
+    el.resultTitle.textContent = correct ? `${guessedBy} a trouvé en premier !` : `${playerName(state, state.winnerId)} remporte le point !`;
     el.resultDetail.textContent = correct
-      ? `La bonne réponse était bien ${target?.name ?? "ce personnage"}.`
-      : `${playerName(state, state.guesserId)} avait choisi ${guessed?.name ?? "un autre personnage"}.`;
+      ? `La bonne réponse était ${target?.name ?? "ce personnage"}, trouvée en ${questionLabel(questionCount)}.`
+      : `${guessedBy} a tenté ${guessed?.name ?? "un autre personnage"} après ${questionLabel(questionCount)}.`;
     showCharacter(el.resultCharacter, target);
     renderBoard(state, el.endedBoard, false);
     const isHost = state.hostId === Room.playerId;
-    const nextName = playerName(state, state.clueGiverId);
-    el.restartBtn.textContent = `Manche suivante : ${nextName} devine`;
-    el.restartHint.textContent = `En attente que l'hôte lance la manche de ${nextName}…`;
+    const nextId = state.players.find((player) => player.id !== state.currentTurnId)?.id;
+    const nextName = playerName(state, nextId);
+    el.restartBtn.textContent = `Nouvelle manche : ${nextName} commence`;
+    el.restartHint.textContent = `En attente que l'hôte lance la nouvelle manche…`;
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
   }
@@ -254,6 +291,7 @@
     }
   }
 
+  el.endTurnBtn.addEventListener("click", () => Room.send({ type: "endTurn" }));
   el.restartBtn.addEventListener("click", () => Room.send({ type: "nextRound" }));
 
   Room.init({

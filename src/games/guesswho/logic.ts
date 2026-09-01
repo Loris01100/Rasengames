@@ -36,6 +36,20 @@ export function findOtherPlayer(room: RoomState, playerId: string | null): strin
 }
 
 export function nextGuesser(room: RoomState): string | null {
-  const nextId = room.clueGiverId;
-  return nextId && room.players[nextId]?.connected ? nextId : null;
+  return findOtherPlayer(room, room.currentTurnId);
+}
+
+export function drawTargets(
+  board: CharacterCard[],
+  playerIds: string[],
+  random: () => number = Math.random,
+): Record<string, string> {
+  const available = [...board];
+  const targets: Record<string, string> = {};
+  for (const playerId of playerIds) {
+    if (available.length === 0) break;
+    const index = Math.floor(random() * available.length);
+    targets[playerId] = available.splice(index, 1)[0].id;
+  }
+  return targets;
 }

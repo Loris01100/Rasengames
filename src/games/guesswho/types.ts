@@ -4,6 +4,7 @@ export interface CharacterCard {
   id: string;
   name: string;
   anime: string;
+  anilistRef?: string;
 }
 
 export interface Player {
@@ -21,11 +22,12 @@ export interface RoomState {
   playerOrder: string[];
   scores: Record<string, number>;
   waiting: Player[];
-  guesserId: string | null;
-  clueGiverId: string | null;
+  currentTurnId: string | null;
   board: CharacterCard[];
-  targetId: string | null;
+  targetIds: Record<string, string>;
+  questionCounts: Record<string, number>;
   guessedId: string | null;
+  guessedById: string | null;
   winnerId: string | null;
   round: number;
 }
@@ -39,11 +41,12 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
-    guesserId: null,
-    clueGiverId: null,
+    currentTurnId: null,
     board: [],
-    targetId: null,
+    targetIds: {},
+    questionCounts: {},
     guessedId: null,
+    guessedById: null,
     winnerId: null,
     round: 0,
   };

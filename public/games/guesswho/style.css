@@ -41,6 +41,17 @@
   margin: 0;
 }
 
+.status-actions,
+.turn-controls {
+  align-items: flex-end;
+  display: flex;
+  gap: 10px;
+}
+
+.turn-controls {
+  flex-direction: column;
+}
+
 .secret-card,
 .result-character {
   align-items: center;
@@ -204,6 +215,8 @@
 
 @media (max-width: 700px) {
   .game-status { align-items: stretch; flex-direction: column; }
+  .status-actions { align-items: stretch; justify-content: space-between; }
+  .turn-controls { align-items: stretch; }
   .character-board { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .character-info { min-height: 42px; padding: 5px; }
   .character-info strong { font-size: .82rem; }

@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
   <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/games/guesswho/style.css?v=8" />
+  <link rel="stylesheet" href="/games/guesswho/style.css?v=9" />
 </head>
 <body>
   <header class="site-header">
@@ -64,7 +64,7 @@
           <span>Salon public — visible sur l'accueil, rejoignable sans code</span>
         </label>
         <h3>Réglages</h3>
-        <label for="guesser-select">Qui devine ?</label>
+        <label for="guesser-select">Qui pose la première question ?</label>
         <select id="guesser-select">
           <option value="random">Au hasard</option>
         </select>
@@ -81,9 +81,15 @@
           <h2 id="role-title"></h2>
           <p id="role-help" class="muted"></p>
         </div>
-        <div id="secret-card" class="secret-card hidden">
-          <img id="secret-image" class="hidden" alt="" />
-          <div><span class="muted small">Personnage secret</span><strong id="secret-name"></strong><span id="secret-anime" class="muted small"></span></div>
+        <div class="status-actions">
+          <div class="turn-controls">
+            <span id="turn-counts" class="muted small"></span>
+            <button id="end-turn-btn" class="btn small hidden">J'ai posé ma question</button>
+          </div>
+          <div id="secret-card" class="secret-card hidden">
+            <img id="secret-image" class="hidden" alt="" />
+            <div><span class="muted small">Ton personnage secret</span><strong id="secret-name"></strong><span id="secret-anime" class="muted small"></span></div>
+          </div>
         </div>
       </div>
       <div id="character-board" class="character-board"></div>
@@ -106,17 +112,16 @@
     <h2>Qui est-ce ?</h2>
     <p class="muted">Le célèbre jeu de déduction, avec des personnages d'anime et de manga.</p>
     <ol class="rules-steps">
-      <li>L'hôte choisit qui devine. L'autre joueur reçoit secrètement un personnage parmi les vingt-quatre cartes.</li>
-      <li>Le devineur pose des questions auxquelles on répond seulement par oui ou non : anime récent, cheveux blonds, possède un pouvoir…</li>
-      <li>Sur son écran, le devineur clique sur ✕ pour retourner les cartes éliminées. Ces choix restent personnels.</li>
-      <li>Quand il pense avoir trouvé, il clique sur « C'est lui ». Une bonne réponse lui donne 1 point ; sinon le point revient à l'autre joueur.</li>
-      <li>À la manche suivante, les rôles s'inversent automatiquement : chacun fait deviner un personnage à son tour.</li>
+      <li>Chaque joueur reçoit secrètement un personnage parmi les vingt-quatre cartes.</li>
+      <li>À tour de rôle, pose une question à laquelle l'autre répond seulement par oui ou non, puis clique sur « J'ai posé ma question ».</li>
+      <li>Les deux joueurs peuvent éliminer des cartes avec ✕ à tout moment ; ces choix restent personnels.</li>
+      <li>Seul le joueur actif peut tenter un personnage avec ✓. Une bonne réponse termine la manche ; une mauvaise donne la victoire à l'autre.</li>
     </ol>
   </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
-  <script src="/js/anilist.js?v=7"></script>
+  <script src="/js/anilist.js?v=9"></script>
   <script src="/js/room-client.js"></script>
-  <script src="/games/guesswho/app.js?v=7"></script>
+  <script src="/games/guesswho/app.js?v=9"></script>
 </body>
 </html>

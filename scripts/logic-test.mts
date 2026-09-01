@@ -530,20 +530,23 @@ const duplicates = codenamesWords
   assert.deepEqual(duplicates, [], "le plateau Codenames ne doit pas pouvoir tirer deux cartes identiques");
 }
 
-// --- Qui est-ce ? : grille et attribution des rôles ------------------------
+// --- Qui est-ce ? : grille, secrets et alternance des tours ----------------
 
 {
   const room = emptyGuessWho("TEST");
   addPlayers(room, { a: {}, b: {} });
-  assert.equal(guesswho.pickGuesser(room, "b"), "b", "le devineur choisi dans le lobby doit être respecté");
-  assert.equal(guesswho.findOtherPlayer(room, "b"), "a", "l'autre joueur doit faire deviner");
-  room.guesserId = "b";
-  room.clueGiverId = "a";
-  assert.equal(guesswho.nextGuesser(room), "a", "le joueur qui faisait deviner doit devenir le prochain devineur");
+  assert.equal(guesswho.pickGuesser(room, "b"), "b", "le premier joueur choisi dans le lobby doit être respecté");
+  room.currentTurnId = "b";
+  assert.equal(guesswho.nextGuesser(room), "a", "le tour doit passer à l'autre joueur");
 
   const board = guesswho.drawBoard(undefined, () => 0.42);
   assert.equal(board.length, guesswho.BOARD_SIZE, "la grille doit contenir vingt-quatre personnages");
   assert.equal(new Set(board.map((card) => card.id)).size, board.length, "une grille ne doit pas contenir de doublon");
+  const targets = guesswho.drawTargets(board, ["a", "b"], () => 0.42);
+  assert.equal(Object.keys(targets).length, 2, "chaque joueur doit recevoir un personnage secret");
+  assert.notEqual(targets.a, targets.b, "les deux secrets doivent être différents");
+  assert.ok(board.some((card) => card.id === targets.a), "le premier secret doit appartenir à la grille");
+  assert.ok(board.some((card) => card.id === targets.b), "le second secret doit appartenir à la grille");
 }
 
 // --- Changement de jeu : salon neuf et hôte conservé -------------------------

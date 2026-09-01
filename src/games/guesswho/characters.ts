@@ -3,7 +3,7 @@ import type { CharacterCard } from "./types";
 // Personnages très reconnaissables, issus de séries encore populaires. Les
 // images sont cherchées côté navigateur via AniList ; la partie reste jouable
 // avec le nom et l'anime si le service d'images est indisponible.
-const RAW_CHARACTERS: Array<[string, string]> = [
+const RAW_CHARACTERS: Array<[string, string, string?]> = [
   ["Monkey D. Luffy", "One Piece"],
   ["Roronoa Zoro", "One Piece"],
   ["Nami", "One Piece"],
@@ -108,7 +108,7 @@ const RAW_CHARACTERS: Array<[string, string]> = [
   ["Kana Arima", "Oshi no Ko"],
   ["Taro Sakamoto", "Sakamoto Days"],
   ["Shin Asakura", "Sakamoto Days"],
-  ["Nagumo", "Sakamoto Days"],
+  ["Nagumo", "Sakamoto Days", "character:264336"],
   ["Mash Burnedead", "Mashle"],
   ["Gabimaru", "Hell's Paradise"],
   ["Yamada Asaemon Sagiri", "Hell's Paradise"],
@@ -130,8 +130,9 @@ const RAW_CHARACTERS: Array<[string, string]> = [
   ["Reigen Arataka", "Mob Psycho 100"],
 ];
 
-export const CHARACTERS: CharacterCard[] = RAW_CHARACTERS.map(([name, anime], index) => ({
+export const CHARACTERS: CharacterCard[] = RAW_CHARACTERS.map(([name, anime, anilistRef], index) => ({
   id: `character-${index + 1}`,
   name,
   anime,
+  ...(anilistRef ? { anilistRef } : {}),
 }));

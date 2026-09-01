@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type Player, type RoomState, createEmptyRoom } from "./types";
-import { MAX_PLAYERS, MIN_PLAYERS, connectedIds, drawBoard, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
+import { MAX_PLAYERS, MIN_PLAYERS, connectedIds, drawBoard, drawTargets, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost, transferHost } from "../../lib/host";
 import {
@@ -57,6 +57,28 @@ export class GuessWhoRoom {
       this.room.scores ??= {};
       this.room.waiting ??= [];
       this.room.round ??= 0;
+      const legacy = this.room as RoomState & {
+        guesserId?: string | null;
+        clueGiverId?: string | null;
+        targetId?: string | null;
+      };
+      this.room.currentTurnId ??= legacy.guesserId ?? null;
+      this.room.targetIds ??= {};
+      this.room.questionCounts ??= {};
+      this.room.guessedById ??= this.room.phase === "ended" ? legacy.guesserId ?? null : null;
+      if (this.room.board.length > 0 && Object.keys(this.room.targetIds).length === 0) {
+        if (legacy.clueGiverId && legacy.targetId) {
+          this.room.targetIds[legacy.clueGiverId] = legacy.targetId;
+        }
+        const used = new Set(Object.values(this.room.targetIds));
+        for (const playerId of this.room.playerOrder) {
+          const fallback = this.room.board.find((card) => !used.has(card.id));
+          if (!this.room.targetIds[playerId] && fallback) {
+            this.room.targetIds[playerId] = fallback.id;
+            used.add(fallback.id);
+          }
+        }
+      }
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -119,6 +141,7 @@ export class GuessWhoRoom {
     switch (msg.type) {
       case "join": await this.onJoin(session, room, msg); break;
       case "start": await this.onStart(session, room, msg); break;
+      case "endTurn": await this.onEndTurn(session, room); break;
       case "guess": await this.onGuess(session, room, msg); break;
       case "nextRound": await this.onNextRound(session, room); break;
       case "restart": await this.onRestart(session, room); break;
@@ -213,25 +236,44 @@ export class GuessWhoRoom {
   }
 
   private startRound(room: RoomState, guesserId: string | null) {
-    room.guesserId = guesserId;
-    room.clueGiverId = findOtherPlayer(room, room.guesserId);
+    const playerIds = connectedIds(room);
+    room.currentTurnId = guesserId;
     room.board = drawBoard();
-    room.targetId = room.board[Math.floor(Math.random() * room.board.length)]?.id ?? null;
+    room.targetIds = drawTargets(room.board, playerIds);
+    room.questionCounts = Object.fromEntries(playerIds.map((id) => [id, 0]));
     room.guessedId = null;
+    room.guessedById = null;
     room.winnerId = null;
     room.round += 1;
     room.phase = "play";
   }
 
+  private async onEndTurn(session: Session, room: RoomState) {
+    if (room.phase !== "play" || session.playerId !== room.currentTurnId) return;
+    const nextId = findOtherPlayer(room, session.playerId);
+    if (!nextId) {
+      sendError(session.ws, "L'autre joueur doit être connecté pour continuer.");
+      return;
+    }
+    room.questionCounts[session.playerId] = (room.questionCounts[session.playerId] ?? 0) + 1;
+    room.currentTurnId = nextId;
+    await this.saveRoom();
+    this.broadcast();
+  }
+
   private async onGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
-    if (room.phase !== "play" || session.playerId !== room.guesserId) return;
+    if (room.phase !== "play" || session.playerId !== room.currentTurnId) return;
     const guessedId = String(msg.characterId ?? "");
     if (!room.board.some((card) => card.id === guessedId)) {
       sendError(session.ws, "Ce personnage n'est pas sur la grille.");
       return;
     }
+    const opponentId = findOtherPlayer(room, session.playerId);
+    if (!opponentId) return;
+    room.questionCounts[session.playerId] = (room.questionCounts[session.playerId] ?? 0) + 1;
     room.guessedId = guessedId;
-    room.winnerId = guessedId === room.targetId ? room.guesserId : room.clueGiverId;
+    room.guessedById = session.playerId;
+    room.winnerId = guessedId === room.targetIds[opponentId] ? session.playerId : opponentId;
     if (room.winnerId) room.scores[room.winnerId] = (room.scores[room.winnerId] ?? 0) + 1;
     room.phase = "ended";
     await this.saveRoom();
@@ -253,11 +295,12 @@ export class GuessWhoRoom {
   private async onRestart(session: Session, room: RoomState) {
     if (session.playerId !== room.hostId || room.phase === "lobby") return;
     promoteWaiting(room);
-    room.guesserId = null;
-    room.clueGiverId = null;
+    room.currentTurnId = null;
     room.board = [];
-    room.targetId = null;
+    room.targetIds = {};
+    room.questionCounts = {};
     room.guessedId = null;
+    room.guessedById = null;
     room.winnerId = null;
     room.phase = "lobby";
     await this.saveRoom();
@@ -265,7 +308,7 @@ export class GuessWhoRoom {
   }
 
   private buildView(room: RoomState, forPlayerId: string) {
-    const revealTarget = room.phase === "ended" || forPlayerId === room.clueGiverId;
+    const guessedAgainstId = findOtherPlayer(room, room.guessedById);
     return {
       code: room.code,
       phase: room.phase,
@@ -278,13 +321,17 @@ export class GuessWhoRoom {
         name: player.name,
         connected: player.connected,
         isHost: player.id === room.hostId,
-        role: player.id === room.guesserId ? "guesser" : player.id === room.clueGiverId ? "clueGiver" : null,
+        role: player.id === room.currentTurnId ? "turn" : null,
       })),
-      guesserId: room.guesserId,
-      clueGiverId: room.clueGiverId,
+      currentTurnId: room.currentTurnId,
       board: room.board,
-      targetId: revealTarget ? room.targetId : null,
+      ownTargetId: room.phase === "play" ? room.targetIds[forPlayerId] ?? null : null,
+      revealedTargetId: room.phase === "ended" && guessedAgainstId
+        ? room.targetIds[guessedAgainstId] ?? null
+        : null,
+      questionCounts: room.questionCounts,
       guessedId: room.phase === "ended" ? room.guessedId : null,
+      guessedById: room.phase === "ended" ? room.guessedById : null,
       winnerId: room.phase === "ended" ? room.winnerId : null,
       round: room.round,
     };
