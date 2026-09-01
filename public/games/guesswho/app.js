@@ -22,7 +22,22 @@
   let renderedRound = null;
   let imageLoadGeneration = 0;
   let eliminated = new Set();
-  const IMAGE_SEARCH_NAMES = { "Levi Ackerman": "Levi" };
+  const IMAGE_SEARCH_NAMES = {
+    "Giyu Tomioka": "Giyuu Tomioka",
+    "Katsuki Bakugo": "Katsuki Bakugou",
+    "Kyojuro Rengoku": "Kyoujurou Rengoku",
+    "Levi Ackerman": "Levi",
+    "Ochaco Uraraka": "Ochako Uraraka",
+    "Ryomen Sukuna": "Ryoumen Sukuna",
+    "Seishiro Nagi": "Seishirou Nagi",
+    "Shoei Baro": "Shouei Barou",
+    "Shoyo Hinata": "Shouyou Hinata",
+    "Soshiro Hoshina": "Soushirou Hoshina",
+    "Sosuke Aizen": "Sousuke Aizen",
+    "Tanjiro Kamado": "Tanjirou Kamado",
+    "Taro Sakamoto": "Tarou Sakamoto",
+    "Yuta Okkotsu": "Yuuta Okkotsu",
+  };
 
   function imageSearchName(character) {
     return IMAGE_SEARCH_NAMES[character.name] ?? character.name;
@@ -96,7 +111,12 @@
       eliminate.addEventListener("click", () => {
         if (eliminated.has(character.id)) eliminated.delete(character.id);
         else eliminated.add(character.id);
-        renderBoard(state, el.board, true);
+        const isEliminated = eliminated.has(character.id);
+        card.classList.toggle("eliminated", isEliminated);
+        eliminate.textContent = isEliminated ? "↩" : "✕";
+        eliminate.title = isEliminated ? "Remettre cette carte" : "Éliminer cette carte";
+        eliminate.setAttribute("aria-label", eliminate.title);
+        guess.disabled = isEliminated;
       });
       const guess = document.createElement("button");
       guess.className = "btn small";
@@ -213,6 +233,9 @@
     showCharacter(el.resultCharacter, target);
     renderBoard(state, el.endedBoard, false);
     const isHost = state.hostId === Room.playerId;
+    const nextName = playerName(state, state.clueGiverId);
+    el.restartBtn.textContent = `Manche suivante : ${nextName} devine`;
+    el.restartHint.textContent = `En attente que l'hôte lance la manche de ${nextName}…`;
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
   }
@@ -231,7 +254,7 @@
     }
   }
 
-  el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
+  el.restartBtn.addEventListener("click", () => Room.send({ type: "nextRound" }));
 
   Room.init({
     slug: "guesswho",

@@ -537,9 +537,12 @@ const duplicates = codenamesWords
   addPlayers(room, { a: {}, b: {} });
   assert.equal(guesswho.pickGuesser(room, "b"), "b", "le devineur choisi dans le lobby doit être respecté");
   assert.equal(guesswho.findOtherPlayer(room, "b"), "a", "l'autre joueur doit faire deviner");
+  room.guesserId = "b";
+  room.clueGiverId = "a";
+  assert.equal(guesswho.nextGuesser(room), "a", "le joueur qui faisait deviner doit devenir le prochain devineur");
 
   const board = guesswho.drawBoard(undefined, () => 0.42);
-  assert.equal(board.length, guesswho.BOARD_SIZE, "la grille doit contenir vingt personnages");
+  assert.equal(board.length, guesswho.BOARD_SIZE, "la grille doit contenir vingt-quatre personnages");
   assert.equal(new Set(board.map((card) => card.id)).size, board.length, "une grille ne doit pas contenir de doublon");
 }
 

@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
   <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/games/guesswho/style.css?v=6" />
+  <link rel="stylesheet" href="/games/guesswho/style.css?v=8" />
 </head>
 <body>
   <header class="site-header">
@@ -95,8 +95,8 @@
         <h2 id="result-title"></h2>
         <p id="result-detail" class="muted"></p>
         <div id="result-character" class="result-character"></div>
-        <button id="restart-btn" class="btn hidden">Rejouer</button>
-        <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance un duel...</p>
+        <button id="restart-btn" class="btn hidden">Manche suivante</button>
+        <p id="restart-hint" class="muted small hidden">En attente que l'hôte lance la manche suivante...</p>
       </div>
       <div id="ended-board" class="character-board ended-board"></div>
     </section>
@@ -106,16 +106,17 @@
     <h2>Qui est-ce ?</h2>
     <p class="muted">Le célèbre jeu de déduction, avec des personnages d'anime et de manga.</p>
     <ol class="rules-steps">
-      <li>L'hôte choisit qui devine. L'autre joueur reçoit secrètement un personnage parmi les vingt cartes.</li>
+      <li>L'hôte choisit qui devine. L'autre joueur reçoit secrètement un personnage parmi les vingt-quatre cartes.</li>
       <li>Le devineur pose des questions auxquelles on répond seulement par oui ou non : anime récent, cheveux blonds, possède un pouvoir…</li>
       <li>Sur son écran, le devineur clique sur ✕ pour retourner les cartes éliminées. Ces choix restent personnels.</li>
       <li>Quand il pense avoir trouvé, il clique sur « C'est lui ». Une bonne réponse lui donne 1 point ; sinon le point revient à l'autre joueur.</li>
+      <li>À la manche suivante, les rôles s'inversent automatiquement : chacun fait deviner un personnage à son tour.</li>
     </ol>
   </template>
   <script src="/js/sound.js"></script>
   <script src="/js/ui.js"></script>
-  <script src="/js/anilist.js?v=6"></script>
+  <script src="/js/anilist.js?v=7"></script>
   <script src="/js/room-client.js"></script>
-  <script src="/games/guesswho/app.js?v=6"></script>
+  <script src="/games/guesswho/app.js?v=7"></script>
 </body>
 </html>

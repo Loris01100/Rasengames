@@ -3,7 +3,7 @@ import type { CharacterCard, RoomState } from "./types";
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 2;
-export const BOARD_SIZE = 20;
+export const BOARD_SIZE = 24;
 
 export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
@@ -33,4 +33,9 @@ export function drawBoard(
 
 export function findOtherPlayer(room: RoomState, playerId: string | null): string | null {
   return connectedIds(room).find((id) => id !== playerId) ?? null;
+}
+
+export function nextGuesser(room: RoomState): string | null {
+  const nextId = room.clueGiverId;
+  return nextId && room.players[nextId]?.connected ? nextId : null;
 }

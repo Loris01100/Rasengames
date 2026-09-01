@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type Player, type RoomState, createEmptyRoom } from "./types";
-import { MAX_PLAYERS, MIN_PLAYERS, connectedIds, drawBoard, findOtherPlayer, pickGuesser } from "./logic";
+import { MAX_PLAYERS, MIN_PLAYERS, connectedIds, drawBoard, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost, transferHost } from "../../lib/host";
 import {
@@ -120,6 +120,7 @@ export class GuessWhoRoom {
       case "join": await this.onJoin(session, room, msg); break;
       case "start": await this.onStart(session, room, msg); break;
       case "guess": await this.onGuess(session, room, msg); break;
+      case "nextRound": await this.onNextRound(session, room); break;
       case "restart": await this.onRestart(session, room); break;
       case "kick":
         if (kickPlayer(this.sessions, session, room, msg)) {
@@ -205,7 +206,14 @@ export class GuessWhoRoom {
         room.playerOrder = room.playerOrder.filter((playerId) => playerId !== id);
       }
     }
-    room.guesserId = pickGuesser(room, typeof msg.guesserId === "string" ? msg.guesserId : null);
+    const guesserId = pickGuesser(room, typeof msg.guesserId === "string" ? msg.guesserId : null);
+    this.startRound(room, guesserId);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private startRound(room: RoomState, guesserId: string | null) {
+    room.guesserId = guesserId;
     room.clueGiverId = findOtherPlayer(room, room.guesserId);
     room.board = drawBoard();
     room.targetId = room.board[Math.floor(Math.random() * room.board.length)]?.id ?? null;
@@ -213,8 +221,6 @@ export class GuessWhoRoom {
     room.winnerId = null;
     room.round += 1;
     room.phase = "play";
-    await this.saveRoom();
-    this.broadcast();
   }
 
   private async onGuess(session: Session, room: RoomState, msg: Record<string, unknown>) {
@@ -228,6 +234,18 @@ export class GuessWhoRoom {
     room.winnerId = guessedId === room.targetId ? room.guesserId : room.clueGiverId;
     if (room.winnerId) room.scores[room.winnerId] = (room.scores[room.winnerId] ?? 0) + 1;
     room.phase = "ended";
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private async onNextRound(session: Session, room: RoomState) {
+    if (session.playerId !== room.hostId || room.phase !== "ended") return;
+    const guesserId = nextGuesser(room);
+    if (!guesserId || connectedIds(room).length !== MIN_PLAYERS) {
+      sendError(session.ws, "Les deux joueurs doivent être connectés pour continuer.");
+      return;
+    }
+    this.startRound(room, guesserId);
     await this.saveRoom();
     this.broadcast();
   }

@@ -79,11 +79,6 @@
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 
-/* Vingt cartes sur huit colonnes : centre la dernière rangée de quatre. */
-.character-board .character-card:nth-child(17) {
-  grid-column: 3;
-}
-
 .character-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -204,7 +199,6 @@
     grid-template-rows: none;
   }
   .character-board { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .character-board .character-card:nth-child(17) { grid-column: auto; }
   .character-image-wrap { aspect-ratio: 3 / 2; flex: none; }
 }
 
