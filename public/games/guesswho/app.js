@@ -116,7 +116,20 @@
   }
 
   async function loadBoardImages(jobs) {
-    await Anilist.setCharacterImages(jobs.map((job) => ({ img: job.image, name: job.name })));
+    // `setCharacterImages` économise le quota AniList avec une seule requête.
+    // Le repli individuel couvre un ancien anilist.js encore en cache et une
+    // éventuelle requête groupée refusée : la grille ne reste jamais vide.
+    if (typeof Anilist.setCharacterImages === "function") {
+      await Anilist.setCharacterImages(jobs.map((job) => ({ img: job.image, name: job.name })));
+    }
+    const missing = jobs.filter((job) => job.image.classList.contains("hidden"));
+    for (let index = 0; index < missing.length; index += 3) {
+      await Promise.all(
+        missing.slice(index, index + 3).map((job) =>
+          Anilist.setImage(job.image, job.name, "character")
+        )
+      );
+    }
   }
 
   function renderBoard(state, container, interactive) {

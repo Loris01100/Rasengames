@@ -466,7 +466,8 @@ function run(slug) {
   vm.createContext(sandbox);
 
   for (const [, src] of html.matchAll(/<script src="\/([^"]+)"><\/script>/g)) {
-    vm.runInContext(fs.readFileSync(path.join(ROOT, src), "utf8"), sandbox, { filename: src });
+    const fileSrc = src.split("?")[0];
+    vm.runInContext(fs.readFileSync(path.join(ROOT, fileSrc), "utf8"), sandbox, { filename: fileSrc });
   }
 
   // Un pseudo trop court ne doit même pas ouvrir de socket (le serveur le
