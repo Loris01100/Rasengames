@@ -100,7 +100,8 @@ const Anilist = (() => {
     }
     const trimmed = (name || "").trim();
     if (!trimmed) return null;
-    return cached(`image:${kind}:${trimmed.toLowerCase()}`, async () => {
+    const key = `image:${kind}:${trimmed.toLowerCase()}`;
+    const url = await cached(key, async () => {
       const order = kind === "anime" ? ["anime", "character"] : ["character", "anime"];
       for (const step of order) {
         const data = await query(step === "anime" ? IMAGE_ANIME : IMAGE_CHARACTER, { search: trimmed });
@@ -110,6 +111,10 @@ const Anilist = (() => {
       }
       return null;
     });
+    // Une panne réseau ou un 429 ne doit pas condamner l'image jusqu'au
+    // rechargement de la page : seuls les résultats positifs restent en cache.
+    if (!url) cache.delete(key);
+    return url;
   }
 
   // Sets an <img> once the picture is known, and leaves it hidden otherwise —
@@ -119,9 +124,59 @@ const Anilist = (() => {
     img.classList.add("hidden");
     img.dataset.for = `${ref || ""}|${name || ""}`;
     const url = await image(name, kind, ref);
-    if (!url || img.dataset.for !== `${ref || ""}|${name || ""}`) return;
+    if (!url || img.dataset.for !== `${ref || ""}|${name || ""}`) return false;
     img.src = url;
     img.classList.remove("hidden");
+    return true;
+  }
+
+  // La grille de Qui est-ce affiche vingt personnages d'un coup. Une requête
+  // par carte finit vite en 429, surtout quand deux joueurs partagent la même
+  // connexion : GraphQL permet de résoudre tous les noms avec des alias dans
+  // un seul appel. Chaque image garde le même garde-fou anti-rendu périmé que
+  // setImage().
+  async function setCharacterImages(entries) {
+    const clean = entries
+      .map(({ img, name }) => ({ img, name: String(name || "").trim() }))
+      .filter(({ img, name }) => img && name);
+    if (clean.length === 0) return 0;
+
+    const names = [...new Set(clean.map(({ name }) => name))];
+    const variables = {};
+    const declarations = [];
+    const fields = [];
+    names.forEach((name, index) => {
+      variables[`q${index}`] = name;
+      declarations.push(`$q${index}: String`);
+      fields.push(`c${index}: Character(search: $q${index}) { image { large } }`);
+    });
+
+    for (const { img, name } of clean) {
+      img.classList.add("hidden");
+      img.dataset.for = `batch|${name}`;
+    }
+
+    const key = `images:characters:${names.join("|").toLowerCase()}`;
+    const data = await cached(key, () =>
+      query(`query (${declarations.join(", ")}) { ${fields.join(" ")} }`, variables)
+    );
+    if (!data) {
+      cache.delete(key);
+      return 0;
+    }
+
+    const urls = new Map(
+      names.map((name, index) => [name, data[`c${index}`]?.image?.large ?? null])
+    );
+    let loaded = 0;
+    for (const { img, name } of clean) {
+      const url = urls.get(name);
+      if (!url || img.dataset.for !== `batch|${name}`) continue;
+      img.src = url;
+      img.classList.remove("hidden");
+      loaded += 1;
+    }
+    return loaded;
   }
 
   // Left on AniList's default relevance sort on purpose — FAVOURITES_DESC
@@ -291,5 +346,5 @@ const Anilist = (() => {
     });
   }
 
-  return { image, setImage, suggest, charactersOf, exists, animeOf };
+  return { image, setImage, setCharacterImages, suggest, charactersOf, exists, animeOf };
 })();

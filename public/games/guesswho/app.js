@@ -21,6 +21,11 @@
   let renderedLobbyPlayers = "";
   let renderedRound = null;
   let eliminated = new Set();
+  const IMAGE_SEARCH_NAMES = { "Levi Ackerman": "Levi" };
+
+  function imageSearchName(character) {
+    return IMAGE_SEARCH_NAMES[character.name] ?? character.name;
+  }
 
   function playerName(state, id) {
     return state.players.find((player) => player.id === id)?.name ?? "Un joueur";
@@ -48,7 +53,7 @@
       : "random";
   }
 
-  function makeCharacterCard(state, character, interactive) {
+  function makeCharacterCard(state, character, interactive, imageJobs) {
     const card = document.createElement("article");
     card.className = "character-card";
     card.dataset.characterId = character.id;
@@ -65,7 +70,7 @@
     image.alt = character.name;
     imageWrap.appendChild(initial);
     imageWrap.appendChild(image);
-    Anilist.setImage(image, character.name, "character");
+    imageJobs.push({ image, name: imageSearchName(character) });
     card.appendChild(imageWrap);
 
     const info = document.createElement("div");
@@ -84,7 +89,9 @@
       actions.className = "character-actions";
       const eliminate = document.createElement("button");
       eliminate.className = "btn secondary small eliminate-btn";
-      eliminate.textContent = eliminated.has(character.id) ? "↩ Remettre" : "✕ Éliminer";
+      eliminate.textContent = eliminated.has(character.id) ? "↩" : "✕";
+      eliminate.title = eliminated.has(character.id) ? "Remettre cette carte" : "Éliminer cette carte";
+      eliminate.setAttribute("aria-label", eliminate.title);
       eliminate.addEventListener("click", () => {
         if (eliminated.has(character.id)) eliminated.delete(character.id);
         else eliminated.add(character.id);
@@ -92,7 +99,9 @@
       });
       const guess = document.createElement("button");
       guess.className = "btn small";
-      guess.textContent = "C'est lui";
+      guess.textContent = "✓";
+      guess.title = `Tenter ${character.name}`;
+      guess.setAttribute("aria-label", guess.title);
       guess.disabled = eliminated.has(character.id);
       guess.addEventListener("click", () => {
         if (confirm(`Tu tentes ${character.name} ? La réponse sera définitive.`)) {
@@ -106,11 +115,17 @@
     return card;
   }
 
+  async function loadBoardImages(jobs) {
+    await Anilist.setCharacterImages(jobs.map((job) => ({ img: job.image, name: job.name })));
+  }
+
   function renderBoard(state, container, interactive) {
     container.innerHTML = "";
+    const imageJobs = [];
     for (const character of state.board ?? []) {
-      container.appendChild(makeCharacterCard(state, character, interactive));
+      container.appendChild(makeCharacterCard(state, character, interactive, imageJobs));
     }
+    void loadBoardImages(imageJobs);
   }
 
   function showCharacter(container, character) {
@@ -128,7 +143,7 @@
     info.appendChild(anime);
     container.appendChild(image);
     container.appendChild(info);
-    Anilist.setImage(image, character.name, "character");
+    Anilist.setImage(image, imageSearchName(character), "character");
   }
 
   function renderPlay(state) {
@@ -154,7 +169,7 @@
     if (isClueGiver && target) {
       el.secretName.textContent = target.name;
       el.secretAnime.textContent = target.anime;
-      Anilist.setImage(el.secretImage, target.name, "character");
+      Anilist.setImage(el.secretImage, imageSearchName(target), "character");
     }
     renderBoard(state, el.board, isGuesser && !Room.spectator);
   }
