@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Enchaîne plusieurs mini-jeux RasenGames dans un même lobby avec classement cumulé." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <title>Mode soirée · RasenGames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/party/style.css" />
+</head>
+<body>
+  <header class="site-header party-header">
+    <a class="logo" href="/">Rasen<span>Games</span></a>
+    <span id="party-badge" class="badge hidden"></span>
+  </header>
+
+  <main class="container party-container">
+    <section id="screen-join" class="party-hero">
+      <div>
+        <span class="hero-kicker">🎉 Mode soirée</span>
+        <h1>Un seul lobby.<br /><span class="grad">Toute la soirée.</span></h1>
+        <p class="muted">Prépare une playlist, enchaîne les jeux sans ressaisir ton pseudo et termine sur un podium global.</p>
+      </div>
+      <div class="card join-card">
+        <label for="name-input">Ton pseudo</label>
+        <input id="name-input" maxlength="20" autocomplete="nickname" placeholder="Ton pseudo" />
+        <button id="create-btn" class="btn">Créer une soirée</button>
+        <div class="party-separator"><span>ou</span></div>
+        <label for="code-input">Code de la soirée</label>
+        <div class="inline">
+          <input id="code-input" maxlength="8" autocomplete="off" placeholder="ABCDE" />
+          <button id="join-btn" class="btn secondary">Rejoindre</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-lobby" class="hidden">
+      <div class="party-title-row">
+        <div>
+          <span class="eyebrow">MODE SOIRÉE</span>
+          <h1>Préparez la playlist</h1>
+          <p class="muted">Partage le code <strong id="lobby-code"></strong> : chacun ne rejoint qu'une fois.</p>
+        </div>
+        <button id="copy-btn" class="btn secondary">Copier l'invitation</button>
+      </div>
+      <div class="party-layout">
+        <aside class="card">
+          <h2>Joueurs</h2>
+          <div id="players-list" class="party-player-list"></div>
+        </aside>
+        <div class="card playlist-card">
+          <div class="playlist-heading">
+            <div><h2>Playlist</h2><p class="muted small">Ajoute jusqu'à 10 jeux. Tu peux en mettre plusieurs fois.</p></div>
+            <button id="random-btn" class="btn secondary small">🎲 3 jeux au hasard</button>
+          </div>
+          <div id="game-picker" class="party-game-picker"></div>
+          <h3>Ordre de passage</h3>
+          <ol id="playlist" class="party-playlist"></ol>
+          <p id="playlist-empty" class="muted">Ajoute ton premier jeu ci-dessus.</p>
+          <div id="host-actions">
+            <button id="start-btn" class="btn party-start">Lancer la soirée</button>
+            <p id="start-hint" class="muted small"></p>
+          </div>
+          <p id="waiting-host" class="muted hidden">L'hôte prépare la playlist…</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-playing" class="card party-status hidden">
+      <span class="eyebrow">JEU EN COURS</span>
+      <div id="current-icon" class="party-current-icon">🎮</div>
+      <h1 id="current-name"></h1>
+      <p id="current-progress" class="muted"></p>
+      <button id="rejoin-btn" class="btn">Rejoindre le jeu</button>
+      <p class="muted small">Cette page te garde dans la soirée si tu es revenu par erreur.</p>
+    </section>
+
+    <section id="screen-summary" class="hidden">
+      <div class="party-title-row">
+        <div><span class="eyebrow">ENTRACTE</span><h1>Classement de la soirée</h1></div>
+        <span id="summary-progress" class="badge"></span>
+      </div>
+      <div class="party-layout">
+        <div class="card"><h2>Résultat du jeu</h2><div id="round-result" class="ranking"></div></div>
+        <div class="card"><h2>Classement général</h2><div id="overall-ranking" class="ranking"></div></div>
+      </div>
+      <button id="next-btn" class="btn party-next hidden">Jeu suivant →</button>
+      <p id="next-wait" class="muted center">L'hôte va lancer la suite…</p>
+    </section>
+
+    <section id="screen-ended" class="card final-card hidden">
+      <span class="eyebrow">SOIRÉE TERMINÉE</span>
+      <h1>🏆 Podium final</h1>
+      <div id="podium" class="podium"></div>
+      <div id="final-ranking" class="ranking final-ranking"></div>
+      <button id="restart-btn" class="btn hidden">Préparer une nouvelle soirée</button>
+    </section>
+  </main>
+  <div id="toast" class="toast hidden"></div>
+  <script src="/party/app.js"></script>
+</body>
+</html>

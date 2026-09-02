@@ -10,5 +10,6 @@ export interface Env {
   CODENAMES_ROOM: DurableObjectNamespace;
   SYNC_ROOM: DurableObjectNamespace;
   GUESSWHO_ROOM: DurableObjectNamespace;
+  PARTY_ROOM: DurableObjectNamespace;
   LOBBY_REGISTRY: DurableObjectNamespace;
 }

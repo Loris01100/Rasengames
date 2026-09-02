@@ -23,6 +23,7 @@
   let renderedLobbyPlayers = "";
   let renderedRound = null;
   let imageLoadGeneration = 0;
+  let autoGuessTimer = null;
   let eliminated = new Set();
   const IMAGE_SEARCH_NAMES = {
     "Giyu Tomioka": "Giyuu Tomioka",
@@ -53,6 +54,31 @@
     return state.players.find((player) => player.id === id)?.name ?? "Un joueur";
   }
 
+  function remainingCharacters(state) {
+    return (state.board ?? []).filter((character) => !eliminated.has(character.id));
+  }
+
+  function cancelAutoGuess() {
+    if (autoGuessTimer !== null) clearTimeout(autoGuessTimer);
+    autoGuessTimer = null;
+  }
+
+  function maybeAutoGuess(state) {
+    cancelAutoGuess();
+    if (Room.spectator || Room.playerId !== state.currentTurnId) return;
+    const remaining = remainingCharacters(state);
+    if (remaining.length !== 1) return;
+    const characterId = remaining[0].id;
+    autoGuessTimer = setTimeout(() => {
+      autoGuessTimer = null;
+      if (Room.state?.phase !== "play" || Room.state.currentTurnId !== Room.playerId) return;
+      const latestRemaining = remainingCharacters(Room.state);
+      if (latestRemaining.length === 1 && latestRemaining[0].id === characterId) {
+        Room.send({ type: "guess", characterId });
+      }
+    }, 700);
+  }
+
   function renderLobby(state) {
     Room.renderLobby(state);
     const signature = state.players.map((player) => `${player.id}:${player.name}`).join("|");
@@ -75,7 +101,7 @@
       : "random";
   }
 
-  function makeCharacterCard(state, character, interactive, canGuess, imageJobs) {
+  function makeCharacterCard(state, character, interactive, imageJobs) {
     const card = document.createElement("article");
     card.className = "character-card";
     card.dataset.characterId = character.id;
@@ -107,37 +133,31 @@
     card.appendChild(info);
 
     if (interactive) {
-      const actions = document.createElement("div");
-      actions.className = "character-actions";
-      const eliminate = document.createElement("button");
-      eliminate.className = "btn secondary small eliminate-btn";
-      eliminate.textContent = eliminated.has(character.id) ? "↩" : "✕";
-      eliminate.title = eliminated.has(character.id) ? "Remettre cette carte" : "Éliminer cette carte";
-      eliminate.setAttribute("aria-label", eliminate.title);
-      eliminate.addEventListener("click", () => {
-        if (eliminated.has(character.id)) eliminated.delete(character.id);
-        else eliminated.add(character.id);
+      card.classList.add("interactive");
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("aria-pressed", String(eliminated.has(character.id)));
+      const toggle = () => {
+        if (eliminated.has(character.id)) {
+          eliminated.delete(character.id);
+        } else {
+          if (remainingCharacters(state).length <= 1) {
+            Room.toast("Il faut garder au moins un personnage.");
+            return;
+          }
+          eliminated.add(character.id);
+        }
         const isEliminated = eliminated.has(character.id);
         card.classList.toggle("eliminated", isEliminated);
-        eliminate.textContent = isEliminated ? "↩" : "✕";
-        eliminate.title = isEliminated ? "Remettre cette carte" : "Éliminer cette carte";
-        eliminate.setAttribute("aria-label", eliminate.title);
-        guess.disabled = isEliminated || !canGuess;
+        card.setAttribute("aria-pressed", String(isEliminated));
+        maybeAutoGuess(state);
+      };
+      card.addEventListener("click", toggle);
+      card.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        toggle();
       });
-      const guess = document.createElement("button");
-      guess.className = "btn small guess-btn";
-      guess.textContent = "✓";
-      guess.title = `Tenter ${character.name}`;
-      guess.setAttribute("aria-label", guess.title);
-      guess.disabled = eliminated.has(character.id) || !canGuess;
-      guess.addEventListener("click", () => {
-        if (confirm(`Tu tentes ${character.name} ? La réponse sera définitive.`)) {
-          Room.send({ type: "guess", characterId: character.id });
-        }
-      });
-      actions.appendChild(eliminate);
-      actions.appendChild(guess);
-      card.appendChild(actions);
     }
     return card;
   }
@@ -178,12 +198,12 @@
     }
   }
 
-  function renderBoard(state, container, interactive, canGuess = false) {
+  function renderBoard(state, container, interactive) {
     const generation = ++imageLoadGeneration;
     container.innerHTML = "";
     const imageJobs = [];
     for (const character of state.board ?? []) {
-      container.appendChild(makeCharacterCard(state, character, interactive, canGuess, imageJobs));
+      container.appendChild(makeCharacterCard(state, character, interactive, imageJobs));
     }
     void loadBoardImages(imageJobs, generation);
   }
@@ -206,13 +226,6 @@
     Anilist.setImage(image, imageSearchName(character), "character", imageRef(character));
   }
 
-  function updateGuessAvailability(canGuess) {
-    for (const card of el.board.querySelectorAll(".character-card")) {
-      const button = card.querySelector(".guess-btn");
-      if (button) button.disabled = !canGuess || eliminated.has(card.dataset.characterId);
-    }
-  }
-
   function questionLabel(count) {
     return `${count} question${count > 1 ? "s" : ""}`;
   }
@@ -220,6 +233,7 @@
   function renderPlay(state) {
     const newRound = renderedRound !== state.round;
     if (newRound) {
+      cancelAutoGuess();
       renderedRound = state.round;
       eliminated = new Set();
     }
@@ -250,13 +264,13 @@
       Anilist.setImage(el.secretImage, imageSearchName(target), "character", imageRef(target));
     }
     if (newRound) {
-      renderBoard(state, el.board, isPlayer && !Room.spectator, isMyTurn);
-    } else {
-      updateGuessAvailability(isMyTurn);
+      renderBoard(state, el.board, isPlayer && !Room.spectator);
     }
+    maybeAutoGuess(state);
   }
 
   function renderEnded(state) {
+    cancelAutoGuess();
     const target = state.board.find((card) => card.id === state.revealedTargetId);
     const guessed = state.board.find((card) => card.id === state.guessedId);
     const correct = state.guessedId === state.revealedTargetId;

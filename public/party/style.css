@@ -1,0 +1,49 @@
+.party-header { gap: 12px; }
+.party-container { padding-top: 38px; padding-bottom: 70px; }
+.party-hero { display: grid; grid-template-columns: 1.2fr .8fr; align-items: center; gap: 60px; min-height: 68vh; }
+.party-hero h1, .party-title-row h1, .party-status h1, .final-card h1 { margin: 8px 0 12px; }
+.party-hero h1 { font-size: clamp(2.8rem, 6vw, 5.5rem); line-height: .92; }
+.join-card { display: grid; gap: 10px; padding: 28px; }
+.party-separator { display: flex; align-items: center; gap: 12px; color: var(--muted); margin: 4px 0; }
+.party-separator::before, .party-separator::after { content: ""; height: 1px; background: var(--border); flex: 1; }
+.party-title-row, .playlist-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.party-layout { display: grid; grid-template-columns: minmax(250px, .7fr) minmax(0, 1.5fr); gap: 18px; align-items: start; }
+.party-player-list { display: grid; gap: 8px; }
+.party-player { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.party-player.offline { opacity: .55; }
+.party-player-score { margin-left: auto; color: var(--accent); font-weight: 800; }
+.party-game-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 18px 0 22px; }
+.party-game { display: flex; align-items: center; gap: 9px; text-align: left; }
+.party-game:disabled { opacity: .35; }
+.party-game small { margin-left: auto; color: var(--muted); }
+.party-playlist { display: grid; gap: 8px; padding: 0; list-style: none; counter-reset: party-game; }
+.party-playlist li { counter-increment: party-game; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.party-playlist li::before { content: counter(party-game); color: var(--accent); font-weight: 800; }
+.playlist-label { flex: 1; font-weight: 700; }
+.playlist-control { min-width: 34px; padding: 5px 8px; }
+.party-start, .party-next { width: 100%; margin-top: 18px; }
+.party-status { max-width: 650px; margin: 10vh auto 0; text-align: center; padding: 48px; }
+.party-current-icon { font-size: 5rem; margin: 14px 0 0; }
+.ranking { display: grid; gap: 8px; }
+.ranking-row { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 12px; background: var(--surface-2); }
+.ranking-rank { color: var(--accent); font-weight: 800; }
+.ranking-points { font-weight: 800; }
+.center { text-align: center; }
+.final-card { max-width: 850px; margin: 0 auto; text-align: center; padding: 38px; }
+.podium { display: flex; justify-content: center; align-items: end; gap: 10px; min-height: 230px; margin: 26px 0; }
+.podium-step { width: min(180px, 30%); padding: 18px 8px; border: 1px solid var(--border); border-radius: 16px 16px 8px 8px; background: var(--surface-2); }
+.podium-step.first { min-height: 190px; border-color: var(--accent); order: 2; }
+.podium-step.second { min-height: 150px; order: 1; }
+.podium-step.third { min-height: 120px; order: 3; }
+.podium-medal { display: block; font-size: 2rem; }
+.final-ranking { max-width: 540px; margin: 0 auto 24px; text-align: left; }
+.eyebrow { color: var(--accent); letter-spacing: .14em; font-size: .78rem; font-weight: 800; }
+
+@media (max-width: 760px) {
+  .party-container { padding-top: 20px; }
+  .party-hero, .party-layout { grid-template-columns: 1fr; gap: 18px; }
+  .party-hero { min-height: 0; }
+  .party-title-row, .playlist-heading { align-items: flex-start; flex-direction: column; }
+  .party-game-picker { grid-template-columns: 1fr; }
+  .party-status { margin-top: 3vh; padding: 30px 18px; }
+}

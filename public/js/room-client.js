@@ -36,6 +36,10 @@ const Room = (() => {
   let toastTimer = null;
   let wantPublic = false;
   let reconnectDelay = 2000;
+  let partyWs = null;
+  let partyCode = null;
+  let partyReconnectTimer = null;
+  let partyFinishSent = false;
 
   const api = {
     playerId: null,
@@ -222,6 +226,7 @@ const Room = (() => {
       }
       cfg.onState(msg.state, previous);
       applySpectatorMode();
+      renderPartyFinish(msg.state);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
       const spectator = api.spectator ? "&spectator=1" : "";
@@ -278,6 +283,79 @@ const Room = (() => {
     const count = (state.waiting ?? []).filter((w) => w.id !== api.playerId).length;
     el.waitingBadge.textContent = count ? `${count} en attente` : "";
     el.waitingBadge.classList.toggle("hidden", count === 0);
+  }
+
+  // Une partie lancée depuis le mode soirée garde une seconde connexion au
+  // lobby organisateur. Le jeu reste totalement autonome ; cette connexion ne
+  // transporte que le résultat final et la redirection collective.
+  function connectParty(name, token) {
+    if (!partyCode || !name || !token) return;
+    clearTimeout(partyReconnectTimer);
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    partyWs = new WebSocket(`${proto}://${location.host}/ws/party/${partyCode}`);
+    partyWs.addEventListener("open", () => {
+      partyWs.send(JSON.stringify({ type: "join", name, token }));
+    });
+    partyWs.addEventListener("message", (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.type === "returnToParty") location.href = `/party/?room=${partyCode}`;
+      if (
+        msg.type === "state" &&
+        (msg.state.phase !== "playing" || (api.code && msg.state.currentGame?.code !== api.code))
+      ) {
+        // Le signal ponctuel a pu partir pendant une coupure réseau. L'état
+        // persistant permet au joueur revenu plus tard de rejoindre quand même
+        // le classement, sans rester bloqué sur l'ancien écran de fin.
+        location.href = `/party/?room=${partyCode}`;
+      }
+      if (msg.type === "error") toast(msg.message);
+    });
+    partyWs.addEventListener("close", () => {
+      partyReconnectTimer = setTimeout(() => connectParty(name, token), 2000);
+    });
+  }
+
+  let partyFinish = null;
+  function renderPartyFinish(state) {
+    if (!partyCode) return;
+    if (!partyFinish) {
+      partyFinish = document.createElement("div");
+      partyFinish.className = "party-finish hidden";
+      document.body.appendChild(partyFinish);
+    }
+    const ended = state.phase === "ended";
+    partyFinish.classList.toggle("hidden", !ended);
+    if (!ended) {
+      partyFinishSent = false;
+      return;
+    }
+    partyFinish.innerHTML = "";
+    const text = document.createElement("strong");
+    text.textContent = state.hostId === api.playerId
+      ? "🎉 La manche est finie : ajoute le résultat au classement de la soirée."
+      : "🎉 Manche terminée — l'hôte va valider le classement de la soirée.";
+    partyFinish.appendChild(text);
+    if (state.hostId !== api.playerId) return;
+    const button = document.createElement("button");
+    button.className = "btn small";
+    button.textContent = partyFinishSent ? "Résultat envoyé…" : "Valider et voir le classement";
+    button.disabled = partyFinishSent;
+    button.addEventListener("click", () => {
+      if (!partyWs || partyWs.readyState !== WebSocket.OPEN) {
+        toast("Le lobby soirée se reconnecte, réessaie dans un instant.");
+        return;
+      }
+      const results = (state.players ?? []).map((player) => ({
+        name: player.name,
+        score: Number(state.scores?.[player.id] ?? 0),
+      }));
+      partyFinishSent = true;
+      button.disabled = true;
+      button.textContent = "Résultat envoyé…";
+      partyWs.send(JSON.stringify({ type: "finishGame", results }));
+    });
+    partyFinish.appendChild(button);
   }
 
   function renderSpectators(state) {
@@ -574,6 +652,12 @@ const Room = (() => {
     window.addEventListener("online", reconnectNow);
 
     const params = new URLSearchParams(location.search);
+    partyCode = params.get("party")?.toUpperCase() || null;
+    if (partyCode) {
+      const partyName = localStorage.getItem(`party:${partyCode}:name`) || params.get("autojoin");
+      const partyToken = localStorage.getItem(`party:${partyCode}:token`);
+      connectParty(partyName, partyToken);
+    }
     const codeFromUrl = params.get("room");
     const lastName = localStorage.getItem(`${cfg.slug}:lastName`);
     if (lastName) el.nameInput.value = lastName;
