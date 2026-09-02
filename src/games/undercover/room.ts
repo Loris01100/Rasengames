@@ -9,7 +9,7 @@ import {
   validateSettings,
 } from "./logic";
 import { normalizeWord } from "../../lib/words";
-import { CATEGORY_LABELS, type WordCategory } from "./words";
+import { CATEGORY_LABELS, UNDERCOVER_SOURCES, availablePairCount, type WordCategory } from "./words";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost, transferHost } from "../../lib/host";
 import {
@@ -93,6 +93,9 @@ export class UndercoverRoom {
       this.room.scores ??= {};
       this.room.waiting ??= [];
       this.room.clueHistory ??= [];
+      this.room.settings.excludedSources ??= [];
+      this.room.currentPairId ??= null;
+      this.room.feedbackVotes ??= {};
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -200,6 +203,9 @@ export class UndercoverRoom {
       case "whiteGuess":
         await this.onWhiteGuess(session, room, msg);
         break;
+      case "pairFeedback":
+        await this.onPairFeedback(session, room, msg);
+        break;
       case "restart":
         await this.onRestart(session, room);
         break;
@@ -291,7 +297,7 @@ export class UndercoverRoom {
     assignHostAfterSwitch(room, id, msg);
     session.playerId = id;
 
-    room.settings = defaultSettings(room.playerOrder.length, room.settings.category);
+    room.settings = defaultSettings(room.playerOrder.length, room.settings.category, room.settings.excludedSources);
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
     await this.saveRoom();
@@ -312,7 +318,7 @@ export class UndercoverRoom {
     }
 
     const rawSettings = msg.settings as
-      | { undercoverCount?: unknown; mrWhiteCount?: unknown; category?: unknown }
+      | { undercoverCount?: unknown; mrWhiteCount?: unknown; category?: unknown; excludedSources?: unknown }
       | undefined;
     if (rawSettings) {
       const category =
@@ -323,6 +329,9 @@ export class UndercoverRoom {
         undercoverCount: Math.max(0, Number(rawSettings.undercoverCount) || 0),
         mrWhiteCount: Math.max(0, Number(rawSettings.mrWhiteCount) || 0),
         category,
+        excludedSources: Array.isArray(rawSettings.excludedSources)
+          ? rawSettings.excludedSources.map(String).filter((source) => UNDERCOVER_SOURCES.includes(source)).slice(0, 50)
+          : room.settings.excludedSources,
       };
       const error = validateSettings(connectedCount, settings);
       if (error) {
@@ -330,6 +339,11 @@ export class UndercoverRoom {
         return;
       }
       room.settings = settings;
+    }
+
+    if (availablePairCount(room.settings.category, room.settings.excludedSources) === 0) {
+      sendError(session.ws, "Aucune paire ne reste avec ces anime exclus.");
+      return;
     }
 
     for (const id of [...room.playerOrder]) {
@@ -384,6 +398,34 @@ export class UndercoverRoom {
     room.currentTurnIndex += 1;
     this.maybeAdvancePhase(room);
 
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  private async onPairFeedback(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    if (room.phase !== "ended" || !room.currentPairId || room.feedbackVotes[session.playerId]) return;
+    const vote = String(msg.vote ?? "") as "good" | "easy" | "far";
+    if (!(["good", "easy", "far"] as string[]).includes(vote)) return;
+    const response = await this.env.UNDERCOVER_FEEDBACK
+      .get(this.env.UNDERCOVER_FEEDBACK.idFromName("global"))
+      .fetch("https://feedback/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: room.currentPairId,
+          category: room.wordCategory,
+          a: room.civilianWord,
+          b: room.undercoverWord,
+          hintA: room.civilianWordHint,
+          hintB: room.undercoverWordHint,
+          vote,
+        }),
+      });
+    if (!response.ok) {
+      sendError(session.ws, "Le vote n'a pas pu être enregistré. Réessaie.");
+      return;
+    }
+    room.feedbackVotes[session.playerId] = vote;
     await this.saveRoom();
     this.broadcast();
   }
@@ -626,6 +668,8 @@ export class UndercoverRoom {
       undercoverWordHint: revealAll ? room.undercoverWordHint : undefined,
       settings: room.settings,
       wordCategory: room.wordCategory,
+      myPairFeedback: room.feedbackVotes[forPlayerId] ?? null,
+      pairFeedbackCount: Object.keys(room.feedbackVotes).length,
     };
   }
 }

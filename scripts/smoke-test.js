@@ -166,6 +166,38 @@ const PHASE_CHECKS = {
     assert.strictEqual(submissions()[0].anilistRef, "character:1", `${slug}: référence AniList perdue`);
   },
 
+  // Détective Anime : une saisie libre inventée ne doit pas atteindre le
+  // salon ; choisir une fiche personnage dans les suggestions suffit.
+  async detective(send, byId, slug, tick, socketSent) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "play", hostId: "p1", turnId: "p1", turnName: "Alice",
+        players: [
+          { id: "p1", name: "Alice", connected: true },
+          { id: "p2", name: "Bobby", connected: true },
+        ],
+        you: { id: "p1", category: "Cheveux roses", incoming: [], solved: false },
+        others: [{ id: "p2", name: "Bobby", connected: true, solved: false }],
+        log: [], solved: [], categoriesTotal: 2,
+      },
+    });
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    const proposals = () => socketSent().filter((message) => message.type === "proposeCharacter");
+
+    byId("propose-input").value = "Perso Qui Existe Pas";
+    byId("propose-submit").dispatch("click");
+    await flush();
+    await flush();
+    assert.strictEqual(proposals().length, 0, `${slug}: personnage inventé envoyé`);
+
+    byId("propose-input").value = "Shouyou Hinata";
+    byId("propose-input").dataset.anilistRef = "character:1";
+    byId("propose-submit").dispatch("click");
+    assert.strictEqual(proposals().length, 1, `${slug}: fiche AniList valide bloquée`);
+    assert.strictEqual(proposals()[0].anilistRef, "character:1", `${slug}: référence AniList perdue`);
+  },
+
   // Petit Bac : stop verrouillé tant que 75 % des cases ne sont pas remplies.
   bac(send, byId, slug, tick) {
     send({

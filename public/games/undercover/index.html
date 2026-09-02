@@ -81,7 +81,14 @@
             <option value="arc">Arcs</option>
             <option value="group">Groupes</option>
             <option value="object">Objets</option>
+            <option value="crossover">Décalé & pop culture</option>
           </select>
+        </div>
+        <div class="source-filter">
+          <label for="source-search">Anime à exclure</label>
+          <input id="source-search" type="search" placeholder="Rechercher un anime…" autocomplete="off" />
+          <div id="source-options" class="source-options"></div>
+          <p id="source-count" class="muted small">Aucun anime exclu.</p>
         </div>
         <div class="settings-row">
           <label for="undercover-count">Undercover</label>
@@ -164,6 +171,16 @@
         <div id="end-words-images" class="end-words-images"></div>
         <p id="end-words" class="muted"></p>
         <div id="end-reveal" class="players-list"></div>
+        <div class="pair-feedback">
+          <h3>Comment était cette paire ?</h3>
+          <p class="muted small">Ton vote aide seulement à l'améliorer manuellement.</p>
+          <div id="pair-feedback-buttons" class="pair-feedback-buttons">
+            <button id="feedback-good" class="btn secondary" data-vote="good">👍 Bonne paire</button>
+            <button id="feedback-easy" class="btn secondary" data-vote="easy">😐 Trop facile</button>
+            <button id="feedback-far" class="btn secondary" data-vote="far">👎 Trop éloignée</button>
+          </div>
+          <p id="pair-feedback-status" class="muted small"></p>
+        </div>
         <button id="restart-btn" class="btn hidden">Rejouer</button>
         <p id="restart-hint" class="muted small hidden">En attente que l'hôte relance une partie...</p>
       </div>

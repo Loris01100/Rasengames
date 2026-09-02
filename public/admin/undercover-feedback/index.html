@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Votes Undercover · RasenGames</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/admin/undercover-feedback/style.css" />
+</head>
+<body>
+  <header class="site-header"><a class="logo" href="/">Rasen<span>Games</span></a></header>
+  <main class="container feedback-admin">
+    <section id="login" class="card narrow">
+      <h1>Votes des paires Undercover</h1>
+      <p class="muted">Entre la clé administrateur configurée sur le Worker.</p>
+      <div class="inline-form">
+        <input id="admin-key" type="password" placeholder="Clé administrateur" />
+        <button id="load-btn" class="btn">Afficher</button>
+      </div>
+      <p id="error" class="muted small"></p>
+    </section>
+    <section id="results-panel" class="hidden">
+      <div class="admin-heading">
+        <div><h1>Résultats des votes</h1><p id="summary" class="muted"></p></div>
+        <button id="csv-btn" class="btn secondary">Télécharger en CSV</button>
+      </div>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Paire</th><th>Catégorie</th><th>👍</th><th>😐</th><th>👎</th><th>Total</th><th>Bonne paire</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="/admin/undercover-feedback/app.js"></script>
+</body>
+</html>

@@ -24,7 +24,7 @@
       <div>
         <span class="hero-kicker">🎉 Mode soirée</span>
         <h1>Un seul lobby.<br /><span class="grad">Toute la soirée.</span></h1>
-        <p class="muted">Prépare une playlist, enchaîne les jeux sans ressaisir ton pseudo et termine sur un podium global.</p>
+        <p class="muted">Choisissez les jeux au fur et à mesure, sans ressaisir vos pseudos, puis terminez sur un podium global.</p>
       </div>
       <div class="card join-card">
         <label for="name-input">Ton pseudo</label>
@@ -43,7 +43,7 @@
       <div class="party-title-row">
         <div>
           <span class="eyebrow">MODE SOIRÉE</span>
-          <h1>Préparez la playlist</h1>
+          <h1>Choisissez le premier jeu</h1>
           <p class="muted">Partage le code <strong id="lobby-code"></strong> : chacun ne rejoint qu'une fois.</p>
         </div>
         <button id="copy-btn" class="btn secondary">Copier l'invitation</button>
@@ -55,18 +55,11 @@
         </aside>
         <div class="card playlist-card">
           <div class="playlist-heading">
-            <div><h2>Playlist</h2><p class="muted small">Ajoute jusqu'à 10 jeux. Tu peux en mettre plusieurs fois.</p></div>
-            <button id="random-btn" class="btn secondary small">🎲 3 jeux au hasard</button>
+            <div><h2>À quoi joue-t-on ?</h2><p class="muted small">Les jeux impossibles avec votre nombre de joueurs sont désactivés.</p></div>
+            <button id="random-btn" class="btn secondary small">🎲 Jeu aléatoire</button>
           </div>
           <div id="game-picker" class="party-game-picker"></div>
-          <h3>Ordre de passage</h3>
-          <ol id="playlist" class="party-playlist"></ol>
-          <p id="playlist-empty" class="muted">Ajoute ton premier jeu ci-dessus.</p>
-          <div id="host-actions">
-            <button id="start-btn" class="btn party-start">Lancer la soirée</button>
-            <p id="start-hint" class="muted small"></p>
-          </div>
-          <p id="waiting-host" class="muted hidden">L'hôte prépare la playlist…</p>
+          <p id="waiting-host" class="muted hidden">L'hôte choisit le premier jeu…</p>
         </div>
       </div>
     </section>
@@ -89,8 +82,15 @@
         <div class="card"><h2>Résultat du jeu</h2><div id="round-result" class="ranking"></div></div>
         <div class="card"><h2>Classement général</h2><div id="overall-ranking" class="ranking"></div></div>
       </div>
-      <button id="next-btn" class="btn party-next hidden">Jeu suivant →</button>
-      <p id="next-wait" class="muted center">L'hôte va lancer la suite…</p>
+      <div id="next-choice" class="card next-choice">
+        <div class="playlist-heading">
+          <div><h2>Quel jeu ensuite ?</h2><p class="muted small">Vous pouvez rejouer au même jeu ou en choisir un autre.</p></div>
+          <button id="random-next-btn" class="btn secondary small">🎲 Jeu aléatoire</button>
+        </div>
+        <div id="next-game-picker" class="party-game-picker"></div>
+        <button id="end-party-btn" class="btn secondary party-end">🏆 Terminer la soirée</button>
+      </div>
+      <p id="next-wait" class="muted center">L'hôte choisit le prochain jeu…</p>
     </section>
 
     <section id="screen-ended" class="card final-card hidden">
@@ -98,7 +98,7 @@
       <h1>🏆 Podium final</h1>
       <div id="podium" class="podium"></div>
       <div id="final-ranking" class="ranking final-ranking"></div>
-      <button id="restart-btn" class="btn hidden">Préparer une nouvelle soirée</button>
+      <button id="restart-btn" class="btn hidden">Recommencer une soirée</button>
     </section>
   </main>
   <div id="toast" class="toast hidden"></div>

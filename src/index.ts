@@ -11,6 +11,8 @@ import { WORDS as CODENAMES_WORDS } from "./games/codenames/words";
 import { SyncRoom } from "./games/sync/room";
 import { GuessWhoRoom } from "./games/guesswho/room";
 import { PartyRoom } from "./party/room";
+import { UndercoverFeedback } from "./feedback/undercover";
+import { UNDERCOVER_SOURCES } from "./games/undercover/words";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
 
@@ -26,6 +28,7 @@ export {
   SyncRoom,
   GuessWhoRoom,
   PartyRoom,
+  UndercoverFeedback,
   LobbyRegistry,
 };
 
@@ -55,6 +58,18 @@ export default {
 
     if (url.pathname === "/api/rooms") {
       return listRooms(env);
+    }
+
+    if (url.pathname === "/api/undercover/sources") {
+      return Response.json({ sources: UNDERCOVER_SOURCES });
+    }
+
+    if (url.pathname === "/api/undercover/feedback" && request.method === "GET") {
+      if (!env.ADMIN_KEY) return Response.json({ error: "ADMIN_KEY non configurée." }, { status: 503 });
+      const authorization = request.headers.get("Authorization") ?? "";
+      if (authorization !== `Bearer ${env.ADMIN_KEY}`) return new Response("Accès refusé", { status: 401 });
+      const namespace = env.UNDERCOVER_FEEDBACK;
+      return namespace.get(namespace.idFromName("global")).fetch("https://feedback/results");
     }
 
     // Catalogue complet (mot + série d'origine) pour le filtre de mots du

@@ -53,6 +53,10 @@ name = "PARTY_ROOM"
 class_name = "PartyRoom"
 
 [[durable_objects.bindings]]
+name = "UNDERCOVER_FEEDBACK"
+class_name = "UndercoverFeedback"
+
+[[durable_objects.bindings]]
 name = "LOBBY_REGISTRY"
 class_name = "LobbyRegistry"
 
@@ -99,6 +103,10 @@ new_sqlite_classes = ["GuessWhoRoom"]
 [[migrations]]
 tag = "v11"
 new_sqlite_classes = ["PartyRoom"]
+
+[[migrations]]
+tag = "v12"
+new_sqlite_classes = ["UndercoverFeedback"]
 
 # Custom domain: once reesch.com is active on this Cloudflare account,
 # uncomment and deploy again (or attach the route from the dashboard).

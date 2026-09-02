@@ -25,6 +25,8 @@ import { createEmptyRoom as emptyGuessWho } from "../src/games/guesswho/types.ts
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
 import { switchGame } from "../src/lib/session.ts";
+import { awardPartyPoints } from "../src/party/logic.ts";
+import { UNDERCOVER_SOURCES, availablePairCount, pickRandomPair } from "../src/games/undercover/words.ts";
 
 // Les Player partagent id/token/name/connected ; le reste (alive,
 // eliminated, found, number...) est passé par jeu dans `extra`.
@@ -238,6 +240,48 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   assert.deepEqual(detective.othersOf(room, "a"), ["c"]);
   room.players.c.connected = false;
   assert.equal(detective.nextTurn(room, "a"), "a", "seul rescapé : le tour lui revient");
+}
+
+// --- Mode soirée : les perdants à zéro ne deviennent pas deuxièmes ---------
+
+assert.deepEqual(awardPartyPoints([1, 0, 0]), [3, 1, 1]);
+assert.deepEqual(awardPartyPoints([10, 8, 2, 0]), [3, 2, 1, 1]);
+assert.deepEqual(awardPartyPoints([5, 5, 2]), [3, 3, 2], "une vraie égalité garde le même rang");
+assert.deepEqual(awardPartyPoints([0, 0]), [1, 1], "sans résultat, chacun garde la participation");
+
+// --- Undercover : catégorie décalée et exclusions d'anime ------------------
+
+assert.ok(UNDERCOVER_SOURCES.includes("Naruto"));
+assert.ok(!UNDERCOVER_SOURCES.includes("Harry Potter"), "la liste d'exclusion ne doit contenir que les anime");
+assert.equal(pickRandomPair("crossover").category, "crossover");
+assert.ok(
+  availablePairCount("character", ["Naruto"]) < availablePairCount("character"),
+  "exclure Naruto doit réellement retirer ses paires de personnages",
+);
+
+// --- Détective : efficacité avant résistance de sa catégorie ----------------
+
+{
+  const room = emptyDetective("TEST");
+  addPlayers(room, { a: {}, b: {}, c: {} });
+  room.solved = [
+    { target: "a", by: "b" },
+    { target: "b", by: "c" },
+    { target: "c", by: "a" },
+  ];
+  room.log = [
+    { kind: "proposal", from: "a", target: "b", text: "X", fits: false },
+    { kind: "guess", from: "a", target: "c", text: "Y", fits: true },
+    { kind: "proposal", from: "b", target: "a", text: "X", fits: false },
+    { kind: "proposal", from: "b", target: "a", text: "Y", fits: false },
+    { kind: "guess", from: "b", target: "a", text: "Z", fits: true },
+    { kind: "guess", from: "c", target: "b", text: "Z", fits: true },
+  ];
+  assert.deepEqual(
+    detective.rankInvestigators(room).map((entry) => entry.id),
+    ["c", "a", "b"],
+    "à nombre de catégories égal, moins de questions doit mieux classer",
+  );
 }
 
 // --- Petit Bac : 2 points seul, 1 point en doublon ----------------------------

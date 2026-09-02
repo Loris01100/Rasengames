@@ -90,51 +90,24 @@
     }
   }
 
-  function renderPicker(isHost) {
-    const picker = $("game-picker");
+  function renderPicker(picker, isHost, messageType) {
     picker.innerHTML = "";
     const count = state.players.filter((player) => player.connected).length;
     for (const game of GAMES) {
       const button = document.createElement("button");
       button.className = "btn secondary party-game";
-      button.disabled = !isHost || !supports(game, count) || state.playlist.length >= 10;
+      button.disabled = !isHost || !supports(game, count);
       button.innerHTML = `<span>${game.icon}</span><span>${game.label}</span><small>${game.exact ? game.exact.join(" ou ") : `${game.min}${game.max ? `-${game.max}` : "+"}`}</small>`;
-      button.addEventListener("click", () => send({ type: "setPlaylist", playlist: [...state.playlist, game.slug] }));
+      button.addEventListener("click", () => send({ type: messageType, slug: game.slug }));
       picker.appendChild(button);
     }
   }
 
-  function renderPlaylist(isHost) {
-    const list = $("playlist");
-    list.innerHTML = "";
-    state.playlist.forEach((slug, index) => {
-      const game = gameBySlug(slug);
-      const item = document.createElement("li");
-      const label = document.createElement("span");
-      label.className = "playlist-label";
-      label.textContent = `${game?.icon ?? "🎮"} ${game?.label ?? slug}`;
-      item.appendChild(label);
-      for (const [symbol, offset] of [["↑", -1], ["↓", 1]]) {
-        const button = document.createElement("button");
-        button.className = "btn secondary small playlist-control";
-        button.textContent = symbol;
-        button.disabled = !isHost || index + offset < 0 || index + offset >= state.playlist.length;
-        button.addEventListener("click", () => {
-          const playlist = [...state.playlist];
-          [playlist[index], playlist[index + offset]] = [playlist[index + offset], playlist[index]];
-          send({ type: "setPlaylist", playlist });
-        });
-        item.appendChild(button);
-      }
-      const remove = document.createElement("button");
-      remove.className = "btn secondary small playlist-control";
-      remove.textContent = "×";
-      remove.disabled = !isHost;
-      remove.addEventListener("click", () => send({ type: "setPlaylist", playlist: state.playlist.filter((_, i) => i !== index) }));
-      item.appendChild(remove);
-      list.appendChild(item);
-    });
-    $("playlist-empty").classList.toggle("hidden", state.playlist.length > 0);
+  function launchRandom(messageType) {
+    const count = state.players.filter((player) => player.connected).length;
+    const compatible = GAMES.filter((game) => supports(game, count));
+    const game = compatible[Math.floor(Math.random() * compatible.length)];
+    if (game) send({ type: messageType, slug: game.slug });
   }
 
   function rankingRows(container, players, useRound = false) {
@@ -157,14 +130,9 @@
       show("lobby");
       $("lobby-code").textContent = state.code;
       renderPlayers($("players-list"), state.players);
-      renderPicker(isHost);
-      renderPlaylist(isHost);
-      $("host-actions").classList.toggle("hidden", !isHost);
+      renderPicker($("game-picker"), isHost, "start");
+      $("random-btn").classList.toggle("hidden", !isHost);
       $("waiting-host").classList.toggle("hidden", isHost);
-      const count = state.players.filter((player) => player.connected).length;
-      const compatible = state.playlist.every((slug) => supports(gameBySlug(slug), count));
-      $("start-btn").disabled = count < 2 || !state.playlist.length || !compatible;
-      $("start-hint").textContent = count < 2 ? "Il faut au moins 2 joueurs." : !compatible ? "Un jeu de la playlist n'est pas compatible avec ce nombre de joueurs." : "";
       return;
     }
     if (state.phase === "playing") {
@@ -172,17 +140,17 @@
       const game = gameBySlug(state.currentGame?.slug);
       $("current-icon").textContent = game?.icon ?? "🎮";
       $("current-name").textContent = game?.label ?? "Jeu en cours";
-      $("current-progress").textContent = `Jeu ${state.currentIndex + 1} sur ${state.playlist.length}`;
+      $("current-progress").textContent = `Jeu n°${state.currentIndex + 1} de la soirée`;
       return;
     }
     const overall = [...state.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
     if (state.phase === "summary") {
       show("summary");
-      $("summary-progress").textContent = `${state.currentIndex + 1}/${state.playlist.length}`;
+      $("summary-progress").textContent = `${state.currentIndex + 1} jeu${state.currentIndex ? "x" : ""} joué${state.currentIndex ? "s" : ""}`;
       rankingRows($("round-result"), state.lastResult, true);
       rankingRows($("overall-ranking"), overall);
-      $("next-btn").textContent = state.currentIndex + 1 >= state.playlist.length ? "Voir le podium →" : "Jeu suivant →";
-      $("next-btn").classList.toggle("hidden", !isHost);
+      renderPicker($("next-game-picker"), isHost, "nextGame");
+      $("next-choice").classList.toggle("hidden", !isHost);
       $("next-wait").classList.toggle("hidden", isHost);
       return;
     }
@@ -233,13 +201,11 @@
     try { await navigator.clipboard.writeText(link); toast("Invitation copiée !"); }
     catch { prompt("Copie ce lien :", link); }
   });
-  $("random-btn").addEventListener("click", () => {
-    const count = state.players.filter((player) => player.connected).length;
-    const compatible = GAMES.filter((game) => supports(game, count)).sort(() => Math.random() - .5);
-    send({ type: "setPlaylist", playlist: compatible.slice(0, 3).map((game) => game.slug) });
+  $("random-btn").addEventListener("click", () => launchRandom("start"));
+  $("random-next-btn").addEventListener("click", () => launchRandom("nextGame"));
+  $("end-party-btn").addEventListener("click", () => {
+    if (confirm("Terminer la soirée et afficher le podium final ?")) send({ type: "endParty" });
   });
-  $("start-btn").addEventListener("click", () => send({ type: "start" }));
-  $("next-btn").addEventListener("click", () => send({ type: "nextGame" }));
   $("restart-btn").addEventListener("click", () => send({ type: "restart" }));
   $("rejoin-btn").addEventListener("click", () => {
     if (!state.currentGame) return;

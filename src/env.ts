@@ -11,5 +11,7 @@ export interface Env {
   SYNC_ROOM: DurableObjectNamespace;
   GUESSWHO_ROOM: DurableObjectNamespace;
   PARTY_ROOM: DurableObjectNamespace;
+  UNDERCOVER_FEEDBACK: DurableObjectNamespace;
+  ADMIN_KEY?: string;
   LOBBY_REGISTRY: DurableObjectNamespace;
 }

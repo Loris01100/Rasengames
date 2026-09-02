@@ -6,6 +6,9 @@
     categorySelect: $("category-select"),
     undercoverCount: $("undercover-count"),
     mrwhiteCount: $("mrwhite-count"),
+    sourceSearch: $("source-search"),
+    sourceOptions: $("source-options"),
+    sourceCount: $("source-count"),
 
     wordImage: $("word-image"),
     wordDisplay: $("word-display"),
@@ -49,6 +52,9 @@
     endReveal: $("end-reveal"),
     restartBtn: $("restart-btn"),
     restartHint: $("restart-hint"),
+    pairFeedbackButtons: $("pair-feedback-buttons"),
+    pairFeedbackStatus: $("pair-feedback-status"),
+    feedbackButtons: [$("feedback-good"), $("feedback-easy"), $("feedback-far")],
   };
 
   const CATEGORY_LABELS = {
@@ -60,12 +66,45 @@
     arc: "Arcs",
     group: "Groupes",
     object: "Objets",
+    crossover: "Décalé & pop culture",
   };
 
   // Other games the group can switch to without disbanding — see the
   // "switchGame" message handling below.
 
   let wordHidden = false;
+  let sources = [];
+  const excludedSources = new Set();
+  let sourceSelectionTouched = false;
+
+  function renderSourceOptions() {
+    const search = el.sourceSearch.value.trim().toLowerCase();
+    el.sourceOptions.innerHTML = "";
+    for (const source of sources.filter((item) => item.toLowerCase().includes(search))) {
+      const label = document.createElement("label");
+      label.className = "source-option";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = excludedSources.has(source);
+      input.addEventListener("change", () => {
+        sourceSelectionTouched = true;
+        if (input.checked) excludedSources.add(source);
+        else excludedSources.delete(source);
+        renderSourceCount();
+      });
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(source));
+      el.sourceOptions.appendChild(label);
+    }
+    renderSourceCount();
+  }
+
+  function renderSourceCount() {
+    const count = excludedSources.size;
+    el.sourceCount.textContent = count
+      ? `${count} anime exclu${count > 1 ? "s" : ""}.`
+      : "Aucun anime exclu.";
+  }
 
   // ---- sons ----
 
@@ -126,6 +165,10 @@
     Room.renderLobby(state);
 
     if (state.hostId !== Room.playerId) return;
+    if (!sourceSelectionTouched && excludedSources.size === 0) {
+      for (const source of state.settings.excludedSources ?? []) excludedSources.add(source);
+      renderSourceOptions();
+    }
     if (document.activeElement !== el.undercoverCount) {
       el.undercoverCount.value = state.settings.undercoverCount;
     }
@@ -401,6 +444,14 @@
     const isHost = state.hostId === Room.playerId;
     el.restartBtn.classList.toggle("hidden", !isHost);
     el.restartHint.classList.toggle("hidden", isHost);
+    for (const button of el.feedbackButtons) {
+      const selected = button.dataset.vote === state.myPairFeedback;
+      button.classList.toggle("selected", selected);
+      button.disabled = !!state.myPairFeedback;
+    }
+    el.pairFeedbackStatus.textContent = state.myPairFeedback
+      ? `Vote enregistré · ${state.pairFeedbackCount} vote${state.pairFeedbackCount > 1 ? "s" : ""}`
+      : `${state.pairFeedbackCount ?? 0} vote${state.pairFeedbackCount === 1 ? "" : "s"} pour l'instant`;
   }
 
   // ---- events ----
@@ -434,6 +485,10 @@
   }
 
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
+  el.sourceSearch.addEventListener("input", renderSourceOptions);
+  for (const button of el.feedbackButtons) {
+    button.addEventListener("click", () => Room.send({ type: "pairFeedback", vote: button.dataset.vote }));
+  }
 
   Room.init({
     slug: "undercover",
@@ -443,8 +498,14 @@
         undercoverCount: Number(el.undercoverCount.value) || 0,
         mrWhiteCount: Number(el.mrwhiteCount.value) || 0,
         category: el.categorySelect.value,
+        excludedSources: [...excludedSources],
       },
     }),
     onState: (s) => { playSounds(s); render(s); },
   });
+
+  fetch("/api/undercover/sources")
+    .then((response) => response.ok ? response.json() : { sources: [] })
+    .then((data) => { sources = data.sources ?? []; renderSourceOptions(); })
+    .catch(() => Room.toast("Impossible de charger la liste des anime à exclure."));
 })();

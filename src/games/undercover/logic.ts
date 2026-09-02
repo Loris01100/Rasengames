@@ -10,11 +10,15 @@ export function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-export function defaultSettings(playerCount: number, category: Settings["category"] = "random"): Settings {
-  if (playerCount <= 4) return { undercoverCount: 1, mrWhiteCount: 0, category };
-  if (playerCount <= 6) return { undercoverCount: 1, mrWhiteCount: 1, category };
-  if (playerCount <= 8) return { undercoverCount: 2, mrWhiteCount: 1, category };
-  return { undercoverCount: 3, mrWhiteCount: 1, category };
+export function defaultSettings(
+  playerCount: number,
+  category: Settings["category"] = "random",
+  excludedSources: string[] = [],
+): Settings {
+  if (playerCount <= 4) return { undercoverCount: 1, mrWhiteCount: 0, category, excludedSources };
+  if (playerCount <= 6) return { undercoverCount: 1, mrWhiteCount: 1, category, excludedSources };
+  if (playerCount <= 8) return { undercoverCount: 2, mrWhiteCount: 1, category, excludedSources };
+  return { undercoverCount: 3, mrWhiteCount: 1, category, excludedSources };
 }
 
 export function validateSettings(playerCount: number, settings: Settings): string | null {
@@ -32,7 +36,9 @@ export function assignRoles(room: RoomState): void {
     .map((id) => room.players[id])
     .filter((p): p is Player => !!p && p.connected !== false);
 
-  const pair = pickRandomPair(room.settings.category);
+  const pair = pickRandomPair(room.settings.category, room.settings.excludedSources);
+  room.currentPairId = pair.id;
+  room.feedbackVotes = {};
   room.wordCategory = pair.category;
   const [civilianWord, undercoverWord, civilianWordHint, undercoverWordHint] =
     Math.random() < 0.5

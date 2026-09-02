@@ -3,6 +3,7 @@ import { GAME_SLUGS, type GameSlug } from "../lib/gameSlugs";
 import { createRoomCode } from "../lib/rooms";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../lib/throttle";
 import { PARTY_GAMES, gameSupportsPlayers } from "./games";
+import { awardPartyPoints } from "./logic";
 import { createEmptyParty, type PartyPlayer, type PartyResult, type PartyState } from "./types";
 
 interface PartySession {
@@ -92,10 +93,10 @@ export class PartyRoom {
     try { msg = JSON.parse(raw); } catch { return; }
     switch (msg.type) {
       case "join": await this.onJoin(session, msg); break;
-      case "setPlaylist": await this.onSetPlaylist(session, msg); break;
-      case "start": await this.onStart(session); break;
+      case "start": await this.onStart(session, msg); break;
       case "finishGame": await this.onFinishGame(session, msg); break;
-      case "nextGame": await this.onNextGame(session); break;
+      case "nextGame": await this.onNextGame(session, msg); break;
+      case "endParty": await this.onEndParty(session); break;
       case "restart": await this.onRestart(session); break;
       default: this.sendError(session, `Type de message inconnu : ${String(msg.type)}`);
     }
@@ -150,34 +151,29 @@ export class PartyRoom {
     this.broadcast();
   }
 
-  private async onSetPlaylist(session: PartySession, msg: Record<string, unknown>): Promise<void> {
-    const room = this.room!;
-    if (session.playerId !== room.hostId || room.phase !== "lobby") return;
-    const requested = Array.isArray(msg.playlist) ? msg.playlist.map(String) : [];
-    if (requested.length > 10 || requested.some((slug) => !VALID_SLUGS.has(slug))) {
-      this.sendError(session, "Cette playlist contient un jeu invalide.");
-      return;
-    }
-    room.playlist = requested as GameSlug[];
-    await this.save();
-    this.broadcast();
-  }
-
   private connectedPlayers(room: PartyState): PartyPlayer[] {
     return room.playerOrder.map((id) => room.players[id]).filter((player) => player?.connected);
   }
 
-  private async onStart(session: PartySession): Promise<void> {
+  private async onStart(session: PartySession, msg: Record<string, unknown>): Promise<void> {
     const room = this.room!;
     if (session.playerId !== room.hostId || room.phase !== "lobby") return;
     if (this.connectedPlayers(room).length < 2) {
       this.sendError(session, "Il faut au moins 2 joueurs connectés.");
       return;
     }
-    if (!room.playlist.length) {
-      this.sendError(session, "Ajoute au moins un jeu à la playlist.");
+    const slug = String(msg.slug ?? "");
+    if (!VALID_SLUGS.has(slug)) {
+      this.sendError(session, "Choisis un jeu pour commencer.");
       return;
     }
+    const game = PARTY_GAMES.find((item) => item.slug === slug);
+    const count = this.connectedPlayers(room).length;
+    if (!game || !gameSupportsPlayers(game, count)) {
+      this.sendError(session, `${game?.label ?? slug} n'accepte pas ${count} joueurs.`);
+      return;
+    }
+    room.playlist = [slug as GameSlug];
     room.currentIndex = 0;
     await this.launchCurrentGame(session);
   }
@@ -224,12 +220,10 @@ export class PartyRoom {
     }
     const players = room.playerOrder.map((id) => room.players[id]).filter(Boolean);
     const values = players.map((player) => gameScores.get(player.name.toLowerCase()) ?? 0);
-    const distinct = [...new Set(values)].sort((a, b) => b - a);
-    const noResult = distinct.length === 1 && distinct[0] === 0;
-    const result: PartyResult[] = players.map((player) => {
+    const awarded = awardPartyPoints(values);
+    const result: PartyResult[] = players.map((player, index) => {
       const gameScore = gameScores.get(player.name.toLowerCase()) ?? 0;
-      const rank = distinct.indexOf(gameScore);
-      const partyPoints = noResult ? 1 : rank === 0 ? 3 : rank === 1 ? 2 : 1;
+      const partyPoints = awarded[index];
       player.score += partyPoints;
       return { playerId: player.id, name: player.name, gameScore, partyPoints };
     }).sort((a, b) => b.gameScore - a.gameScore || a.name.localeCompare(b.name));
@@ -242,18 +236,32 @@ export class PartyRoom {
     }
   }
 
-  private async onNextGame(session: PartySession): Promise<void> {
+  private async onNextGame(session: PartySession, msg: Record<string, unknown>): Promise<void> {
     const room = this.room!;
     if (session.playerId !== room.hostId || room.phase !== "summary") return;
-    if (room.currentIndex + 1 >= room.playlist.length) {
-      room.phase = "ended";
-      room.currentGame = null;
-      await this.save();
-      this.broadcast();
+    const slug = String(msg.slug ?? "");
+    if (!VALID_SLUGS.has(slug)) {
+      this.sendError(session, "Choisis le prochain jeu.");
       return;
     }
+    const game = PARTY_GAMES.find((item) => item.slug === slug);
+    const count = this.connectedPlayers(room).length;
+    if (!game || !gameSupportsPlayers(game, count)) {
+      this.sendError(session, `${game?.label ?? slug} n'accepte pas ${count} joueurs.`);
+      return;
+    }
+    room.playlist.push(slug as GameSlug);
     room.currentIndex += 1;
     await this.launchCurrentGame(session);
+  }
+
+  private async onEndParty(session: PartySession): Promise<void> {
+    const room = this.room!;
+    if (session.playerId !== room.hostId || room.phase !== "summary") return;
+    room.phase = "ended";
+    room.currentGame = null;
+    await this.save();
+    this.broadcast();
   }
 
   private async onRestart(session: PartySession): Promise<void> {
@@ -261,6 +269,7 @@ export class PartyRoom {
     if (session.playerId !== room.hostId || room.phase !== "ended") return;
     for (const player of Object.values(room.players)) player.score = 0;
     room.phase = "lobby";
+    room.playlist = [];
     room.currentIndex = -1;
     room.currentGame = null;
     room.lastResult = [];

@@ -16,12 +16,8 @@
 .party-game { display: flex; align-items: center; gap: 9px; text-align: left; }
 .party-game:disabled { opacity: .35; }
 .party-game small { margin-left: auto; color: var(--muted); }
-.party-playlist { display: grid; gap: 8px; padding: 0; list-style: none; counter-reset: party-game; }
-.party-playlist li { counter-increment: party-game; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
-.party-playlist li::before { content: counter(party-game); color: var(--accent); font-weight: 800; }
-.playlist-label { flex: 1; font-weight: 700; }
-.playlist-control { min-width: 34px; padding: 5px 8px; }
-.party-start, .party-next { width: 100%; margin-top: 18px; }
+.next-choice { margin-top: 18px; }
+.party-end { width: 100%; }
 .party-status { max-width: 650px; margin: 10vh auto 0; text-align: center; padding: 48px; }
 .party-current-icon { font-size: 5rem; margin: 14px 0 0; }
 .ranking { display: grid; gap: 8px; }

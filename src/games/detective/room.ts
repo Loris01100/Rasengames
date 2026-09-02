@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
-import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn } from "./logic";
+import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn, rankInvestigators } from "./logic";
 import { reportRoom } from "../../lib/registry";
 import { reassignHost, transferHost } from "../../lib/host";
 import {
@@ -442,9 +442,11 @@ export class DetectiveRoom {
     // Ends only once every connected player's category has been found, not
     // after some fixed count — nobody's secret is left hanging.
     if (room.solved.length >= ids.length) {
-      // Trouvée en dernier = a tenu le plus longtemps : c'est le gagnant
-      // affiché sur l'écran de fin, il prend le point de la manche.
-      const winner = room.solved[room.solved.length - 1]?.target;
+      // Le meilleur détective trouve le plus de catégories, puis celui qui a
+      // eu besoin du moins de questions départage une égalité. La résistance
+      // de sa propre catégorie reste affichée séparément, mais ne décide plus
+      // du vainqueur.
+      const winner = rankInvestigators(room)[0]?.id;
       if (winner) room.scores[winner] = (room.scores[winner] ?? 0) + 1;
       room.phase = "ended";
       return;
@@ -550,6 +552,7 @@ export class DetectiveRoom {
         by: s.by,
         byName: nameOf(s.by),
       })),
+      investigatorRanking: revealAll ? rankInvestigators(room) : [],
     };
   }
 }

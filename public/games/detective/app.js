@@ -186,18 +186,16 @@
     renderLogColumns(state, el.logColumns);
   }
 
-  // Ranked by how long each category survived: found last = 1st place, since
-  // `solved` is oldest-first, reversing it puts the latest find on top.
   const MEDALS = ["🥇", "🥈", "🧻"];
 
   function renderEnded(state) {
 
-    const ranking = (state.solved ?? []).slice().reverse();
+    const ranking = state.investigatorRanking ?? [];
     const winner = ranking[0];
     el.endTitle.textContent = winner
-      ? winner.target === Room.playerId
+      ? winner.id === Room.playerId
         ? "Manche terminée — tu as gagné ! 🏆"
-        : `Manche terminée — ${winner.targetName} a gagné ! 🏆`
+        : `Manche terminée — ${winner.name} a gagné ! 🏆`
       : "Manche terminée !";
 
     el.endRanking.innerHTML = "";
@@ -212,32 +210,31 @@
 
       const name = document.createElement("span");
       name.className = "name";
-      name.textContent = s.targetName + (s.target === Room.playerId ? " (toi)" : "");
+      name.textContent = s.name + (s.id === Room.playerId ? " (toi)" : "");
       row.appendChild(name);
 
-      const questionCount = (state.log ?? []).filter((e) => e.target === s.target).length;
       const detail = document.createElement("span");
       detail.className = "muted small";
-      detail.textContent = `trouvée en ${questionCount} question${questionCount > 1 ? "s" : ""}`;
+      detail.textContent = `${s.found} catégorie${s.found !== 1 ? "s" : ""} trouvée${s.found !== 1 ? "s" : ""} · ${s.questions} question${s.questions !== 1 ? "s" : ""}`;
       row.appendChild(detail);
 
       el.endRanking.appendChild(row);
     });
 
     el.endFoundTally.innerHTML = "";
-    for (const p of state.players ?? []) {
-      const count = (state.solved ?? []).filter((s) => s.by === p.id).length;
+    for (const p of (state.solved ?? []).slice().reverse()) {
       const row = document.createElement("div");
       row.className = "ranking-row";
 
       const name = document.createElement("span");
       name.className = "name";
-      name.textContent = p.name + (p.id === Room.playerId ? " (toi)" : "");
+      name.textContent = p.targetName + (p.target === Room.playerId ? " (toi)" : "");
       row.appendChild(name);
 
       const detail = document.createElement("span");
       detail.className = "muted small";
-      detail.textContent = `${count} catégorie${count > 1 ? "s" : ""} trouvée${count > 1 ? "s" : ""}`;
+      const questionCount = (state.log ?? []).filter((entry) => entry.target === p.target).length;
+      detail.textContent = `sa catégorie a résisté à ${questionCount} question${questionCount !== 1 ? "s" : ""}`;
       row.appendChild(detail);
 
       el.endFoundTally.appendChild(row);
@@ -267,11 +264,37 @@
   el.proposeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitPropose();
   });
-  function submitPropose() {
+  async function submitPropose() {
+    if (el.proposeSubmit.disabled) return;
     const text = el.proposeInput.value.trim();
     if (!text) return;
-    Room.send({ type: "proposeCharacter", text });
+
+    const picked = el.proposeInput.dataset.anilistRef;
+    const characterRef = picked?.startsWith("character:") ? picked : undefined;
+    if (!characterRef) {
+      const originalLabel = el.proposeSubmit.textContent;
+      el.proposeSubmit.disabled = true;
+      el.proposeSubmit.textContent = "Vérification...";
+      try {
+        const check = await Anilist.exists(text, "character", true);
+        if (check === "notfound") {
+          Room.toast(`"${text}" ne correspond à aucun personnage AniList.`);
+          return;
+        }
+        if (check === "unknown") {
+          Room.toast("AniList est indisponible : réessaie dans un instant.");
+          return;
+        }
+      } finally {
+        el.proposeSubmit.disabled = false;
+        el.proposeSubmit.textContent = originalLabel;
+      }
+    }
+
+    Room.send({ type: "proposeCharacter", text, anilistRef: characterRef });
     el.proposeInput.value = "";
+    delete el.proposeInput.dataset.anilistRef;
+    delete el.proposeInput.dataset.anilistAnime;
   }
 
   el.guessSubmit.addEventListener("click", submitGuess);
