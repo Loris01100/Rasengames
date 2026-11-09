@@ -321,18 +321,6 @@
       return;
     }
 
-    // Un mot pris dans la liste de suggestions sort déjà d'AniList : le
-    // revérifier ne ferait que brûler le quota de la table (limite par IP, et
-    // tout le monde joue souvent derrière la même box).
-    const picked = el.wordInput.dataset.anilistRef;
-    if (picked) {
-      Room.send({ type: "submitWord", text, anime: el.wordInput.dataset.anilistAnime });
-      el.wordInput.value = "";
-      delete el.wordInput.dataset.anilistRef;
-      delete el.wordInput.dataset.anilistAnime;
-      return;
-    }
-
     const kind = Room.state?.mode === "anime" ? "anime" : "any";
     el.wordSubmit.disabled = true;
     const originalLabel = el.wordSubmit.textContent;
@@ -349,8 +337,6 @@
       const anime = Room.state?.mode === "perso" ? await Anilist.animeOf(text) : null;
       Room.send({ type: "submitWord", text, anime: anime ?? undefined });
       el.wordInput.value = "";
-      delete el.wordInput.dataset.anilistRef;
-      delete el.wordInput.dataset.anilistAnime;
     } finally {
       el.wordSubmit.disabled = false;
       el.wordSubmit.textContent = originalLabel;
@@ -361,7 +347,8 @@
 
   const selectedLetters = Room.letterPicker(el.letterCheckboxes);
 
-  Suggest.attach(el.wordInput, () => (Room.state?.mode === "anime" ? "anime" : "any"));
+  // Pas de suggestions ici : cliquer une proposition donnait la réponse.
+  // Le nom tapé n'est validé auprès d'AniList qu'à l'envoi.
 
   Room.init({
     slug: "bomb",

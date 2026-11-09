@@ -248,17 +248,6 @@ const PHASE_CHECKS = {
     await flush();
     assert.deepStrictEqual(sentWords(), ["Shouyou Hinata"], `${slug}: un vrai personnage doit passer`);
 
-    // Un mot pris dans les suggestions est déjà validé : pas de requête de plus.
-    const before = fetchCount();
-    byId("word-input").value = "Shouyou Hinata";
-    byId("word-input").dataset.anilistRef = "character:1";
-    byId("word-input").dataset.anilistAnime = "Haikyuu!!";
-    byId("word-submit").dispatch("click");
-    await flush();
-    assert.deepStrictEqual(sentWords(), ["Shouyou Hinata", "Shouyou Hinata"], `${slug}: mot choisi dans la liste`);
-    assert.strictEqual(sentAnswers().at(-1).anime, "Haikyuu!!", `${slug}: anime d'origine absent de la réponse`);
-    assert.strictEqual(fetchCount(), before, `${slug}: un mot déjà choisi ne doit pas redemander AniList`);
-
     send({
       type: "state",
       state: {
