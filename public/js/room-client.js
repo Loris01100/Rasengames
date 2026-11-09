@@ -34,6 +34,11 @@ const Room = (() => {
   let reconnectTimer = null;
   let toastTimer = null;
   let wantPublic = false;
+  // Spectateur *demandé* (bouton, lien ?spectator=1), à distinguer de
+  // api.spectator : arrivé sans token en pleine partie, le serveur nous rend
+  // spectateur d'office, et on doit redevenir joueur au retour au lobby.
+  let wantSpectator = false;
+  let promoting = false;
   let reconnectDelay = 2000;
 
   const api = {
@@ -129,7 +134,7 @@ const Room = (() => {
 
   function connect(code, name, token, spectator = false) {
     api.code = code.toUpperCase();
-    api.spectator = spectator;
+    wantSpectator = spectator;
     const proto = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${proto}://${location.host}/ws/${cfg.slug}/${api.code}`);
 
@@ -172,7 +177,7 @@ const Room = (() => {
     clearTimeout(reconnectTimer);
     const token = localStorage.getItem(storageKey(api.code, "token"));
     const name = localStorage.getItem(storageKey(api.code, "name"));
-    if (api.code && name && (api.spectator || token)) connect(api.code, name, token, api.spectator);
+    if (api.code && name) connect(api.code, name, token, wantSpectator);
   }
 
   // Backoff : un onglet oublié en arrière-plan (ou un salon supprimé) tapait
@@ -182,7 +187,7 @@ const Room = (() => {
     reconnectTimer = setTimeout(() => {
       const token = localStorage.getItem(storageKey(api.code, "token"));
       const name = localStorage.getItem(storageKey(api.code, "name"));
-      if (api.code && name && (api.spectator || token)) connect(api.code, name, token, api.spectator);
+      if (api.code && name) connect(api.code, name, token, wantSpectator);
     }, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   }
@@ -191,6 +196,7 @@ const Room = (() => {
     if (msg.type === "joined") {
       api.playerId = msg.playerId;
       api.spectator = msg.spectator === true;
+      promoting = false;
       reconnectDelay = 2000;
       const name = el.nameInput.value.trim() || "Joueur";
       if (api.spectator) {
@@ -205,8 +211,11 @@ const Room = (() => {
       rememberRoom(api.code);
       const params = new URLSearchParams(location.search);
       params.set("room", api.code);
-      if (api.spectator) params.set("spectator", "1");
+      if (api.spectator && wantSpectator) params.set("spectator", "1");
       else params.delete("spectator");
+      // Spectateur d'office : sans token, c'est autojoin qui le reconnecte au
+      // rechargement, et le serveur tranche selon la phase.
+      if (api.spectator && !wantSpectator) params.set("autojoin", name);
       history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
       el.roomBadge.textContent = api.code;
       el.roomBadge.classList.remove("hidden");
@@ -220,6 +229,10 @@ const Room = (() => {
       renderWaitingBadge(msg.state);
       renderSpectators(msg.state);
       renderBackToLobby(msg.state);
+      if (api.spectator && !wantSpectator && !promoting && msg.state.phase === "lobby") {
+        promoting = true;
+        send({ type: "join", name: localStorage.getItem(storageKey(api.code, "name")) || "Joueur" });
+      }
       // Arrivé en cours de partie : le serveur ne nous envoie rien de la manche
       // en cours (on n'y est pas), donc le jeu n'a rien à rendre.
       if ((msg.state.waiting ?? []).some((w) => w.id === api.playerId)) {
@@ -230,7 +243,7 @@ const Room = (() => {
       applySpectatorMode();
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
-      const spectator = api.spectator ? "&spectator=1" : "";
+      const spectator = wantSpectator ? "&spectator=1" : "";
       location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}`;
     } else if (msg.type === "kicked") {
       // Token dropped so the auto-reconnect on the next page load doesn't

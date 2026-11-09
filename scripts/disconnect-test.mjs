@@ -95,6 +95,16 @@ console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length
     throw new Error(`whoami: l'arrivée tardive n'est pas spectatrice (${JSON.stringify(state)})`);
   }
 
+  // Retour au lobby : le spectateur d'office redevient joueur en se renvoyant
+  // un join, comme le fait room-client.js.
+  host.ws.send(JSON.stringify({ type: "restart" }));
+  await waitUntil(late, (s) => s?.phase === "lobby", "retour au lobby");
+  late.ws.send(JSON.stringify({ type: "join", name: "Retard1" }));
+  const promoted = await waitUntil(late, (s) => s && !s.spectator, "promotion du spectateur d'office");
+  if (promoted.players.length !== 3 || promoted.spectatorCount !== 0) {
+    throw new Error(`whoami: le spectateur d'office n'a pas rejoint la table (${JSON.stringify(promoted)})`);
+  }
+
   host.ws.close();
   guest.ws.close();
   late.ws.close();

@@ -78,6 +78,14 @@ export function handleSpectatorMessage(
   msg: Record<string, unknown>,
   gameInProgress: boolean,
 ): "continue" | "joined" | "blocked" {
+  // Spectateur d'office (arrivé sans token en pleine partie) : de retour au
+  // lobby, son join sans `spectator` le fait repasser par onJoin comme joueur.
+  if (session.spectator && msg.type === "join" && msg.spectator !== true && !gameInProgress) {
+    session.spectator = false;
+    session.playerId = "";
+    session.spectatorName = "";
+    return "continue";
+  }
   if (session.spectator) {
     sendError(session.ws, "Le mode spectateur est en lecture seule.");
     return "blocked";
