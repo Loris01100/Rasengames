@@ -285,7 +285,7 @@
       const td = document.createElement("td");
       td.className = "total-cell";
       const total = result.totals[p.id] ?? 0;
-      td.textContent = total + (total === maxTotal && maxTotal > 0 ? " 🏆" : "");
+      td.textContent = total + (total === maxTotal && maxTotal > 0 ? " ★" : "");
       totalRow.appendChild(td);
     }
     tfoot.appendChild(totalRow);

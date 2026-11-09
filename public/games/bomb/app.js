@@ -64,12 +64,18 @@
 
   // ---- rendering ----
 
-  // Coeurs pleins pour les vies restantes, coeurs noirs pour celles perdues ;
+  // Une case pleine par vie restante, une vide par vie perdue : un éliminé
+  // affiche donc « □□ », sa ligne étant déjà barrée par « .dead ».
+  function livesText(p) {
+    return "■".repeat(p.lives) + "□".repeat(Math.max(0, 2 - p.lives));
+  }
+
+  // Les vies en tag ;
   // un mort passe en tag distinct et hérite du style ".dead" via `alive`.
   function decorateLives(row, p) {
     const tag = document.createElement("span");
     tag.className = "tag lives-tag";
-    tag.textContent = p.eliminated ? "💀 Éliminé" : "❤️".repeat(p.lives) + "🖤".repeat(Math.max(0, 2 - p.lives));
+    tag.textContent = p.eliminated ? "Éliminé" : livesText(p);
     row.appendChild(tag);
   }
 
@@ -142,7 +148,7 @@
 
       const lives = document.createElement("span");
       lives.className = "bomb-player-lives";
-      lives.textContent = p.eliminated ? "💀" : "❤️".repeat(p.lives) + "🖤".repeat(Math.max(0, 2 - p.lives));
+      lives.textContent = livesText(p);
       row.appendChild(lives);
 
       el.playersStatus.appendChild(row);
@@ -174,9 +180,7 @@
 
       const lives = document.createElement("span");
       lives.className = "bomb-seat-lives";
-      lives.textContent = p.eliminated
-        ? "💀"
-        : "❤️".repeat(p.lives) + "🖤".repeat(Math.max(0, 2 - p.lives));
+      lives.textContent = livesText(p);
       seat.appendChild(lives);
 
       el.bombSeats.appendChild(seat);
@@ -258,8 +262,8 @@
   function renderEnded(state) {
     el.endTitle.textContent = state.winnerName
       ? state.winnerId === Room.playerId
-        ? `Tu as gagné, ${state.winnerName} ! 🏆`
-        : `${state.winnerName} a gagné ! 🏆`
+        ? `Tu as gagné, ${state.winnerName} !`
+        : `${state.winnerName} a gagné !`
       : "Partie terminée";
 
     // Le gagnant en tête, puis les éliminés du plus tardif (2e place) au plus
@@ -268,7 +272,6 @@
     if (state.winnerId) ranking.push({ id: state.winnerId, name: state.winnerName });
     for (const e of (state.eliminationOrder ?? []).slice().reverse()) ranking.push(e);
 
-    const medals = ["🥇", "🥈", "🧻"];
     el.endRanking.innerHTML = "";
     ranking.forEach((r, i) => {
       const row = document.createElement("div");
@@ -276,7 +279,7 @@
 
       const medal = document.createElement("span");
       medal.className = "ranking-medal";
-      medal.textContent = medals[i] ?? `${i + 1}e`;
+      medal.textContent = i === 0 ? "1er" : `${i + 1}e`;
       row.appendChild(medal);
 
       const name = document.createElement("span");

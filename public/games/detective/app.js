@@ -188,7 +188,6 @@
 
   // Ranked by how long each category survived: found last = 1st place, since
   // `solved` is oldest-first, reversing it puts the latest find on top.
-  const MEDALS = ["🥇", "🥈", "🧻"];
 
   function renderEnded(state) {
 
@@ -196,8 +195,8 @@
     const winner = ranking[0];
     el.endTitle.textContent = winner
       ? winner.target === Room.playerId
-        ? "Manche terminée — tu as gagné ! 🏆"
-        : `Manche terminée — ${winner.targetName} a gagné ! 🏆`
+        ? "Manche terminée — tu as gagné !"
+        : `Manche terminée — ${winner.targetName} a gagné !`
       : "Manche terminée !";
 
     el.endRanking.innerHTML = "";
@@ -207,7 +206,7 @@
 
       const medal = document.createElement("span");
       medal.className = "ranking-medal";
-      medal.textContent = MEDALS[index] ?? `#${index + 1}`;
+      medal.textContent = index === 0 ? "1er" : `${index + 1}e`;
       row.appendChild(medal);
 
       const name = document.createElement("span");

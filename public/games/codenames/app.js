@@ -18,7 +18,6 @@
     boardGrid: $("board-grid"),
     endPanel: $("end-panel"),
     endBanner: $("end-banner"),
-    endIcon: $("end-icon"),
     endTitle: $("end-title"),
     endSummary: $("end-summary"),
     endRecap: $("end-recap"),
@@ -126,8 +125,8 @@
           ? `${nameOf(state, giver?.id)} a donné un indice, à l'autre de deviner.`
           : `Au tour de ${nameOf(state, giver?.id)} de donner un indice.`;
       }
-      el.countersLine.appendChild(counterChip(`❤️ ${state.duetErrors}/${state.duetErrorsMax} erreurs restantes`));
-      el.countersLine.appendChild(counterChip(`🎯 ${state.duetAgentsFound}/${state.duetAgentsTotal} agents trouvés`));
+      el.countersLine.appendChild(counterChip(`${state.duetErrors}/${state.duetErrorsMax} erreurs restantes`));
+      el.countersLine.appendChild(counterChip(`${state.duetAgentsFound}/${state.duetAgentsTotal} agents trouvés`));
     } else if (state.mode === "teams") {
       if (ended) {
         el.statusLine.textContent = "Partie terminée.";
@@ -138,15 +137,15 @@
           ? `${teamLabel} devine (indice de ${nameOf(state, spymaster?.id)}).`
           : `${teamLabel} au tour : ${nameOf(state, spymaster?.id)} donne un indice.`;
       }
-      el.countersLine.appendChild(counterChip(`🟢 Équipe A : ${state.remainingA} restants`));
-      el.countersLine.appendChild(counterChip(`🔵 Équipe B : ${state.remainingB} restants`));
+      el.countersLine.appendChild(counterChip(`Équipe A : ${state.remainingA} restants`));
+      el.countersLine.appendChild(counterChip(`Équipe B : ${state.remainingB} restants`));
     }
   }
 
   function crown() {
     const span = document.createElement("span");
     span.className = "roster-crown";
-    span.textContent = "🏆";
+    span.textContent = "★";
     return span;
   }
 
@@ -162,7 +161,7 @@
         const isYou = p.id === Room.playerId;
         const chip = document.createElement("span");
         chip.className = `roster-chip seat-${p.seat ?? ""}${isYou ? " you" : " mate"}`;
-        chip.textContent = `${p.name}${isYou ? " (toi)" : " 🤝"} · Siège ${p.seat ?? "?"}`;
+        chip.textContent = `${p.name}${isYou ? " (toi)" : ""} · Siège ${p.seat ?? "?"}`;
         if (ended && isWin(state)) chip.appendChild(crown());
         el.roster.appendChild(chip);
       }
@@ -174,7 +173,7 @@
         chip.className = `roster-chip team-${p.team ?? ""}${isYou ? " you" : ""}${isMate ? " mate" : ""}`;
         const roleLabel = p.role === "spymaster" ? "Chiffreur" : p.role === "operative" ? "Agent" : "";
         const teamLabel = p.team ? `Équipe ${p.team}` : "";
-        chip.textContent = `${p.name}${isYou ? " (toi)" : isMate ? " 🤝" : ""} · ${[teamLabel, roleLabel].filter(Boolean).join(" ")}`;
+        chip.textContent = `${p.name}${isYou ? " (toi)" : ""} · ${[teamLabel, roleLabel].filter(Boolean).join(" ")}`;
         if (ended && state.winner === p.team) chip.appendChild(crown());
         el.roster.appendChild(chip);
       }
@@ -278,12 +277,6 @@
     "coop-lose-errors": "Défaite : plus d'erreurs possibles",
     "coop-lose-assassin": "Défaite : l'assassin a été touché",
   };
-  const DUET_ICONS = {
-    "coop-win": "🎉",
-    "coop-lose-errors": "😞",
-    "coop-lose-assassin": "💀",
-  };
-
   function renderEnd(state) {
     const active = state.phase === "ended";
     el.endPanel.classList.toggle("hidden", !active);
@@ -294,11 +287,9 @@
     el.endBanner.classList.add(won ? "win" : "lose");
 
     if (state.mode === "duet") {
-      el.endIcon.textContent = DUET_ICONS[state.winner] || "🏁";
       el.endTitle.textContent = DUET_TITLES[state.winner] || "Partie terminée";
       el.endSummary.textContent = `${state.duetAgentsFound}/${state.duetAgentsTotal} agents trouvés.`;
     } else {
-      el.endIcon.textContent = won ? "🏆" : "😞";
       el.endTitle.textContent = state.winner
         ? `${won ? "Vous avez gagné" : "Vous avez perdu"} — Équipe ${state.winner} gagne`
         : "Partie terminée";

@@ -141,10 +141,10 @@
     el.roundNumber.textContent = state.round;
 
     const phaseLabels = {
-      clue: "🗣️ Donnez vos indices",
-      vote: "🗳️ Votez pour éliminer un suspect",
-      whiteguess: "🤔 Mr. White tente de deviner",
-      ended: "🏁 Partie terminée",
+      clue: "Donnez vos indices",
+      vote: "Votez pour éliminer un suspect",
+      whiteguess: "Mr. White tente de deviner",
+      ended: "Partie terminée",
     };
     el.phaseLabel.textContent = phaseLabels[state.phase] || "";
     // La catégorie tirée pour cette manche précisément (utile surtout en
@@ -354,9 +354,9 @@
     if (!active) return;
 
     const titles = {
-      civilians: "Les civils gagnent 🎉",
-      undercover: "Les undercover gagnent 😈",
-      mrwhite: "Mr. White gagne en devinant le mot ! 🃏",
+      civilians: "Les civils gagnent",
+      undercover: "Les undercover gagnent",
+      mrwhite: "Mr. White gagne en devinant le mot !",
     };
     el.endTitle.textContent = titles[state.winner] || "Partie terminée";
     const civilianLabel = state.civilianWordHint ? `${state.civilianWord} (${state.civilianWordHint})` : state.civilianWord;

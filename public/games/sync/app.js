@@ -42,7 +42,7 @@
     el.refereeSelect.innerHTML = "";
     const random = document.createElement("option");
     random.value = "";
-    random.textContent = "🎲 Aléatoire";
+    random.textContent = "Aléatoire";
     el.refereeSelect.appendChild(random);
     for (const player of players.filter((candidate) => candidate.connected)) {
       const option = document.createElement("option");

@@ -186,7 +186,7 @@
     const exact = state.guess === state.number;
 
     el.endTitle.textContent = exact
-      ? `${who} deviné pile le bon chiffre : ${state.number} ! 🎯`
+      ? `${who} deviné pile le bon chiffre : ${state.number} !`
       : `${who} dit ${state.guess}, c'était ${state.number}`;
 
     const diff = state.guess != null && state.number != null ? Math.abs(state.guess - state.number) : null;

@@ -79,8 +79,8 @@
   // trop discret pour un truc qui change ce qu'on doit taper. Bandeau visible
   // en haut des trois écrans de manche.
   const MODE_BANNER = {
-    perso: "🧑 Partie Personnages — on propose des persos",
-    anime: "📺 Partie Animes — on propose des animes",
+    perso: "Partie Personnages — on propose des persos",
+    anime: "Partie Animes — on propose des animes",
   };
 
   function renderModeBanner(node, mode) {
@@ -144,7 +144,7 @@
     el.themeSelect.innerHTML = "";
     const randomOpt = document.createElement("option");
     randomOpt.value = "";
-    randomOpt.textContent = "🎲 Thème aléatoire";
+    randomOpt.textContent = "Thème aléatoire";
     el.themeSelect.appendChild(randomOpt);
     for (const theme of THEMES_BY_MODE[el.modeSelect.value] ?? []) {
       const opt = document.createElement("option");
@@ -377,7 +377,7 @@
 
   function renderEnded(state) {
 
-    el.endTitle.textContent = state.score?.sortedFully ? "Ordre parfait ! 🎉" : "Résultat";
+    el.endTitle.textContent = state.score?.sortedFully ? "Ordre parfait !" : "Résultat";
     el.endScore.textContent = state.score
       ? `${state.score.correctPairs}/${state.score.total} paires dans le bon ordre.`
       : "";

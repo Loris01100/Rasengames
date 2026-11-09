@@ -326,7 +326,7 @@
     const total = state.players.length;
     const you = state.players.find((p) => p.id === Room.playerId);
     el.endTitle.textContent = you?.found
-      ? `Manche terminée — tu as trouvé ! (${foundCount}/${total}) 🎉`
+      ? `Manche terminée — tu as trouvé ! (${foundCount}/${total})`
       : `Manche terminée (${foundCount}/${total} ont trouvé)`;
 
     // Ranked by total cost — questions asked plus names proposed — among
@@ -342,7 +342,7 @@
     if (best) {
       const tries = best.guesses.length;
       const questions = best.questionsAsked ?? 0;
-      el.endBest.textContent = `🏆 ${best.name}${best.id === Room.playerId ? " (toi)" : ""} a trouvé avec ${questions} question${questions > 1 ? "s" : ""} et ${tries} proposition${tries > 1 ? "s" : ""} (score ${cost(best)}) !`;
+      el.endBest.textContent = `★ ${best.name}${best.id === Room.playerId ? " (toi)" : ""} a trouvé avec ${questions} question${questions > 1 ? "s" : ""} et ${tries} proposition${tries > 1 ? "s" : ""} (score ${cost(best)}) !`;
     }
 
     el.revealGrid.innerHTML = "";
