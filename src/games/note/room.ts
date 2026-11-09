@@ -369,7 +369,9 @@ export class NoteRoom {
     const next = nextStep(room.step);
     room.step = next;
     if (next !== "guessing") {
-      for (const id of ids) room.players[id].submitted = false;
+      for (const id of room.playerOrder) {
+        if (id !== room.guesserId && room.players[id]) room.players[id].submitted = false;
+      }
     }
   }
 
