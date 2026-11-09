@@ -12,7 +12,7 @@ import {
   respondentIds,
 } from "./logic";
 import { reportRoom } from "../../lib/registry";
-import { reassignHost, transferHost } from "../../lib/host";
+import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   attachSession,
@@ -159,6 +159,7 @@ export class SyncRoom {
       const existing = Object.values(room.players).find((p) => p.token === msg.token);
       if (existing) {
         existing.connected = true;
+        claimHost(room, existing.id);
         existing.name = name;
         session.playerId = existing.id;
         session.ws.send(JSON.stringify({ type: "joined", playerId: existing.id, token: existing.token }));
@@ -209,7 +210,7 @@ export class SyncRoom {
     const token = crypto.randomUUID();
     room.players[id] = this.makePlayer(id, token, name);
     room.playerOrder.push(id);
-    if (!room.hostId) room.hostId = id;
+    claimHost(room, id);
     session.playerId = id;
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
     await this.saveRoom();

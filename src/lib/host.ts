@@ -50,3 +50,12 @@ export function transferHost(
   room.hostId = targetId;
   return true;
 }
+
+// Pendant de la tolérance de `reassignHost` : l'hôte parti en dernier garde le
+// rôle, mais s'il ne revient pas, le premier joueur assis qui (re)joint le
+// reprend — sinon personne ne peut plus lancer, exclure ni changer de jeu.
+// Couvre aussi le salon neuf (hostId null) et le DO réveillé par switchGame
+// avec un hôte d'avant. À appeler une fois le joueur marqué connecté.
+export function claimHost(room: HostRoom, id: string): void {
+  if (!room.players[room.hostId ?? ""]?.connected) room.hostId = id;
+}

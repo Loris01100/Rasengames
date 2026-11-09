@@ -23,7 +23,7 @@ import {
 import { WORDS } from "./words";
 import { normalizeWord } from "../../lib/words";
 import { reportRoom } from "../../lib/registry";
-import { reassignHost, transferHost } from "../../lib/host";
+import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   attachSession,
@@ -237,6 +237,7 @@ export class CodenamesRoom {
       const existing = Object.values(room.players).find((p) => p.token === msg.token);
       if (existing) {
         existing.connected = true;
+        claimHost(room, existing.id);
         existing.name = name;
         session.playerId = existing.id;
         session.ws.send(JSON.stringify({ type: "joined", playerId: existing.id, token: existing.token }));
@@ -281,7 +282,7 @@ export class CodenamesRoom {
     const player = this.makePlayer(id, token, name);
     room.players[id] = player;
     room.playerOrder.push(id);
-    if (!room.hostId) room.hostId = id;
+    claimHost(room, id);
     session.playerId = id;
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));
