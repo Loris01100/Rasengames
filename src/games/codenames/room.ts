@@ -13,6 +13,7 @@ import {
   parseTeamAssignment,
   generateTeamKey,
   resolveDuetGuess,
+  isGuessable,
   resolveTeamGuess,
   switchDuetTurn,
   switchTeamTurn,
@@ -338,6 +339,7 @@ export class CodenamesRoom {
     room.wordHints = board.map((entry) => entry.hint);
     room.revealed = new Array(BOARD_SIZE).fill(false);
     room.revealedColor = new Array(BOARD_SIZE).fill(null);
+    room.duetMissBy = new Array(BOARD_SIZE).fill(null);
     room.currentClue = null;
     room.winner = null;
 
@@ -435,7 +437,7 @@ export class CodenamesRoom {
     if (!player) return;
 
     const index = Number(msg.index);
-    if (!Number.isInteger(index) || index < 0 || index >= room.words.length || room.revealed[index]) return;
+    if (!Number.isInteger(index) || index < 0 || index >= room.words.length || !isGuessable(room, index)) return;
 
     if (room.mode === "duet") {
       const guesserSeat = room.duetTurnSeat === "A" ? "B" : "A";
@@ -569,6 +571,7 @@ export class CodenamesRoom {
     room.remainingB = 0;
     room.revealed = [];
     room.revealedColor = [];
+    room.duetMissBy = [];
     room.currentClue = null;
     room.winner = null;
 
@@ -602,6 +605,7 @@ export class CodenamesRoom {
       word,
       hint: room.wordHints[i] ?? "",
       revealed: room.revealed[i] ?? false,
+      guessable: room.phase === "playing" && isGuessable(room, i),
       color: ended && room.mode === "teams" ? room.teamColors![i] : cellColorFor(room, i, forPlayerId),
     }));
 

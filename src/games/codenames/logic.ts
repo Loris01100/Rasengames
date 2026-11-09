@@ -128,6 +128,14 @@ export function cellColorFor(
   return null;
 }
 
+// Une case révélée témoin par une clé peut encore être un agent pour l'autre :
+// elle reste jouable tant que l'indice actif vient de l'autre siège.
+export function isGuessable(room: RoomState, index: number): boolean {
+  if (!room.revealed[index]) return true;
+  const missBy = room.duetMissBy?.[index] ?? null;
+  return room.mode === "duet" && missBy !== null && missBy !== room.duetTurnSeat;
+}
+
 export function countFoundAgents(room: RoomState): number {
   let n = 0;
   for (let i = 0; i < room.revealed.length; i++) {
@@ -151,6 +159,8 @@ export function resolveDuetGuess(room: RoomState, index: number): DuetColor {
   const seat = room.duetTurnSeat!;
   const key = (seat === "A" ? room.keyA : room.keyB)!;
   const color = key[index];
+  // Deuxième pioche d'une case témoin : elle est définitivement tranchée.
+  (room.duetMissBy ??= [])[index] = color === "bystander" && !room.revealed[index] ? seat : null;
   room.revealed[index] = true;
   room.revealedColor[index] = color;
 

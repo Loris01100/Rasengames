@@ -57,6 +57,9 @@ export interface RoomState {
   duetErrors: number;
   duetErrorsMax: number;
   duetAgentsTotal: number; // union des cases "agent" des deux clés, figée au démarrage
+  // Siège dont la clé a rendu "témoin" une case révélée : elle reste jouable
+  // une fois avec l'autre clé (elle peut y être un agent). null sinon.
+  duetMissBy: (Seat | null)[];
 
   // ---- mode teams ----
   teamColors: TeamColor[] | null; // une seule clé, vue par les deux chiffreurs
@@ -93,6 +96,7 @@ export function createEmptyRoom(code: string): RoomState {
     duetErrors: 0,
     duetErrorsMax: 0,
     duetAgentsTotal: 0,
+    duetMissBy: [],
     teamColors: null,
     turnTeam: null,
     remainingA: 0,

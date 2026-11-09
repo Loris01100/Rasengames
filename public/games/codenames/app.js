@@ -238,7 +238,8 @@
         tile.appendChild(hint);
       }
 
-      if (myGuessTurn && !cell.revealed) {
+      // Une case témoin d'une clé reste jouable avec l'autre (guessable vient du serveur).
+      if (myGuessTurn && cell.guessable) {
         tile.addEventListener("click", () => Room.send({ type: "guess", index }));
       } else {
         tile.disabled = true;

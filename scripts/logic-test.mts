@@ -407,6 +407,35 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
 }
 
 {
+  // Case témoin pour A mais agent pour B : ratée sur l'indice de A, elle doit
+  // rester jouable sur l'indice de B, sinon la victoire devient impossible.
+  const room = emptyCodenames("TEST") as any;
+  addPlayers(room, { a: { seat: "A" }, b: { seat: "B" } });
+  room.mode = "duet";
+  room.keyA = ["bystander"];
+  room.keyB = ["agent"];
+  room.duetAgentsTotal = 1;
+  room.duetErrors = 9;
+  room.revealed = [false];
+  room.revealedColor = [null];
+  room.duetMissBy = [null];
+  room.duetTurnSeat = "A";
+  room.phase = "playing";
+  room.currentClue = { by: "a", word: "x", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 0); // témoin pour A, le tour passe à B
+  assert.equal(room.duetTurnSeat, "B");
+  assert.ok(codenames.isGuessable(room, 0), "jouable avec la clé de B");
+  room.duetTurnSeat = "A";
+  assert.ok(!codenames.isGuessable(room, 0), "pas une seconde fois avec la clé de A");
+  room.duetTurnSeat = "B";
+  room.currentClue = { by: "b", word: "y", number: 1, guessesLeft: 2 };
+  codenames.resolveDuetGuess(room, 0);
+  assert.equal(room.revealedColor[0], "agent");
+  assert.equal(room.winner, "coop-win");
+  assert.ok(!codenames.isGuessable(room, 0), "tranchée après la seconde pioche");
+}
+
+{
   // Toucher l'assassin met fin à la partie sur-le-champ.
   const room = emptyCodenames("TEST") as any;
   addPlayers(room, { a: { seat: "A" }, b: { seat: "B" } });
