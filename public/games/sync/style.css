@@ -77,7 +77,7 @@
 .sync-answer-dot.current {
   border-color: var(--accent);
   color: var(--text);
-  box-shadow: 0 0 18px rgba(124, 92, 255, 0.3);
+  box-shadow: 3px 3px 0 var(--accent);
 }
 
 .sync-answer-dot.done {
@@ -234,7 +234,7 @@
 
 .sync-score-row:first-child {
   border-color: var(--accent);
-  box-shadow: 0 0 20px rgba(124, 92, 255, 0.18);
+  box-shadow: 4px 4px 0 var(--accent);
 }
 
 .sync-score-points {

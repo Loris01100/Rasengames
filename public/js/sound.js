@@ -229,7 +229,7 @@ const Sound = (() => {
     nextBtn.id = "music-next";
     nextBtn.className = "audio-btn";
     nextBtn.type = "button";
-    nextBtn.textContent = "⏭";
+    setIcon(nextBtn, "suivant");
     nextBtn.title = "Piste suivante";
     nextBtn.setAttribute("aria-label", "Piste suivante");
     nextBtn.addEventListener("click", nextTrack);

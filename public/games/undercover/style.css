@@ -1,16 +1,19 @@
 .role-civilian {
-  background: rgba(62, 207, 142, 0.15);
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
   color: var(--success);
 }
 
 .role-undercover {
-  background: rgba(239, 91, 91, 0.15);
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
   color: var(--danger);
 }
 
+/* Mr White n'a pas de mot : une trame plutôt qu'une couleur. */
 .role-mrwhite {
-  background: rgba(124, 92, 255, 0.15);
-  color: var(--accent);
+  background-color: var(--surface);
+  background-image: var(--tone);
+  background-size: 6px 6px;
+  color: var(--text);
 }
 
 #screen-game {
@@ -161,7 +164,7 @@
 
 .vote-option.selected {
   border-color: var(--accent);
-  background: rgba(124, 92, 255, 0.12);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
 }
 
 .vote-option:disabled,

@@ -194,7 +194,7 @@
 .roster-chip.you {
   border-color: var(--accent);
   color: var(--text);
-  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.2);
+  box-shadow: 2px 2px 0 var(--accent);
 }
 
 .roster-chip.seat-A,
@@ -451,20 +451,23 @@
 .end-banner {
   text-align: center;
   padding: 12px 16px 14px;
-  margin: -16px -18px 12px;
-  border-radius: 14px 14px 0 0;
+  margin: -24px -24px 16px;
   background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 3px solid var(--ink);
 }
 
 .end-banner.win {
-  background: rgba(62, 207, 142, 0.14);
-  border-bottom-color: rgba(62, 207, 142, 0.4);
+  background: var(--success);
 }
 
 .end-banner.lose {
-  background: rgba(239, 91, 91, 0.14);
-  border-bottom-color: rgba(239, 91, 91, 0.4);
+  background: var(--accent);
+}
+
+/* Le résumé porte « .muted » : sur un bandeau plein, tout passe en blanc. */
+.end-banner.win > *,
+.end-banner.lose > * {
+  color: #fff;
 }
 
 #end-title {

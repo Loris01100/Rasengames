@@ -121,14 +121,15 @@
   letter-spacing: 0.02em;
 }
 
+/* Un mode en rouge, l'autre en encre : la variante se lit d'un coup d'œil. */
 .mode-banner.mode-perso {
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(255, 110, 199, 0.25), rgba(124, 92, 255, 0.25));
-  border-color: rgba(255, 110, 199, 0.5);
+  color: #fff;
+  background: var(--accent);
+  border: 2px solid var(--ink);
 }
 
 .mode-banner.mode-anime {
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(92, 160, 255, 0.25), rgba(62, 207, 142, 0.22));
-  border-color: rgba(92, 160, 255, 0.5);
+  color: var(--bg);
+  background: var(--ink);
+  border: 2px solid var(--ink);
 }

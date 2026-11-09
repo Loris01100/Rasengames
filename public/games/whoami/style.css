@@ -65,7 +65,7 @@
 
 .whoami-card.found {
   border-color: var(--success);
-  box-shadow: 0 0 0 1px var(--success), 0 8px 24px rgba(62, 207, 142, 0.25);
+  box-shadow: 4px 4px 0 var(--success);
 }
 
 .whoami-image {
@@ -214,8 +214,8 @@
   background: var(--surface-2);
 }
 
-.notes-column-yes { border-color: color-mix(in srgb, #22c55e 45%, var(--border)); }
-.notes-column-no { border-color: color-mix(in srgb, #ef4444 45%, var(--border)); }
+.notes-column-yes { border: 2px solid var(--success); }
+.notes-column-no { border: 2px solid var(--danger); }
 
 .notes-column-title {
   text-align: center;

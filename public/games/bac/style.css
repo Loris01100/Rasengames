@@ -98,11 +98,11 @@
 }
 
 .results-table td.score-unique {
-  background: rgba(62, 207, 142, 0.1);
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
 }
 
 .results-table td.score-duplicate {
-  background: rgba(230, 184, 60, 0.1);
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface));
 }
 
 .results-table td.score-invalid {
