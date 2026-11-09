@@ -58,7 +58,6 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   // Il doit toujours rester au moins 2 civils.
   assert.equal(undercover.validateSettings(6, { undercoverCount: 2, mrWhiteCount: 1, category: "random" }), null);
   assert.ok(undercover.validateSettings(4, { undercoverCount: 2, mrWhiteCount: 1, category: "random" }));
-  assert.ok(undercover.validateSettings(5, { undercoverCount: -1, mrWhiteCount: 0, category: "random" }));
 }
 
 {

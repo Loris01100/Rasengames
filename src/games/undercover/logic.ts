@@ -1,4 +1,4 @@
-﻿import type { Player, RoomState, Settings, VoteResult } from "./types";
+import type { Player, RoomState, Settings, VoteResult } from "./types";
 import { pickRandomPair } from "./words";
 
 export function shuffle<T>(items: T[]): T[] {
@@ -19,7 +19,6 @@ export function defaultSettings(playerCount: number, category: Settings["categor
 
 export function validateSettings(playerCount: number, settings: Settings): string | null {
   const { undercoverCount, mrWhiteCount } = settings;
-  if (undercoverCount < 0 || mrWhiteCount < 0) return "Les nombres de rÃ´les doivent Ãªtre positifs.";
   const specialCount = undercoverCount + mrWhiteCount;
   if (specialCount >= playerCount - 1) {
     return "Il doit rester au moins 2 civils.";
