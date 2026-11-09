@@ -4,12 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Enchaîne plusieurs mini-jeux RasenGames dans un même lobby avec classement cumulé." />
-  <meta name="theme-color" content="#0f1115" />
+  <meta name="theme-color" content="#f7f5f0" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RasenGames" />
+  <meta property="og:title" content="Mode soirée · RasenGames" />
+  <meta property="og:description" content="Enchaîne plusieurs mini-jeux RasenGames dans un même lobby avec classement cumulé." />
+  <meta property="og:url" content="https://rasengames.reesch.com/party/" />
+  <meta property="og:image" content="https://rasengames.reesch.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Mode soirée · RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=IBM+Plex+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/party/style.css" />
 </head>
@@ -22,18 +31,18 @@
   <main class="container party-container">
     <section id="screen-join" class="party-hero">
       <div>
-        <span class="hero-kicker">🎉 Mode soirée</span>
-        <h1>Un seul lobby.<br /><span class="grad">Toute la soirée.</span></h1>
+        <span class="kicker">Mode soirée · classement cumulé</span>
+        <h1>Un seul lobby.<br /><em>Toute la soirée.</em></h1>
         <p class="muted">Choisissez les jeux au fur et à mesure, sans ressaisir vos pseudos, puis terminez sur un podium global.</p>
       </div>
       <div class="card join-card">
         <label for="name-input">Ton pseudo</label>
-        <input id="name-input" maxlength="20" autocomplete="nickname" placeholder="Ton pseudo" />
+        <input id="name-input" type="text" maxlength="20" autocomplete="nickname" placeholder="Ton pseudo" />
         <button id="create-btn" class="btn">Créer une soirée</button>
         <div class="party-separator"><span>ou</span></div>
         <label for="code-input">Code de la soirée</label>
-        <div class="inline">
-          <input id="code-input" maxlength="8" autocomplete="off" placeholder="ABCDE" />
+        <div class="join-row">
+          <input id="code-input" type="text" maxlength="8" autocomplete="off" placeholder="ABCDE" />
           <button id="join-btn" class="btn secondary">Rejoindre</button>
         </div>
       </div>
@@ -56,7 +65,7 @@
         <div class="card playlist-card">
           <div class="playlist-heading">
             <div><h2>À quoi joue-t-on ?</h2><p class="muted small">Les jeux impossibles avec votre nombre de joueurs sont désactivés.</p></div>
-            <button id="random-btn" class="btn secondary small">🎲 Jeu aléatoire</button>
+            <button id="random-btn" class="btn secondary small">Jeu aléatoire</button>
           </div>
           <div id="game-picker" class="party-game-picker"></div>
           <p id="waiting-host" class="muted hidden">L'hôte choisit le premier jeu…</p>
@@ -66,7 +75,7 @@
 
     <section id="screen-playing" class="card party-status hidden">
       <span class="eyebrow">JEU EN COURS</span>
-      <div id="current-icon" class="party-current-icon">🎮</div>
+      <div id="current-icon" class="party-current-icon"></div>
       <h1 id="current-name"></h1>
       <p id="current-progress" class="muted"></p>
       <button id="rejoin-btn" class="btn">Rejoindre le jeu</button>
@@ -85,17 +94,17 @@
       <div id="next-choice" class="card next-choice">
         <div class="playlist-heading">
           <div><h2>Quel jeu ensuite ?</h2><p class="muted small">Vous pouvez rejouer au même jeu ou en choisir un autre.</p></div>
-          <button id="random-next-btn" class="btn secondary small">🎲 Jeu aléatoire</button>
+          <button id="random-next-btn" class="btn secondary small">Jeu aléatoire</button>
         </div>
         <div id="next-game-picker" class="party-game-picker"></div>
-        <button id="end-party-btn" class="btn secondary party-end">🏆 Terminer la soirée</button>
+        <button id="end-party-btn" class="btn secondary party-end">Terminer la soirée</button>
       </div>
       <p id="next-wait" class="muted center">L'hôte choisit le prochain jeu…</p>
     </section>
 
     <section id="screen-ended" class="card final-card hidden">
       <span class="eyebrow">SOIRÉE TERMINÉE</span>
-      <h1>🏆 Podium final</h1>
+      <h1>Podium final</h1>
       <div id="podium" class="podium"></div>
       <div id="final-ranking" class="ranking final-ranking"></div>
       <button id="restart-btn" class="btn hidden">Recommencer une soirée</button>

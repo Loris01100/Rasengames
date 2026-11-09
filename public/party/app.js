@@ -1,16 +1,16 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const GAMES = [
-    { slug: "undercover", label: "Undercover", icon: "🕵️", min: 3 },
-    { slug: "hundred", label: "1 à 100", icon: "🔢", min: 3 },
-    { slug: "bac", label: "Petit Bac", icon: "📝", min: 2 },
-    { slug: "whoami", label: "Qui suis-je", icon: "🎭", min: 2, max: 5 },
-    { slug: "detective", label: "Détective Anime", icon: "🔍", min: 2, max: 3 },
-    { slug: "note", label: "Le jeu de la note", icon: "🔟", min: 3 },
-    { slug: "bomb", label: "Alphabombe", icon: "💣", min: 2 },
-    { slug: "codenames", label: "Codenames Anime", icon: "🗂️", min: 2, exact: [2, 4] },
-    { slug: "sync", label: "Même longueur d'onde", icon: "🧠", min: 3, max: 10 },
-    { slug: "guesswho", label: "Qui est-ce ?", icon: "🧑‍🤝‍🧑", min: 2, max: 2 },
+    { slug: "undercover", label: "Undercover", min: 3 },
+    { slug: "hundred", label: "1 à 100", min: 3 },
+    { slug: "bac", label: "Petit Bac", min: 2 },
+    { slug: "whoami", label: "Qui suis-je", min: 2, max: 5 },
+    { slug: "detective", label: "Détective Anime", min: 2, max: 3 },
+    { slug: "note", label: "Le jeu de la note", min: 3 },
+    { slug: "bomb", label: "Alphabombe", min: 2 },
+    { slug: "codenames", label: "Codenames Anime", min: 2, exact: [2, 4] },
+    { slug: "sync", label: "Même longueur d'onde", min: 3, max: 10 },
+    { slug: "guesswho", label: "Qui est-ce ?", min: 2, max: 2 },
   ];
   let ws = null;
   let code = null;
@@ -79,7 +79,8 @@
     for (const player of players) {
       const row = document.createElement("div");
       row.className = `party-player${player.connected ? "" : " offline"}`;
-      row.textContent = `${player.isHost ? "👑 " : ""}${player.name}${player.id === playerId ? " (toi)" : ""}`;
+      row.textContent = `${player.name}${player.id === playerId ? " (toi)" : ""}`;
+      if (player.isHost) row.insertAdjacentHTML("beforeend", '<span class="badge">Hôte</span>');
       if (scores) {
         const score = document.createElement("span");
         score.className = "party-player-score";
@@ -93,14 +94,14 @@
   function renderPicker(picker, isHost, messageType) {
     picker.innerHTML = "";
     const count = state.players.filter((player) => player.connected).length;
-    for (const game of GAMES) {
+    GAMES.forEach((game, index) => {
       const button = document.createElement("button");
       button.className = "btn secondary party-game";
       button.disabled = !isHost || !supports(game, count);
-      button.innerHTML = `<span>${game.icon}</span><span>${game.label}</span><small>${game.exact ? game.exact.join(" ou ") : `${game.min}${game.max ? `-${game.max}` : "+"}`}</small>`;
+      button.innerHTML = `<span class="party-game-num">${String(index + 1).padStart(2, "0")}</span><span>${game.label}</span><small>${game.exact ? game.exact.join(" ou ") : `${game.min}${game.max ? `-${game.max}` : "+"}`}</small>`;
       button.addEventListener("click", () => send({ type: messageType, slug: game.slug }));
       picker.appendChild(button);
-    }
+    });
   }
 
   function launchRandom(messageType) {
@@ -138,7 +139,7 @@
     if (state.phase === "playing") {
       show("playing");
       const game = gameBySlug(state.currentGame?.slug);
-      $("current-icon").textContent = game?.icon ?? "🎮";
+      $("current-icon").textContent = game ? String(GAMES.indexOf(game) + 1).padStart(2, "0") : "";
       $("current-name").textContent = game?.label ?? "Jeu en cours";
       $("current-progress").textContent = `Jeu n°${state.currentIndex + 1} de la soirée`;
       return;
@@ -159,11 +160,10 @@
     const podium = $("podium");
     podium.innerHTML = "";
     const classes = ["first", "second", "third"];
-    const medals = ["🥇", "🥈", "🥉"];
-    overall.slice(0, 3).forEach((player, index) => {
+        overall.slice(0, 3).forEach((player, index) => {
       const step = document.createElement("div");
       step.className = `podium-step ${classes[index]}`;
-      step.innerHTML = `<span class="podium-medal">${medals[index]}</span><strong></strong><div>${player.score} pts</div>`;
+      step.innerHTML = `<span class="podium-medal">${index + 1}</span><strong></strong><div>${player.score} pts</div>`;
       step.querySelector("strong").textContent = player.name;
       podium.appendChild(step);
     });

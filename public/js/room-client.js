@@ -359,8 +359,8 @@ const Room = (() => {
     partyFinish.innerHTML = "";
     const text = document.createElement("strong");
     text.textContent = state.hostId === api.playerId
-      ? "🎉 La manche est finie : ajoute le résultat au classement de la soirée."
-      : "🎉 Manche terminée — l'hôte va valider le classement de la soirée.";
+      ? "La manche est finie : ajoute le résultat au classement de la soirée."
+      : "Manche terminée — l'hôte va valider le classement de la soirée.";
     partyFinish.appendChild(text);
     if (state.hostId !== api.playerId) return;
     const button = document.createElement("button");
