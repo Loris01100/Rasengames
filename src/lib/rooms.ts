@@ -10,17 +10,25 @@ function generateCode(): string {
 }
 
 /**
- * Generates a room code that isn't already in use in the given Durable
- * Object namespace. Each room DO exposes a `GET .../exists/<code>` route.
+ * Génère un code libre dans *tous* les jeux, pas seulement celui qu'on crée :
+ * `switchGame` garde le même code en changeant de jeu, donc un code déjà pris
+ * ailleurs enverrait le groupe dans le salon d'inconnus.
+ * Chaque DO de salon expose `GET .../exists/<code>` (code en dernier segment).
  */
-export async function createRoomCode(namespace: DurableObjectNamespace, gameSlug: string): Promise<string> {
+export async function createRoomCode(
+  games: { slug: string; namespace: DurableObjectNamespace }[],
+): Promise<string> {
   for (let attempt = 0; attempt < 20; attempt++) {
     const code = generateCode();
-    const id = namespace.idFromName(code);
-    const stub = namespace.get(id);
-    const res = await stub.fetch(new Request(`https://room/${gameSlug}/exists/${code}`));
-    const { exists } = await res.json<{ exists: boolean }>();
-    if (!exists) return code;
+    const taken = await Promise.all(
+      games.map(async ({ slug, namespace }) => {
+        const res = await namespace
+          .get(namespace.idFromName(code))
+          .fetch(new Request(`https://room/${slug}/exists/${code}`));
+        return (await res.json<{ exists: boolean }>()).exists;
+      }),
+    );
+    if (!taken.some(Boolean)) return code;
   }
   throw new Error("Impossible de générer un code de salon unique.");
 }

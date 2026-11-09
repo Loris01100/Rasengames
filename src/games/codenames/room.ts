@@ -61,7 +61,7 @@ export class CodenamesRoom {
 
     if (parts[parts.length - 2] === "exists") {
       const room = await this.loadRoom(code);
-      return Response.json({ exists: room.hostId !== null });
+      return Response.json({ exists: room.hostId !== null, live: this.sessions.length > 0 });
     }
 
     if (request.headers.get("Upgrade") !== "websocket") {

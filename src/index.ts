@@ -60,7 +60,7 @@ export default {
     if (createMatch && request.method === "POST") {
       const game = GAMES.find((g) => g.slug === createMatch[1]);
       if (!game) return new Response("Unknown game", { status: 404 });
-      const code = await createRoomCode(game.namespace(env), game.slug);
+      const code = await createRoomCode(GAMES.map((g) => ({ slug: g.slug, namespace: g.namespace(env) })));
       return Response.json({ code });
     }
 

@@ -85,14 +85,18 @@
       Object.keys(GAMES).map(async (slug) => {
         try {
           const res = await fetch(`/api/${slug}/exists/${code}`);
-          return res.ok && (await res.json()).exists ? slug : null;
+          const probe = res.ok ? await res.json() : null;
+          return probe?.exists ? { slug, live: probe.live } : null;
         } catch {
           return null;
         }
       }),
     );
-    const slug = found.find(Boolean);
-    if (!slug) return showError("Aucun salon avec ce code. Vérifie les lettres.");
+    // Après un changement de jeu, le code existe aussi dans l'ancien jeu,
+    // vide : on préfère celui où quelqu'un est connecté.
+    const hit = found.find((f) => f?.live) ?? found.find(Boolean);
+    if (!hit) return showError("Aucun salon avec ce code. Vérifie les lettres.");
+    const { slug } = hit;
     location.href = `/games/${slug}/?room=${code}`;
   });
 
