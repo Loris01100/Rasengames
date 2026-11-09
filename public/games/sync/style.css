@@ -83,7 +83,7 @@
 .sync-answer-dot.done {
   background: var(--success);
   border-color: var(--success);
-  color: #09150f;
+  color: #fff;
 }
 
 .sync-referee-head {
@@ -113,7 +113,7 @@
   height: 9px;
   margin-top: 22px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-2);
 }
 
@@ -139,7 +139,7 @@
   gap: 10px;
   padding: 8px 11px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-2);
   font-size: 0.85rem;
 }
@@ -162,8 +162,8 @@
   min-width: 0;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 13px;
-  background: rgba(33, 36, 46, 0.72);
+  border-radius: 0;
+  background: var(--surface-2);
 }
 
 .sync-live-question h3 {
@@ -193,7 +193,7 @@
 .sync-score-row {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px 14px;
 }
 

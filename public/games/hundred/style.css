@@ -39,7 +39,7 @@
   width: 130px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 10px 12px;
   touch-action: none;
   user-select: none;
@@ -80,7 +80,7 @@
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 0;
   margin-bottom: 6px;
   pointer-events: none;
 }
@@ -113,7 +113,7 @@
   display: inline-block;
   margin-bottom: 10px;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--border);
   font-family: var(--font-display);
   font-weight: 700;
@@ -122,13 +122,13 @@
 }
 
 .mode-banner.mode-perso {
-  color: #ffd9f2;
+  color: var(--text);
   background: linear-gradient(135deg, rgba(255, 110, 199, 0.25), rgba(124, 92, 255, 0.25));
   border-color: rgba(255, 110, 199, 0.5);
 }
 
 .mode-banner.mode-anime {
-  color: #d7e9ff;
+  color: var(--text);
   background: linear-gradient(135deg, rgba(92, 160, 255, 0.25), rgba(62, 207, 142, 0.22));
   border-color: rgba(92, 160, 255, 0.5);
 }

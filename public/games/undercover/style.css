@@ -43,7 +43,7 @@
   max-width: 220px;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 0;
   margin: 8px 0;
   border: 1px solid var(--border);
 }
@@ -77,7 +77,7 @@
   width: 110px;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   display: block;
 }
@@ -107,7 +107,7 @@
 
 .players-mini .chip {
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-2);
   font-size: 0.8rem;
   border: 1px solid transparent;
@@ -150,7 +150,7 @@
   justify-content: space-between;
   padding: 10px 14px;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid transparent;
   cursor: pointer;
 }
@@ -210,7 +210,7 @@
 
 .clue-history .chip {
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
   font-size: 0.9rem;

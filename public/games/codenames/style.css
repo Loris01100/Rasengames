@@ -20,7 +20,7 @@
   margin: 12px 0;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .roles-head {
@@ -108,7 +108,7 @@
   flex: 1;
   min-height: 200px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 4px;
   background: var(--surface-2);
 }
@@ -118,7 +118,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 0.9rem;
 }
@@ -137,7 +137,7 @@
 }
 
 .word-filter-row:hover {
-  background: #262a35;
+  background: var(--surface-2);
 }
 
 .word-filter-row input {
@@ -183,7 +183,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.8rem;
   font-weight: 600;
   background: var(--surface-2);
@@ -208,7 +208,7 @@
 .roster-chip.team-B {
   background: rgba(79, 163, 255, 0.14);
   border-color: rgba(79, 163, 255, 0.4);
-  color: #4fa3ff;
+  color: #1f5fd1;
 }
 
 .roster-chip.you.seat-A,
@@ -239,7 +239,7 @@
 
 .counters-line .chip {
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
   font-size: 0.85rem;
@@ -280,7 +280,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 12px;
   text-align: center;
 }
@@ -317,7 +317,7 @@
   aspect-ratio: 5 / 2.2;
   font-size: 0.6rem;
   padding: 3px;
-  border-radius: 6px;
+  border-radius: 0;
 }
 
 .end-recap-duet {
@@ -334,7 +334,7 @@
 
 .tile {
   aspect-ratio: 5 / 4;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
@@ -405,16 +405,18 @@
 .tile.c-agentA.revealed {
   background: var(--success);
   border-color: var(--success);
+  color: #fff;
 }
 
 .tile.c-agentB.key-hint {
-  border-color: #4fa3ff;
+  border-color: #1f5fd1;
   background: rgba(79, 163, 255, 0.12);
 }
 
 .tile.c-agentB.revealed {
-  background: #4fa3ff;
-  border-color: #4fa3ff;
+  background: #1f5fd1;
+  border-color: #1f5fd1;
+  color: #fff;
 }
 
 .tile.c-bystander.key-hint,
@@ -427,7 +429,7 @@
 .tile.c-neutral.revealed {
   background: var(--warning);
   border-color: var(--warning);
-  color: #1a1500;
+  color: #fff;
 }
 
 .tile.c-assassin.key-hint {
@@ -436,9 +438,9 @@
 }
 
 .tile.c-assassin.revealed {
-  background: #0c0d10;
+  background: var(--ink);
   border-color: var(--danger);
-  color: var(--danger);
+  color: #ff7a6e;
 }
 
 .tile.recap {

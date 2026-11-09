@@ -64,7 +64,7 @@
 
 .detective-chip {
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-2);
   font-size: 0.9rem;
   border-left: 3px solid transparent;
@@ -105,7 +105,7 @@
   gap: 10px;
   padding: 10px 14px;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .ranking-medal {

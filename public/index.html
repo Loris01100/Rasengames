@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Neuf mini-jeux d'ambiance sur thème anime, à jouer entre amis depuis son téléphone. Crée un salon, partage le code, aucun compte à créer." />
-  <meta name="theme-color" content="#0f1115" />
+  <meta name="theme-color" content="#f7f5f0" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="RasenGames" />
@@ -18,7 +18,7 @@
   <title>RasenGames</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=IBM+Plex+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -26,128 +26,119 @@
     <a class="logo" href="/">Rasen<span>Games</span></a>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <span class="hero-kicker">🍥 Jeux entre potes, en ligne</span>
-      <h1>Mini-jeux <span class="grad">anime</span> à jouer entre amis</h1>
-      <p class="muted hero-sub">Choisis un jeu, crée un salon, partage le code. Chacun joue depuis son téléphone ou son ordi — pas d'installation, pas de compte.</p>
-      <div class="hero-stats">
-        <div class="hero-stat"><strong>9</strong><span>jeux</span></div>
-        <div class="hero-stat"><strong>2-10</strong><span>joueurs</span></div>
-        <div class="hero-stat"><strong>0</strong><span>compte requis</span></div>
+  <main class="container home">
+    <section class="home-hero">
+      <div class="home-hero-main">
+        <span class="kicker">Vol. 1 — 9 jeux · 2 à 10 joueurs · aucun compte</span>
+        <h1>Mini-jeux anime<br />entre <em>potes</em>.</h1>
+        <p class="home-hero-sub">Choisis un jeu, crée un salon, partage le code. Chacun joue depuis son téléphone ou son ordi.</p>
+        <div><a class="btn" href="#jeux">Choisir un jeu</a></div>
+      </div>
+      <div class="home-hero-side">
+        <form id="code-form" class="code-panel">
+          <label for="home-code">On t'a filé<br />un code ?</label>
+          <div class="join-row">
+            <input id="home-code" type="text" maxlength="8" placeholder="KX4P" autocomplete="off" required />
+            <button class="btn" type="submit">Entrer</button>
+          </div>
+          <p id="code-error" class="code-error hidden" role="alert"></p>
+        </form>
+        <div class="tone-panel">
+          <p class="bubble">Pas d'appli.<br />Pas d'inscription.<br />Juste un lien.</p>
+        </div>
       </div>
     </section>
 
-    <section class="card rooms-panel">
-      <h2>Parties en cours</h2>
-      <p class="muted small">Les salons ouverts en ce moment. Ceux du lobby se rejoignent d'un clic ; sur une partie déjà lancée, tu entres à la manche suivante.</p>
+    <section class="rooms-panel">
+      <div class="rooms-panel-head">
+        <h2>Parties en cours</h2>
+        <span>salons publics</span>
+      </div>
       <div id="rooms-list" class="rooms-list"></div>
-      <p id="rooms-empty" class="muted small">Aucune partie en cours pour l'instant — lance la tienne !</p>
+      <p id="rooms-empty" class="muted small">Aucune partie en cours pour l'instant — lance la tienne ! Sur une partie déjà lancée, tu entres en spectateur.</p>
     </section>
 
+    <div id="jeux" class="section-head">
+      <h2>Les jeux</h2>
+      <span class="kicker">09 chapitres</span>
+    </div>
     <div class="game-grid">
-      <a class="game-card" href="/games/undercover/">
-        <span class="icon">🕵️</span>
-        <strong>Undercover</strong>
-        <span class="muted">Trouvez les infiltrés avant qu'ils ne prennent le dessus.</span>
-        <span class="game-card-badges">
-          <span class="badge">3+ joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+      <a class="game-card wide" href="/games/undercover/">
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">01</span><span class="game-card-sfx">CHUT…</span></span>
+        <span class="game-card-body">
+          <strong>Undercover</strong>
+          <span>Trouvez les infiltrés avant qu'ils ne prennent le dessus.</span>
+          <span class="game-card-badges"><span class="badge">3+ joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
       <a class="game-card" href="/games/hundred/">
-        <span class="icon">🔢</span>
-        <strong>1 à 100</strong>
-        <span class="muted">Chacun a un chiffre secret. Devinez l'ordre en débattant.</span>
-        <span class="game-card-badges">
-          <span class="badge">3+ joueurs</span>
-          <span class="badge badge-mode">🎙️ Vocal</span>
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">02</span><span class="game-card-sfx">HMM?!</span></span>
+        <span class="game-card-body">
+          <strong>1 à 100</strong>
+          <span>Chacun a un chiffre secret. Devinez l'ordre en débattant.</span>
+          <span class="game-card-badges"><span class="badge">3+ joueurs</span><span class="badge badge-mode">Vocal</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
       <a class="game-card" href="/games/bac/">
-        <span class="icon">📝</span>
-        <strong>Petit Bac</strong>
-        <span class="muted">Une lettre, des catégories, premier qui a fini crie stop.</span>
-        <span class="game-card-badges">
-          <span class="badge">2+ joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">03</span><span class="game-card-sfx">STOP!</span></span>
+        <span class="game-card-body">
+          <strong>Petit Bac</strong>
+          <span>Une lettre, des catégories, premier qui a fini crie stop.</span>
+          <span class="game-card-badges"><span class="badge">2+ joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
       <a class="game-card" href="/games/whoami/">
-        <span class="icon">🎭</span>
-        <strong>Qui suis-je</strong>
-        <span class="muted">Chacun écrit un mot, puis devine celui reçu en secret d'un autre joueur.</span>
-        <span class="game-card-badges">
-          <span class="badge">2-5 joueurs</span>
-          <span class="badge badge-mode">🎙️ Vocal</span>
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">04</span><span class="game-card-sfx">MOI?</span></span>
+        <span class="game-card-body">
+          <strong>Qui suis-je</strong>
+          <span>Chacun écrit un mot, puis devine celui reçu en secret d'un autre joueur.</span>
+          <span class="game-card-badges"><span class="badge">2-5 joueurs</span><span class="badge badge-mode">Vocal</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
       <a class="game-card" href="/games/detective/">
-        <span class="icon">🔍</span>
-        <strong>Détective Anime</strong>
-        <span class="muted">Chacun son tour, proposez des persos pour deviner la catégorie secrète des autres.</span>
-        <span class="game-card-badges">
-          <span class="badge">2-3 joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">05</span><span class="game-card-sfx">ZOOM</span></span>
+        <span class="game-card-body">
+          <strong>Détective Anime</strong>
+          <span>Chacun son tour, proposez des persos pour deviner la catégorie secrète des autres.</span>
+          <span class="game-card-badges"><span class="badge">2-3 joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
       <a class="game-card" href="/games/note/">
-        <span class="icon">🔟</span>
-        <strong>Le jeu de la note</strong>
-        <span class="muted">Devinez le chiffre secret à partir des exemples donnés par les autres.</span>
-        <span class="game-card-badges">
-          <span class="badge">3+ joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">06</span><span class="game-card-sfx">7/10</span></span>
+        <span class="game-card-body">
+          <strong>Le jeu de la note</strong>
+          <span>Devinez le chiffre secret à partir des exemples donnés par les autres.</span>
+          <span class="game-card-badges"><span class="badge">3+ joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
-      <a class="game-card" href="/games/bomb/">
-        <span class="icon">💣</span>
-        <strong>Alphabombe</strong>
-        <span class="muted">Une lettre, un mot qui commence par elle, et une mèche invisible qui tourne. Ne la laisse pas t'exploser entre les mains.</span>
-        <span class="game-card-badges">
-          <span class="badge">2+ joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+      <a class="game-card wide" href="/games/bomb/">
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">07</span><span class="game-card-sfx">BOOM!!</span></span>
+        <span class="game-card-body">
+          <strong>Alphabombe</strong>
+          <span>Une lettre, un mot qui commence par elle, et une mèche invisible qui tourne. Ne la laisse pas t'exploser entre les mains.</span>
+          <span class="game-card-badges"><span class="badge">2+ joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
       <a class="game-card" href="/games/codenames/">
-        <span class="icon">🗂️</span>
-        <strong>Codenames Anime</strong>
-        <span class="muted">1v1 coopératif ou 2v2 par équipes : donnez des indices pour faire deviner vos mots sans toucher l'assassin.</span>
-        <span class="game-card-badges">
-          <span class="badge">2 ou 4 joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">08</span><span class="game-card-sfx">PSST</span></span>
+        <span class="game-card-body">
+          <strong>Codenames Anime</strong>
+          <span>1v1 coopératif ou 2v2 par équipes : donnez des indices pour faire deviner vos mots sans toucher l'assassin.</span>
+          <span class="game-card-badges"><span class="badge">2 ou 4 joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
-
-      <a class="game-card" href="/games/sync/">
-        <span class="icon">🧠</span>
-        <strong>Même longueur d'onde</strong>
-        <span class="muted">Un arbitre pose trois questions. Répondez en secret et essayez de penser exactement comme les autres.</span>
-        <span class="game-card-badges">
-          <span class="badge">3-10 joueurs</span>
-          <span class="badge badge-mode">⌨️ Écrit</span>
+      <a class="game-card wide" href="/games/sync/">
+        <span class="game-card-head" aria-hidden="true"><span class="game-card-num">09</span><span class="game-card-sfx">SYNC</span></span>
+        <span class="game-card-body">
+          <strong>Même longueur d'onde</strong>
+          <span>Un arbitre pose trois questions. Répondez en secret et essayez de penser exactement comme les autres.</span>
+          <span class="game-card-badges"><span class="badge">3-10 joueurs</span><span class="badge badge-mode">Écrit</span></span>
         </span>
-        <span class="game-card-cta">Jouer <span class="arrow">→</span></span>
       </a>
     </div>
   </main>
 
-  <footer class="site-footer muted small">RasenGames · v0.8</footer>
+  <footer class="site-footer small">RasenGames · v0.8 · fin du volume</footer>
   <script src="/js/sound.js"></script>
   <script src="/js/rooms.js"></script>
 </body>

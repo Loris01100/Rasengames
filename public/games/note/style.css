@@ -83,7 +83,7 @@
 
 .note-chip {
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-2);
   font-size: 0.9rem;
 }

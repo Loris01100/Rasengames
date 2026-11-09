@@ -5,28 +5,28 @@
   if (!list) return;
 
   const GAMES = {
-    undercover: { label: "Undercover", icon: "🕵️" },
-    hundred: { label: "1 à 100", icon: "🔢" },
-    bac: { label: "Petit Bac", icon: "📝" },
-    whoami: { label: "Qui suis-je", icon: "🎭" },
-    detective: { label: "Détective Anime", icon: "🔍" },
-    note: { label: "Le jeu de la note", icon: "🔟" },
-    bomb: { label: "Alphabombe", icon: "💣" },
-    codenames: { label: "Codenames Anime", icon: "🗂️" },
-    sync: { label: "Même longueur d'onde", icon: "🧠" },
+    undercover: { label: "Undercover" },
+    hundred: { label: "1 à 100" },
+    bac: { label: "Petit Bac" },
+    whoami: { label: "Qui suis-je" },
+    detective: { label: "Détective Anime" },
+    note: { label: "Le jeu de la note" },
+    bomb: { label: "Alphabombe" },
+    codenames: { label: "Codenames Anime" },
+    sync: { label: "Même longueur d'onde" },
   };
 
   function roomRow(room) {
-    const game = GAMES[room.slug] ?? { label: room.slug, icon: "🎮" };
+    const game = GAMES[room.slug] ?? { label: room.slug };
     const open = room.phase === "lobby";
 
     const row = document.createElement("div");
     row.className = "room-row";
 
-    const icon = document.createElement("span");
-    icon.className = "room-icon";
-    icon.textContent = game.icon;
-    row.appendChild(icon);
+    const code = document.createElement("span");
+    code.className = "room-code";
+    code.textContent = room.code;
+    row.appendChild(code);
 
     const info = document.createElement("div");
     info.className = "room-info";
@@ -34,7 +34,7 @@
     title.textContent = game.label;
     const meta = document.createElement("span");
     meta.className = "muted small";
-    meta.textContent = `${room.code} · ${room.players} joueur${room.players > 1 ? "s" : ""} · ${
+    meta.textContent = `${room.players} joueur${room.players > 1 ? "s" : ""} · ${
       open ? "en attente" : "en partie"
     }`;
     info.appendChild(title);
@@ -69,4 +69,35 @@
 
   refresh();
   setInterval(refresh, 15000);
+
+  // Un code ne dit pas à quel jeu il appartient : on sonde les neuf jeux en
+  // parallèle et on ouvre le premier qui le connaît. Sans ça il faudrait
+  // deviner le bon jeu avant de pouvoir coller son code.
+  const form = document.getElementById("code-form");
+  const input = document.getElementById("home-code");
+  const error = document.getElementById("code-error");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const code = input.value.trim().toUpperCase();
+    error.classList.add("hidden");
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) return showError("Un code fait 4 à 8 lettres ou chiffres.");
+    const found = await Promise.all(
+      Object.keys(GAMES).map(async (slug) => {
+        try {
+          const res = await fetch(`/api/${slug}/exists/${code}`);
+          return res.ok && (await res.json()).exists ? slug : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const slug = found.find(Boolean);
+    if (!slug) return showError("Aucun salon avec ce code. Vérifie les lettres.");
+    location.href = `/games/${slug}/?room=${code}`;
+  });
+
+  function showError(message) {
+    error.textContent = message;
+    error.classList.remove("hidden");
+  }
 })();

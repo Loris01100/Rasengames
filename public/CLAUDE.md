@@ -1,6 +1,6 @@
 # Frontend (`public/`)
 
-- `index.html` + `styles.css` — accueil et thème sombre partagé (tokens en variables CSS), plus les styles des composants communs (écran de connexion, lobby, lignes de joueurs, formulaires en ligne) réutilisés par toutes les pages de jeu.
+- `index.html` + `styles.css` — accueil et thème partagé « planche manga » — papier, encre, un seul rouge (tokens en variables CSS ; les noms historiques comme `--accent-gradient` sont gardés pour que les `style.css` des jeux suivent), plus les styles des composants communs (écran de connexion, lobby, lignes de joueurs, formulaires en ligne) réutilisés par toutes les pages de jeu.
 - `games/<slug>/{index.html,style.css,app.js}` — un jeu par dossier, liant la feuille partagée puis la sienne. `app.js` ne contient que les écrans, messages et sons de ce jeu : une fonction `render(state)` qui reconstruit intégralement le DOM de l'écran concerné à chaque message (pas de diffing ni de DOM virtuel — l'état reste assez petit pour que ce soit simple et correct). Les écrans sont des `<section id="screen-*">` basculés par `Room.showScreen(id)` (classe `hidden`).
 
 ## `js/room-client.js`
