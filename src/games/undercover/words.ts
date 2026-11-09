@@ -19,6 +19,7 @@ export type WordCategory =
   | "arc"
   | "group"
   | "object"
+  | "crossover"
   | "random";
 
 export const CATEGORY_LABELS: Record<WordCategory, string> = {
@@ -29,6 +30,7 @@ export const CATEGORY_LABELS: Record<WordCategory, string> = {
   arc: "Arcs",
   group: "Groupes",
   object: "Objets",
+  crossover: "Décalé & pop culture",
   random: "Aléatoire (tout mélangé)",
 };
 
@@ -100,6 +102,18 @@ const ANIME_PAIRS: WordPair[] = samePairs("Anime", [
   ["Berserk", "Vinland Saga"],
   ["Frieren", "Violet Evergarden"],
   ["Delicious in Dungeon", "Frieren"],
+  ["Kaiju No. 8", "Attack on Titan"],
+  ["Solo Leveling", "Sword Art Online"],
+  ["Dandadan", "Mob Psycho 100"],
+  ["Sakamoto Days", "Spy x Family"],
+  ["Wind Breaker", "Tokyo Revengers"],
+  ["The Apothecary Diaries", "Raven of the Inner Palace"],
+  ["Bocchi the Rock!", "K-On!"],
+  ["Cyberpunk: Edgerunners", "Akudama Drive"],
+  ["Blue Box", "Horimiya"],
+  ["Mashle", "One Punch Man"],
+  ["Hell's Paradise", "Chainsaw Man"],
+  ["Frieren", "To Your Eternity"],
 ]);
 
 const CHARACTER_PAIRS: WordPair[] = [
@@ -155,6 +169,7 @@ const CHARACTER_PAIRS: WordPair[] = [
     ["Mitsuri", "Shinobu"],
     ["Akaza", "Doma"],
     ["Muzan", "Kokushibo"],
+    ["Inosuke", "Shinobu"],
   ]),
   ...samePairs("My Hero Academia", [
     ["Deku", "Bakugo"],
@@ -206,8 +221,6 @@ const CHARACTER_PAIRS: WordPair[] = [
     ["Josuke", "Giorno"],
   ]),
   ...samePairs("Death Note", [["Light Yagami", "L"]]),
-  // Un clin d'œil plutôt qu'une vraie référence : "Coca Light" joue sur le nom.
-  crossPair("Death Note", "Light Yagami", "Blague", "Coca Light"),
   crossPair("Code Geass", "Lelouch", "Death Note", "Light Yagami"),
   ...samePairs("Sword Art Online", [["Kirito", "Eugeo"]]),
   ...samePairs("Fire Force", [["Shinra", "Arthur"]]),
@@ -229,6 +242,36 @@ const CHARACTER_PAIRS: WordPair[] = [
     ["Takemichi", "Mikey"],
     ["Mikey", "Draken"],
   ]),
+  // Paires inter-anime : elles partagent un rôle, un caractère ou un détail
+  // visuel assez net pour donner des indices, sans être des copies évidentes.
+  crossPair("Jujutsu Kaisen", "Mahito", "My Hero Academia", "Shigaraki"),
+  crossPair("Jujutsu Kaisen", "Gojo", "Naruto", "Kakashi"),
+  crossPair("Jujutsu Kaisen", "Sukuna", "Demon Slayer", "Muzan"),
+  crossPair("Jujutsu Kaisen", "Yuji", "Chainsaw Man", "Denji"),
+  crossPair("Jujutsu Kaisen", "Nobara", "Chainsaw Man", "Power"),
+  crossPair("Jujutsu Kaisen", "Megumi", "Naruto", "Sasuke"),
+  crossPair("Demon Slayer", "Tanjiro", "My Hero Academia", "Deku"),
+  crossPair("Demon Slayer", "Zenitsu", "One Piece", "Sanji"),
+  crossPair("Attack on Titan", "Eren", "Tokyo Ghoul", "Kaneki"),
+  crossPair("One Piece", "Luffy", "Fairy Tail", "Natsu"),
+  crossPair("One Piece", "Zoro", "Berserk", "Guts"),
+  crossPair("Black Clover", "Asta", "Naruto", "Rock Lee"),
+  crossPair("One Punch Man", "Saitama", "Mashle", "Mash"),
+  crossPair("Mob Psycho 100", "Mob", "Saiki K.", "Saiki"),
+  crossPair("Chainsaw Man", "Makima", "Akame ga Kill!", "Esdeath"),
+  crossPair("Bleach", "Urahara", "Naruto", "Kakashi"),
+  crossPair("My Hero Academia", "Bakugo", "Demon Slayer", "Inosuke"),
+  crossPair("Attack on Titan", "Levi", "Hunter x Hunter", "Killua"),
+  crossPair("Spy x Family", "Anya", "One Piece", "Chopper"),
+  crossPair("Frieren", "Frieren", "The Apothecary Diaries", "Maomao"),
+  crossPair("Spy x Family", "Loid", "Naruto", "Kakashi"),
+  crossPair("Demon Slayer", "Tanjiro", "Bleach", "Ichigo"),
+  crossPair("Demon Slayer", "Obanai", "Naruto", "Orochimaru"),
+  crossPair("Chainsaw Man", "Kishibe", "Jujutsu Kaisen", "Nanami"),
+  crossPair("Seven Deadly Sins", "Meliodas", "Black Clover", "Asta"),
+  crossPair("One Punch Man", "Saitama", "Mob Psycho 100", "Mob"),
+  // Quelques pièges hors anime fondés sur un nom ou une sonorité : drôles,
+  // mais encore devinables avec des indices prudents.
 ];
 
 const TECHNIQUE_PAIRS: WordPair[] = [
@@ -277,7 +320,7 @@ const TECHNIQUE_PAIRS: WordPair[] = [
     ["Detroit Smash", "United States of Smash"],
     ["Hellflame", "Half-Cold Half-Hot"],
   ]),
-  crossPair("My Hero Academia", "Blackwhip", "Culture", "Fa Jin"),
+  crossPair("My Hero Academia", "Blackwhip", "My Hero Academia", "Fa Jin"),
   ...samePairs("Hunter x Hunter", [
     ["Jajanken", "Bungee Gum"],
     ["Godspeed", "Jajanken"],
@@ -296,6 +339,11 @@ const TECHNIQUE_PAIRS: WordPair[] = [
   ...samePairs("Bleach", [["Getsuga Tenshou", "Getsuga Jūjishō"]]),
   crossPair("Fullmetal Alchemist", "Alchemy", "Hunter x Hunter", "Nen"),
   crossPair("Hunter x Hunter", "Nen", "Naruto", "Chakra"),
+  crossPair("Jujutsu Kaisen", "Extension du Territoire", "Bleach", "Bankai"),
+  crossPair("Naruto", "Sharingan", "Jujutsu Kaisen", "Six Eyes"),
+  crossPair("Jujutsu Kaisen", "Énergie occulte", "Hunter x Hunter", "Nen"),
+  crossPair("One Piece", "Fruit du Démon", "My Hero Academia", "Alter"),
+  crossPair("Demon Slayer", "Souffle", "Naruto", "Chakra"),
 ];
 
 const PLACE_PAIRS: WordPair[] = [
@@ -506,6 +554,10 @@ const GROUP_PAIRS: WordPair[] = [
   ...samePairs("Fullmetal Alchemist", [["Homunculus", "Alchimistes d'État"]]),
   ...samePairs("One Piece", [["Équipage de Roger", "Équipage de Barbe Blanche"]]),
   crossPair("Naruto", "Akatsuki", "Hunter x Hunter", "Phantom Troupe"),
+  crossPair("Naruto", "Akatsuki", "My Hero Academia", "Ligue des Vilains"),
+  crossPair("Demon Slayer", "Piliers", "My Hero Academia", "Héros Pro"),
+  crossPair("Attack on Titan", "Bataillon d'Exploration", "Demon Slayer", "Pourfendeurs de Démons"),
+  crossPair("Bleach", "Gotei 13", "Demon Slayer", "Piliers"),
 ];
 
 const OBJECT_PAIRS: WordPair[] = [
@@ -564,6 +616,36 @@ const OBJECT_PAIRS: WordPair[] = [
     ["Death Note", "Death Eraser"],
     ["Death Note", "Grimoire"],
   ]),
+  crossPair("Death Note", "Death Note", "Jujutsu Kaisen", "Doigt de Sukuna"),
+  crossPair("Pokémon", "Poké Ball", "Dragon Ball", "Dragon Ball"),
+  crossPair("Demon Slayer", "Lame Nichirin", "Bleach", "Zanpakutō"),
+  crossPair("One Piece", "Chapeau de paille", "Naruto", "Bandeau frontal"),
+];
+
+// Les références non-anime restent volontairement isolées : une partie
+// classique ne doit pas tomber par surprise sur Coca Light ou Poudlard.
+const CROSSOVER_PAIRS: WordPair[] = [
+  crossPair("Death Note", "Light Yagami", "Blague", "Coca Light"),
+  crossPair("Dragon Ball", "Freezer", "Histoire", "Hitler"),
+  crossPair("My Hero Academia", "Tenya Iida", "DC Comics", "Flash"),
+  crossPair("Naruto", "Pain", "Boulangerie", "Pain au chocolat"),
+  crossPair("Chainsaw Man", "Power", "Bureautique", "PowerPoint"),
+  crossPair("Naruto", "Rasengan", "Street Fighter", "Hadouken"),
+  crossPair("Dragon Ball", "Kamehameha", "Street Fighter", "Hadouken"),
+  crossPair("Naruto", "Sharingan", "Marvel", "Spider-Sense"),
+  crossPair("My Hero Academia", "U.A.", "Marvel", "Institut Xavier"),
+  crossPair("Naruto", "Konoha", "Harry Potter", "Poudlard"),
+  crossPair("Jujutsu Kaisen", "Shibuya", "DC Comics", "Gotham"),
+  crossPair("Naruto", "Examen Chunin", "Harry Potter", "Tournoi des Trois Sorciers"),
+  crossPair("One Piece", "Bataille de Marineford", "Harry Potter", "Bataille de Poudlard"),
+  crossPair("Jujutsu Kaisen", "Culling Game", "Hunger Games", "Hunger Games"),
+  crossPair("Naruto", "Akatsuki", "Kingdom Hearts", "Organisation XIII"),
+  crossPair("Attack on Titan", "Bataillon d'Exploration", "Game of Thrones", "Garde de Nuit"),
+  crossPair("My Hero Academia", "Ligue des Vilains", "DC Comics", "Suicide Squad"),
+  crossPair("Death Note", "Death Note", "Le Seigneur des Anneaux", "Anneau Unique"),
+  crossPair("Demon Slayer", "Lame Nichirin", "Star Wars", "Sabre laser"),
+  crossPair("Dragon Ball", "Dragon Balls", "Marvel", "Pierres d'Infinité"),
+  crossPair("Attack on Titan", "Équipement tridimensionnel", "Marvel", "Lance-toiles de Spider-Man"),
 ];
 
 const CATEGORY_MAP: Record<Exclude<WordCategory, "random">, WordPair[]> = {
@@ -574,21 +656,62 @@ const CATEGORY_MAP: Record<Exclude<WordCategory, "random">, WordPair[]> = {
   arc: ARC_PAIRS,
   group: GROUP_PAIRS,
   object: OBJECT_PAIRS,
+  crossover: CROSSOVER_PAIRS,
 };
 
 export type PairCategory = Exclude<WordCategory, "random">;
 export interface PickedPair extends WordPair {
   category: PairCategory;
+  id: string;
 }
 
 // La catégorie voyage avec la paire : en "random" personne ne sait de quelle
 // liste le mot sort, et le client en a besoin pour décider s'il peut chercher
 // une image (un groupe ou un lieu n'existe pas sur AniList — voir app.js).
+function normalizeId(value: string): string {
+  return value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 const ALL_PAIRS: PickedPair[] = (Object.entries(CATEGORY_MAP) as [PairCategory, WordPair[]][]).flatMap(
-  ([category, pairs]) => pairs.map((pair) => ({ ...pair, category }))
+  ([category, pairs]) => pairs.map((pair) => ({
+    ...pair,
+    category,
+    id: `${category}:${normalizeId(pair.a)}:${normalizeId(pair.b)}`,
+  }))
 );
 
-export function pickRandomPair(category: WordCategory): PickedPair {
-  const pool = category === "random" ? ALL_PAIRS : ALL_PAIRS.filter((p) => p.category === category);
+const NON_ANIME_HINTS = new Set([
+  "Anime", "Blague", "Histoire", "Boulangerie", "Bureautique", "DC Comics", "Marvel",
+  "Street Fighter", "Harry Potter", "Hunger Games", "Kingdom Hearts", "Game of Thrones",
+  "Le Seigneur des Anneaux", "Star Wars",
+]);
+
+export const UNDERCOVER_SOURCES = [...new Set(ALL_PAIRS.flatMap((pair) =>
+  pair.category === "anime"
+    ? [pair.a, pair.b]
+    : [pair.hintA, pair.hintB].filter((hint) => !NON_ANIME_HINTS.has(hint))
+))].sort((a, b) => a.localeCompare(b));
+
+function sourcesOf(pair: PickedPair): string[] {
+  return pair.category === "anime"
+    ? [pair.a, pair.b]
+    : [pair.hintA, pair.hintB].filter((hint) => UNDERCOVER_SOURCES.includes(hint));
+}
+
+export function availablePairCount(category: WordCategory, excludedSources: string[] = []): number {
+  const excluded = new Set(excludedSources.map((source) => source.toLowerCase()));
+  return ALL_PAIRS.filter((pair) =>
+    (category === "random" || pair.category === category) &&
+    !sourcesOf(pair).some((source) => excluded.has(source.toLowerCase()))
+  ).length;
+}
+
+export function pickRandomPair(category: WordCategory, excludedSources: string[] = []): PickedPair {
+  const excluded = new Set(excludedSources.map((source) => source.toLowerCase()));
+  const pool = ALL_PAIRS.filter((pair) =>
+    (category === "random" || pair.category === category) &&
+    !sourcesOf(pair).some((source) => excluded.has(source.toLowerCase()))
+  );
+  if (pool.length === 0) throw new Error("Aucune paire disponible avec ces exclusions.");
   return pool[Math.floor(Math.random() * pool.length)];
 }

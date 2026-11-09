@@ -13,10 +13,42 @@ const Anilist = (() => {
   const ENDPOINT = "https://graphql.anilist.co";
   const TIMEOUT_MS = 5000;
 
-  // Names repeat a lot inside one game (same word rendered on several
-  // screens, same prefix retyped), so one cache per tab is enough to keep
-  // the request count low.
+  // Le cache mémoire évite les doublons dans l'onglet. Les URLs d'images
+  // réussies sont aussi conservées dans le navigateur : une actualisation ne
+  // doit pas redemander les vingt portraits et épuiser le quota AniList.
   const cache = new Map();
+  const IMAGE_STORAGE_KEY = "rasengames:anilist-images:v1";
+  const storedImages = (() => {
+    try {
+      if (typeof localStorage === "undefined") return {};
+      const value = JSON.parse(localStorage.getItem(IMAGE_STORAGE_KEY) || "{}");
+      return value && typeof value === "object" ? value : {};
+    } catch {
+      return {};
+    }
+  })();
+
+  function storedImage(key) {
+    const value = storedImages[key];
+    return typeof value === "string" && value.startsWith("https://") ? value : null;
+  }
+
+  function rememberImage(key, url) {
+    if (!url || storedImages[key] === url) return url;
+    storedImages[key] = url;
+    const keys = Object.keys(storedImages);
+    for (const oldKey of keys.slice(0, Math.max(0, keys.length - 300))) {
+      delete storedImages[oldKey];
+    }
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(IMAGE_STORAGE_KEY, JSON.stringify(storedImages));
+      }
+    } catch {
+      // Le jeu continue normalement si le stockage privé est indisponible.
+    }
+    return url;
+  }
 
   async function query(graphql, variables) {
     const controller = new AbortController();
@@ -59,9 +91,13 @@ const Anilist = (() => {
     const [type, rawId] = String(ref).split(":");
     const id = Number(rawId);
     if (!id || (type !== "character" && type !== "anime")) return null;
-    return cached(`ref:${type}:${id}`, async () => {
+    const key = `ref:${type}:${id}`;
+    const saved = storedImage(key);
+    if (saved) return saved;
+    return cached(key, async () => {
       const data = await query(type === "anime" ? IMAGE_BY_ANIME_ID : IMAGE_BY_CHARACTER_ID, { id });
-      return (type === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large) ?? null;
+      const url = (type === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large) ?? null;
+      return rememberImage(key, url);
     });
   }
 
@@ -100,16 +136,23 @@ const Anilist = (() => {
     }
     const trimmed = (name || "").trim();
     if (!trimmed) return null;
-    return cached(`image:${kind}:${trimmed.toLowerCase()}`, async () => {
+    const key = `image:${kind}:${trimmed.toLowerCase()}`;
+    const saved = storedImage(key);
+    if (saved) return saved;
+    const url = await cached(key, async () => {
       const order = kind === "anime" ? ["anime", "character"] : ["character", "anime"];
       for (const step of order) {
         const data = await query(step === "anime" ? IMAGE_ANIME : IMAGE_CHARACTER, { search: trimmed });
         const url =
           step === "anime" ? data?.Media?.coverImage?.large : data?.Character?.image?.large;
-        if (url) return url;
+        if (url) return rememberImage(key, url);
       }
       return null;
     });
+    // Une panne réseau ou un 429 ne doit pas condamner l'image jusqu'au
+    // rechargement de la page : seuls les résultats positifs restent en cache.
+    if (!url) cache.delete(key);
+    return url;
   }
 
   // Sets an <img> once the picture is known, and leaves it hidden otherwise —
@@ -119,9 +162,66 @@ const Anilist = (() => {
     img.classList.add("hidden");
     img.dataset.for = `${ref || ""}|${name || ""}`;
     const url = await image(name, kind, ref);
-    if (!url || img.dataset.for !== `${ref || ""}|${name || ""}`) return;
+    if (!url || img.dataset.for !== `${ref || ""}|${name || ""}`) return false;
     img.src = url;
     img.classList.remove("hidden");
+    return true;
+  }
+
+  // La grille de Qui est-ce affiche vingt personnages d'un coup. Une requête
+  // par carte finit vite en 429, surtout quand deux joueurs partagent la même
+  // connexion : GraphQL permet de résoudre tous les noms avec des alias dans
+  // un seul appel. Chaque image garde le même garde-fou anti-rendu périmé que
+  // setImage().
+  async function setCharacterImages(entries) {
+    const clean = entries
+      .map(({ img, name }) => ({ img, name: String(name || "").trim() }))
+      .filter(({ img, name }) => img && name);
+    if (clean.length === 0) return 0;
+
+    const names = [...new Set(clean.map(({ name }) => name))];
+    const urls = new Map(
+      names.map((name) => [name, storedImage(`image:character:${name.toLowerCase()}`)])
+    );
+    const missingNames = names.filter((name) => !urls.get(name));
+    const variables = {};
+    const declarations = [];
+    const fields = [];
+    missingNames.forEach((name, index) => {
+      variables[`q${index}`] = name;
+      declarations.push(`$q${index}: String`);
+      fields.push(`c${index}: Character(search: $q${index}) { image { large } }`);
+    });
+
+    for (const { img, name } of clean) {
+      img.classList.add("hidden");
+      img.dataset.for = `batch|${name}`;
+    }
+
+    if (missingNames.length > 0) {
+      const key = `images:characters:${missingNames.join("|").toLowerCase()}`;
+      const data = await cached(key, () =>
+        query(`query (${declarations.join(", ")}) { ${fields.join(" ")} }`, variables)
+      );
+      if (!data) {
+        cache.delete(key);
+      } else {
+        missingNames.forEach((name, index) => {
+          const imageKey = `image:character:${name.toLowerCase()}`;
+          const url = data[`c${index}`]?.image?.large ?? null;
+          urls.set(name, rememberImage(imageKey, url));
+        });
+      }
+    }
+    let loaded = 0;
+    for (const { img, name } of clean) {
+      const url = urls.get(name);
+      if (!url || img.dataset.for !== `batch|${name}`) continue;
+      img.src = url;
+      img.classList.remove("hidden");
+      loaded += 1;
+    }
+    return loaded;
   }
 
   // Left on AniList's default relevance sort on purpose — FAVOURITES_DESC
@@ -291,5 +391,5 @@ const Anilist = (() => {
     });
   }
 
-  return { image, setImage, suggest, charactersOf, exists, animeOf };
+  return { image, setImage, setCharacterImages, suggest, charactersOf, exists, animeOf };
 })();

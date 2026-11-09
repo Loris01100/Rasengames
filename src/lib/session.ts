@@ -1,6 +1,8 @@
 import { GAME_SLUGS } from "./gameSlugs";
+import type { Env } from "../env";
+import { createRoomCode } from "./rooms";
 
-// La plomberie de session strictement identique dans les neuf `room.ts` :
+// La plomberie de session strictement identique dans les `room.ts` :
 // vérifiée au diff, ces fonctions y étaient copiées à l'octet près. Même
 // critère que `host.ts` — on ne factorise que ce qui ne diverge pas d'un jeu
 // à l'autre (les tours, les votes et les phases, eux, restent chez chaque
@@ -115,6 +117,18 @@ export function nameTaken(
   return Object.values(room.players).some(taken) || room.waiting.some(taken);
 }
 
+// Lors d'un changement de jeu, tous les navigateurs ouvrent un nouveau
+// Durable Object. L'ancien hôte peut arriver après un autre
+// joueur : ce marqueur lui rend alors la main au lieu de dépendre de la course
+// entre connexions WebSocket.
+export function assignHostAfterSwitch(
+  room: { hostId: string | null },
+  playerId: string,
+  msg: Record<string, unknown>,
+): void {
+  if (!room.hostId || msg.preserveHost === true) room.hostId = playerId;
+}
+
 // Les joueurs arrivés en cours de partie rejoignent la table au retour au
 // lobby, avec l'id et le token qu'ils ont déjà en localStorage.
 export function promoteWaiting<P extends { id: string }>(room: {
@@ -179,15 +193,16 @@ export function kickPlayer<P>(
   return true;
 }
 
-// Purely a redirect signal to every connected client — the group keeps its
-// room code and just points its WebSocket at another game's room instead,
-// so switching games doesn't require leaving and re-sharing a new code.
-export function switchGame(
+// Redirige tout le groupe vers un salon neuf du jeu cible. Réutiliser le même
+// code pouvait ressusciter une ancienne manche si le groupe revenait sur un
+// jeu déjà visité ; le nouveau code reste transparent pour les joueurs.
+export async function switchGame(
   sessions: Session[],
   session: Session,
   room: { code: string; hostId: string | null },
   msg: Record<string, unknown>,
-): void {
+  env: Env,
+): Promise<void> {
   if (session.playerId !== room.hostId) {
     sendError(session.ws, "Seul l'hôte peut changer de jeu.");
     return;
@@ -197,11 +212,27 @@ export function switchGame(
     sendError(session.ws, "Jeu invalide.");
     return;
   }
+  const namespaces: Record<string, DurableObjectNamespace> = {
+    undercover: env.UNDERCOVER_ROOM,
+    hundred: env.HUNDRED_ROOM,
+    bac: env.BAC_ROOM,
+    whoami: env.WHOAMI_ROOM,
+    detective: env.DETECTIVE_ROOM,
+    note: env.NOTE_ROOM,
+    bomb: env.BOMB_ROOM,
+    codenames: env.CODENAMES_ROOM,
+    sync: env.SYNC_ROOM,
+    guesswho: env.GUESSWHO_ROOM,
+  };
+  const code = await createRoomCode(Object.entries(namespaces).map(([slug, namespace]) => ({ slug, namespace })));
   for (const s of sessions) {
     try {
-      // Le nouveau jeu choisit son hôte selon l'ordre d'arrivée, comme un
-      // salon neuf : le rôle de l'ancien jeu n'est pas transféré de force.
-      s.ws.send(JSON.stringify({ type: "switchGame", slug, code: room.code }));
+      s.ws.send(JSON.stringify({
+        type: "switchGame",
+        slug,
+        code,
+        preserveHost: s.playerId === room.hostId,
+      }));
     } catch {
       // socket already gone
     }

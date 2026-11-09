@@ -9,11 +9,11 @@ const vm = require("vm");
 const assert = require("assert");
 
 const ROOT = path.join(__dirname, "..", "public");
-const GAMES = ["bac", "bomb", "codenames", "detective", "hundred", "note", "sync", "undercover", "whoami"];
+const GAMES = ["bac", "bomb", "codenames", "detective", "guesswho", "hundred", "note", "sync", "undercover", "whoami"];
 
 // What each game's "start" message must carry beyond its type.
 const START_KEYS = {
-  bac: ["type", "categories", "letters"],
+  bac: ["type", "categories", "customCategories", "duration", "letters"],
   bomb: ["type", "mode", "letters"],
   detective: ["type"],
   hundred: ["type", "mode", "theme"],
@@ -22,6 +22,7 @@ const START_KEYS = {
   undercover: ["type", "settings"],
   whoami: ["type", "submitMode"],
   codenames: ["type"],
+  guesswho: ["type", "guesserId"],
 };
 
 // Stands in for a checked lobby checkbox/radio (bac categories, note kind…).
@@ -165,6 +166,38 @@ const PHASE_CHECKS = {
     assert.strictEqual(submissions()[0].anilistRef, "character:1", `${slug}: référence AniList perdue`);
   },
 
+  // Détective Anime : une saisie libre inventée ne doit pas atteindre le
+  // salon ; choisir une fiche personnage dans les suggestions suffit.
+  async detective(send, byId, slug, tick, socketSent) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "play", hostId: "p1", turnId: "p1", turnName: "Alice",
+        players: [
+          { id: "p1", name: "Alice", connected: true },
+          { id: "p2", name: "Bobby", connected: true },
+        ],
+        you: { id: "p1", category: "Cheveux roses", incoming: [], solved: false },
+        others: [{ id: "p2", name: "Bobby", connected: true, solved: false }],
+        log: [], solved: [], categoriesTotal: 2,
+      },
+    });
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    const proposals = () => socketSent().filter((message) => message.type === "proposeCharacter");
+
+    byId("propose-input").value = "Perso Qui Existe Pas";
+    byId("propose-submit").dispatch("click");
+    await flush();
+    await flush();
+    assert.strictEqual(proposals().length, 0, `${slug}: personnage inventé envoyé`);
+
+    byId("propose-input").value = "Shouyou Hinata";
+    byId("propose-input").dataset.anilistRef = "character:1";
+    byId("propose-submit").dispatch("click");
+    assert.strictEqual(proposals().length, 1, `${slug}: fiche AniList valide bloquée`);
+    assert.strictEqual(proposals()[0].anilistRef, "character:1", `${slug}: référence AniList perdue`);
+  },
+
   // Petit Bac : stop verrouillé tant que 75 % des cases ne sont pas remplies.
   bac(send, byId, slug, tick) {
     send({
@@ -264,6 +297,53 @@ const PHASE_CHECKS = {
     assert.strictEqual(lastText.children[0]?.textContent, "Haikyuu!!", `${slug}: anime absent de la dernière réponse`);
     const logText = byId("answers-log").children[0].children.find((c) => c.classes.has("bomb-log-text"));
     assert.strictEqual(logText.children[0]?.textContent, "Haikyuu!!", `${slug}: anime absent de l'historique`);
+  },
+
+  // Même longueur d'onde : ceux qui patientent doivent savoir précisément
+  // quel joueur est en train de rédiger les questions.
+  sync(send, byId, slug) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "questions", hostId: "p1", refereeId: "p2",
+        players: [
+          { id: "p1", name: "Alice", connected: true },
+          { id: "p2", name: "Arbitre", connected: true },
+        ],
+      },
+    });
+    assert.strictEqual(
+      byId("question-wait-title").textContent,
+      "Arbitre prépare les questions…",
+      `${slug}: le nom de l'arbitre n'est pas affiché pendant l'attente`,
+    );
+  },
+
+  // Undercover : le résumé final doit être impossible à manquer pour Mr White,
+  // jusque dans sa carte personnelle qui affichait encore « pas de mot ».
+  undercover(send, byId, slug) {
+    send({
+      type: "state",
+      state: {
+        code: "ABCD", phase: "ended", hostId: "p1", round: 1, winner: "civilians",
+        players: [
+          { id: "p1", name: "Alice", connected: true, alive: true, role: "mrwhite" },
+          { id: "p2", name: "Bob", connected: true, alive: true, role: "civilian", word: "Naruto" },
+        ],
+        you: { id: "p1", role: "mrwhite", alive: true },
+        turnOrder: [], currentTurnPlayerId: null, clues: [], clueHistory: [],
+        votesCast: 0, votesNeeded: 0, myVote: null, lastVoteResult: null,
+        eliminatedHistory: [], pendingGuesserId: null,
+        civilianWord: "Naruto", undercoverWord: "Boruto",
+        civilianWordHint: null, undercoverWordHint: null,
+        settings: { category: "anime" }, wordCategory: "anime",
+      },
+    });
+    assert.strictEqual(
+      byId("word-display").textContent,
+      "Civils : Naruto · Undercover : Boruto",
+      `${slug}: Mr White ne voit pas les mots à la fin`,
+    );
   },
 
   // 1 à 100 : l'écran final colore chaque carte selon ses paires voisines.
@@ -407,7 +487,8 @@ function run(slug) {
   vm.createContext(sandbox);
 
   for (const [, src] of html.matchAll(/<script src="\/([^"]+)"><\/script>/g)) {
-    vm.runInContext(fs.readFileSync(path.join(ROOT, src), "utf8"), sandbox, { filename: src });
+    const fileSrc = src.split("?")[0];
+    vm.runInContext(fs.readFileSync(path.join(ROOT, fileSrc), "utf8"), sandbox, { filename: fileSrc });
   }
 
   // Un pseudo trop court ne doit même pas ouvrir de socket (le serveur le
@@ -440,25 +521,26 @@ function run(slug) {
         `${slug}: public room checkbox did not reach the server`
       );
 
-      const players = [
+      let players = [
         { id: "p1", name: "Alice", connected: true, isHost: true },
         { id: "p2", name: "Bob", connected: true },
         { id: "p3", name: "Carl", connected: true },
       ];
+      if (slug === "guesswho") players = players.slice(0, 2);
       send({
         type: "state",
         state: { code: "ABCD", phase: "lobby", hostId: "p1", visibility: "public", players, scores: { p2: 3 }, settings: { undercoverCount: 1, mrWhiteCount: 0, category: "anime" } },
       });
 
       assert.strictEqual(byId("lobby-code").textContent, "ABCD");
-      assert.strictEqual(byId("players-list").children.length, 3);
+      assert.strictEqual(byId("players-list").children.length, players.length);
       assert.strictEqual(byId("public-toggle").checked, true);
       // Codenames ne se joue qu'à 2 ou 4 : à 3, « Lancer » doit rester grisé.
       const startableAt3 = slug !== "codenames";
       assert.strictEqual(byId("start-btn").disabled, !startableAt3, `${slug}: start ${startableAt3 ? "should" : "should not"} be enabled with 3 players`);
       assert.ok(!byId("screen-lobby").classList.contains("hidden"), `${slug}: lobby screen hidden`);
 
-      // Score cumulé du salon, rendu par le client partagé pour les neuf jeux.
+      // Score cumulé du salon, rendu par le client partagé pour tous les jeux.
       const tags = byId("players-list").children[1].children.map((c) => c.textContent);
       assert.ok(tags.includes("3 pts"), `${slug}: score cumulé absent de la ligne joueur (${tags})`);
 
@@ -467,9 +549,9 @@ function run(slug) {
       const rowButton = (row, label) =>
         row.children.flatMap((c) => c.children || []).find((c) => c.textContent === label);
       assert.ok(!rowButton(byId("players-list").children[0], "Passer hôte"), `${slug}: « Passer hôte » sur sa propre ligne`);
-      rowButton(byId("players-list").children[2], "Passer hôte").dispatch("click");
+      rowButton(byId("players-list").children[players.length - 1], "Passer hôte").dispatch("click");
       const handover = socket.sent.find((m) => m.type === "transferHost");
-      assert.strictEqual(handover?.playerId, "p3", `${slug}: « Passer hôte » vise le mauvais joueur`);
+      assert.strictEqual(handover?.playerId, players[players.length - 1].id, `${slug}: « Passer hôte » vise le mauvais joueur`);
 
       // Lien d'invitation : ?room=CODE est déjà géré au chargement.
       byId("lobby-code").parentNode.children.find((c) => c.id === "invite-btn").dispatch("click");
@@ -487,12 +569,14 @@ function run(slug) {
       // The "changer de jeu" select must offer the five other games, in order,
       // and switch to the one actually selected.
       const options = byId("switch-game-select").children.map((o) => o.value);
-      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync"]; // room-client.js
+      const menuOrder = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync", "guesswho"]; // room-client.js
       assert.deepStrictEqual(options, menuOrder.filter((g) => g !== slug), `${slug}: switch-game options`);
       byId("switch-game-select").value = options[2];
       byId("switch-game-btn").dispatch("click");
       const switched = socket.sent.find((m) => m.type === "switchGame");
       assert.strictEqual(switched?.slug, options[2], `${slug}: switched to the wrong game`);
+      send({ type: "switchGame", slug: options[2], code: "ABCD", preserveHost: true });
+      assert.match(sandbox.location.href, /[?&]host=1(?:&|$)/, `${slug}: statut d'hôte perdu pendant la redirection`);
 
       // Start must carry the game's lobby settings, not a bare {type:"start"}.
       if (byId("guesser-select")) byId("guesser-select").value = "p2"; // note: optional field

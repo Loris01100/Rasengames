@@ -72,6 +72,15 @@
         <h3>Réglages</h3>
         <label>Catégories</label>
         <div id="category-checkboxes" class="category-checkboxes"></div>
+        <label for="custom-categories">Thèmes personnalisés <span class="muted small">(facultatif)</span></label>
+        <textarea id="custom-categories" rows="2" maxlength="300" placeholder="Ex : Nourriture, Pays, Jeux vidéo"></textarea>
+        <p class="muted small settings-hint">Sépare les thèmes par une virgule ou un retour à la ligne (8 maximum).</p>
+        <label for="duration-select">Temps de la manche</label>
+        <select id="duration-select">
+          <option value="short">Court — 5 minutes</option>
+          <option value="normal" selected>Normal — 10 minutes</option>
+          <option value="long">Long — 15 minutes</option>
+        </select>
         <label>Lettres autorisées</label>
         <div id="letter-checkboxes" class="letter-checkboxes"></div>
         <button id="start-btn" class="btn">Démarrer la partie</button>

@@ -9,6 +9,10 @@ import { BombRoom } from "./games/bomb/room";
 import { CodenamesRoom } from "./games/codenames/room";
 import { WORDS as CODENAMES_WORDS } from "./games/codenames/words";
 import { SyncRoom } from "./games/sync/room";
+import { GuessWhoRoom } from "./games/guesswho/room";
+import { PartyRoom } from "./party/room";
+import { UndercoverFeedback } from "./feedback/undercover";
+import { UNDERCOVER_SOURCES } from "./games/undercover/words";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
 
@@ -22,6 +26,9 @@ export {
   BombRoom,
   CodenamesRoom,
   SyncRoom,
+  GuessWhoRoom,
+  PartyRoom,
+  UndercoverFeedback,
   LobbyRegistry,
 };
 
@@ -40,7 +47,10 @@ const GAMES: GameRoute[] = [
   { slug: "bomb", namespace: (env) => env.BOMB_ROOM },
   { slug: "codenames", namespace: (env) => env.CODENAMES_ROOM },
   { slug: "sync", namespace: (env) => env.SYNC_ROOM },
+  { slug: "guesswho", namespace: (env) => env.GUESSWHO_ROOM },
 ];
+
+const PARTY: GameRoute = { slug: "party", namespace: (env) => env.PARTY_ROOM };
 
 export default {
   async fetch(request, env, _ctx): Promise<Response> {
@@ -48,6 +58,18 @@ export default {
 
     if (url.pathname === "/api/rooms") {
       return listRooms(env);
+    }
+
+    if (url.pathname === "/api/undercover/sources") {
+      return Response.json({ sources: UNDERCOVER_SOURCES });
+    }
+
+    if (url.pathname === "/api/undercover/feedback" && request.method === "GET") {
+      if (!env.ADMIN_KEY) return Response.json({ error: "ADMIN_KEY non configurée." }, { status: 503 });
+      const authorization = request.headers.get("Authorization") ?? "";
+      if (authorization !== `Bearer ${env.ADMIN_KEY}`) return new Response("Accès refusé", { status: 401 });
+      const namespace = env.UNDERCOVER_FEEDBACK;
+      return namespace.get(namespace.idFromName("global")).fetch("https://feedback/results");
     }
 
     // Catalogue complet (mot + série d'origine) pour le filtre de mots du
@@ -58,7 +80,7 @@ export default {
 
     const createMatch = url.pathname.match(/^\/api\/([a-z]+)\/create$/);
     if (createMatch && request.method === "POST") {
-      const game = GAMES.find((g) => g.slug === createMatch[1]);
+      const game = createMatch[1] === PARTY.slug ? PARTY : GAMES.find((g) => g.slug === createMatch[1]);
       if (!game) return new Response("Unknown game", { status: 404 });
       const code = await createRoomCode(GAMES.map((g) => ({ slug: g.slug, namespace: g.namespace(env) })));
       return Response.json({ code });
@@ -69,7 +91,7 @@ export default {
     // fantôme en croyant attendre ses amis. Le client sonde avant de rejoindre.
     const existsMatch = url.pathname.match(/^\/api\/([a-z]+)\/exists\/([A-Za-z0-9]{4,8})$/);
     if (existsMatch) {
-      const game = GAMES.find((g) => g.slug === existsMatch[1]);
+      const game = existsMatch[1] === PARTY.slug ? PARTY : GAMES.find((g) => g.slug === existsMatch[1]);
       if (!game) return new Response("Unknown game", { status: 404 });
       const code = existsMatch[2].toUpperCase();
       const namespace = game.namespace(env);
@@ -81,7 +103,7 @@ export default {
 
     const wsMatch = url.pathname.match(/^\/ws\/([a-z]+)\/([A-Za-z0-9]{4,8})$/);
     if (wsMatch) {
-      const game = GAMES.find((g) => g.slug === wsMatch[1]);
+      const game = wsMatch[1] === PARTY.slug ? PARTY : GAMES.find((g) => g.slug === wsMatch[1]);
       if (!game) return new Response("Unknown game", { status: 404 });
       const code = wsMatch[2].toUpperCase();
       const namespace = game.namespace(env);

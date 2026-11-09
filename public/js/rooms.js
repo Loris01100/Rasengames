@@ -14,6 +14,7 @@
     bomb: { label: "Alphabombe" },
     codenames: { label: "Codenames Anime" },
     sync: { label: "Même longueur d'onde" },
+    guesswho: { label: "Qui est-ce ?" },
   };
 
   function roomRow(room) {

@@ -1,0 +1,212 @@
+.guesswho-container {
+  max-width: 1700px;
+  padding-bottom: 14px;
+  padding-top: 14px;
+}
+
+#screen-play,
+#screen-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#guesser-select {
+  margin: 6px 0 18px;
+}
+
+.game-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 18px;
+}
+
+.game-status p:last-child {
+  margin-bottom: 0;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.game-status h2,
+.result-card h2 {
+  margin: 0;
+}
+
+.status-actions,
+.turn-controls {
+  align-items: flex-end;
+  display: flex;
+  gap: 10px;
+}
+
+.turn-controls {
+  flex-direction: column;
+}
+
+.secret-card,
+.result-character {
+  align-items: center;
+  background: rgba(139, 92, 246, .1);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 9px;
+  padding: 7px;
+}
+
+.secret-card img,
+.result-character img {
+  border-radius: 8px;
+  height: 58px;
+  object-fit: cover;
+  width: 46px;
+}
+
+.secret-card div,
+.result-character div {
+  display: flex;
+  flex-direction: column;
+}
+
+.character-board {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+#screen-play .character-board {
+  height: calc(100dvh - 234px);
+  min-height: 480px;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.character-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transition: opacity .18s, transform .18s, border-color .18s;
+}
+
+.character-card.target {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px rgba(62, 207, 142, .2);
+}
+
+.character-card.guessed-wrong {
+  border-color: var(--danger);
+}
+
+.character-card.eliminated {
+  filter: grayscale(1);
+  opacity: .28;
+  transform: scale(.96);
+}
+
+.character-card.interactive {
+  cursor: pointer;
+}
+
+.character-card.interactive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.character-image-wrap {
+  background: linear-gradient(135deg, rgba(139, 92, 246, .2), rgba(236, 72, 153, .12));
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.character-image-wrap img {
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+.character-initial {
+  align-items: center;
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  height: 100%;
+  justify-content: center;
+}
+
+.character-info {
+  flex: 0 0 45px;
+  min-height: 45px;
+  padding: 6px 9px;
+}
+
+.character-info strong {
+  font-size: .88rem;
+}
+
+.character-info span {
+  font-size: .72rem;
+}
+
+.character-info strong,
+.character-info span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-card {
+  text-align: center;
+}
+
+.result-character {
+  justify-content: center;
+  margin: 18px auto;
+  max-width: 340px;
+  text-align: left;
+}
+
+@media (max-width: 1050px) {
+  #screen-play .character-board {
+    height: auto;
+    min-height: 0;
+    grid-template-rows: none;
+  }
+  .character-board { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .character-image-wrap { aspect-ratio: 3 / 2; flex: none; }
+}
+
+@media (max-width: 700px) {
+  .game-status { align-items: stretch; flex-direction: column; }
+  .status-actions { align-items: stretch; justify-content: space-between; }
+  .turn-controls { align-items: stretch; }
+  .character-board { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .character-info { min-height: 42px; padding: 5px; }
+  .character-info strong { font-size: .82rem; }
+  .character-info span { font-size: .68rem; }
+}
+
+@media (max-width: 420px) {
+  .character-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

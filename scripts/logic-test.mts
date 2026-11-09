@@ -18,13 +18,18 @@ import { createEmptyRoom as emptyDetective } from "../src/games/detective/types.
 import * as codenames from "../src/games/codenames/logic.ts";
 import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.ts";
 import { lobbyFull } from "../src/lib/session.ts";
+import { WORDS as codenamesWords } from "../src/games/codenames/words.ts";
 import * as sync from "../src/games/sync/logic.ts";
 import { createEmptyRoom as emptySync } from "../src/games/sync/types.ts";
+import * as guesswho from "../src/games/guesswho/logic.ts";
+import { createEmptyRoom as emptyGuessWho } from "../src/games/guesswho/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
 import { switchGame } from "../src/lib/session.ts";
+import { awardPartyPoints } from "../src/party/logic.ts";
+import { UNDERCOVER_SOURCES, availablePairCount, pickRandomPair } from "../src/games/undercover/words.ts";
 
-// Les neuf Player partagent id/token/name/connected ; le reste (alive,
+// Les Player partagent id/token/name/connected ; le reste (alive,
 // eliminated, found, number...) est passé par jeu dans `extra`.
 function addPlayers<R extends { players: Record<string, any>; playerOrder: string[] }>(
   room: R,
@@ -235,6 +240,48 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   assert.deepEqual(detective.othersOf(room, "a"), ["c"]);
   room.players.c.connected = false;
   assert.equal(detective.nextTurn(room, "a"), "a", "seul rescapé : le tour lui revient");
+}
+
+// --- Mode soirée : les perdants à zéro ne deviennent pas deuxièmes ---------
+
+assert.deepEqual(awardPartyPoints([1, 0, 0]), [3, 1, 1]);
+assert.deepEqual(awardPartyPoints([10, 8, 2, 0]), [3, 2, 1, 1]);
+assert.deepEqual(awardPartyPoints([5, 5, 2]), [3, 3, 2], "une vraie égalité garde le même rang");
+assert.deepEqual(awardPartyPoints([0, 0]), [1, 1], "sans résultat, chacun garde la participation");
+
+// --- Undercover : catégorie décalée et exclusions d'anime ------------------
+
+assert.ok(UNDERCOVER_SOURCES.includes("Naruto"));
+assert.ok(!UNDERCOVER_SOURCES.includes("Harry Potter"), "la liste d'exclusion ne doit contenir que les anime");
+assert.equal(pickRandomPair("crossover").category, "crossover");
+assert.ok(
+  availablePairCount("character", ["Naruto"]) < availablePairCount("character"),
+  "exclure Naruto doit réellement retirer ses paires de personnages",
+);
+
+// --- Détective : efficacité avant résistance de sa catégorie ----------------
+
+{
+  const room = emptyDetective("TEST");
+  addPlayers(room, { a: {}, b: {}, c: {} });
+  room.solved = [
+    { target: "a", by: "b" },
+    { target: "b", by: "c" },
+    { target: "c", by: "a" },
+  ];
+  room.log = [
+    { kind: "proposal", from: "a", target: "b", text: "X", fits: false },
+    { kind: "guess", from: "a", target: "c", text: "Y", fits: true },
+    { kind: "proposal", from: "b", target: "a", text: "X", fits: false },
+    { kind: "proposal", from: "b", target: "a", text: "Y", fits: false },
+    { kind: "guess", from: "b", target: "a", text: "Z", fits: true },
+    { kind: "guess", from: "c", target: "b", text: "Z", fits: true },
+  ];
+  assert.deepEqual(
+    detective.rankInvestigators(room).map((entry) => entry.id),
+    ["c", "a", "b"],
+    "à nombre de catégories égal, moins de questions doit mieux classer",
+  );
 }
 
 // --- Petit Bac : 2 points seul, 1 point en doublon ----------------------------
@@ -548,7 +595,34 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   assert.equal(codenames.cellColorFor(room, 1, "b"), "assassin", "une case révélée devient publique");
 }
 
-// --- Changement de jeu : le rôle d'hôte ne voyage plus -----------------------
+{
+  const seen = new Set<string>();
+const duplicates = codenamesWords
+    .map((entry) => entry.word)
+    .filter((word) => seen.has(word) || !seen.add(word));
+  assert.deepEqual(duplicates, [], "le plateau Codenames ne doit pas pouvoir tirer deux cartes identiques");
+}
+
+// --- Qui est-ce ? : grille, secrets et alternance des tours ----------------
+
+{
+  const room = emptyGuessWho("TEST");
+  addPlayers(room, { a: {}, b: {} });
+  assert.equal(guesswho.pickGuesser(room, "b"), "b", "le premier joueur choisi dans le lobby doit être respecté");
+  room.currentTurnId = "b";
+  assert.equal(guesswho.nextGuesser(room), "a", "le tour doit passer à l'autre joueur");
+
+  const board = guesswho.drawBoard(undefined, () => 0.42);
+  assert.equal(board.length, guesswho.BOARD_SIZE, "la grille doit contenir vingt-quatre personnages");
+  assert.equal(new Set(board.map((card) => card.id)).size, board.length, "une grille ne doit pas contenir de doublon");
+  const targets = guesswho.drawTargets(board, ["a", "b"], () => 0.42);
+  assert.equal(Object.keys(targets).length, 2, "chaque joueur doit recevoir un personnage secret");
+  assert.notEqual(targets.a, targets.b, "les deux secrets doivent être différents");
+  assert.ok(board.some((card) => card.id === targets.a), "le premier secret doit appartenir à la grille");
+  assert.ok(board.some((card) => card.id === targets.b), "le second secret doit appartenir à la grille");
+}
+
+// --- Changement de jeu : salon neuf et hôte conservé -------------------------
 
 {
   const messagesA: any[] = [];
@@ -557,9 +631,21 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
     { playerId: "a", recent: [], ws: { send: (raw: string) => messagesA.push(JSON.parse(raw)) } },
     { playerId: "b", recent: [], ws: { send: (raw: string) => messagesB.push(JSON.parse(raw)) } },
   ] as any;
-  switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" });
-  assert.equal(messagesA[0].asHost, undefined, "l'ancien hôte ne doit pas être désigné dans le nouveau jeu");
-  assert.equal(messagesB[0].asHost, undefined, "aucun joueur ne reçoit le rôle d'hôte à transférer");
+  const namespace = {
+    idFromName: (code: string) => code,
+    get: () => ({ fetch: async () => Response.json({ exists: false }) }),
+  };
+  const env = {
+    UNDERCOVER_ROOM: namespace, HUNDRED_ROOM: namespace, BAC_ROOM: namespace,
+    WHOAMI_ROOM: namespace, DETECTIVE_ROOM: namespace, NOTE_ROOM: namespace,
+    BOMB_ROOM: namespace, CODENAMES_ROOM: namespace, SYNC_ROOM: namespace,
+    GUESSWHO_ROOM: namespace,
+  } as any;
+  await switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" }, env);
+  assert.equal(messagesA[0].preserveHost, true, "l'ancien hôte doit être désigné dans le nouveau jeu");
+  assert.equal(messagesB[0].preserveHost, false, "un invité ne doit pas récupérer le rôle d'hôte");
+  assert.notEqual(messagesA[0].code, "TEST", "le jeu cible doit recevoir un salon neuf");
+  assert.equal(messagesA[0].code, messagesB[0].code, "tout le groupe doit recevoir le même nouveau code");
 }
 
 // --- Même longueur d'onde : normalisation et groupes de réponses -----------

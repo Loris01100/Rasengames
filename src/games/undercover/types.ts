@@ -43,6 +43,7 @@ export interface Settings {
   undercoverCount: number;
   mrWhiteCount: number;
   category: WordCategory;
+  excludedSources: string[];
 }
 
 export interface RoomState {
@@ -73,6 +74,8 @@ export interface RoomState {
   pendingGuesserId: string | null;
   winner: Role | "civilians" | null;
   settings: Settings;
+  currentPairId: string | null;
+  feedbackVotes: Record<string, "good" | "easy" | "far">;
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -99,6 +102,8 @@ export function createEmptyRoom(code: string): RoomState {
     undercoverWordHint: null,
     pendingGuesserId: null,
     winner: null,
-    settings: { undercoverCount: 1, mrWhiteCount: 0, category: "random" },
+    settings: { undercoverCount: 1, mrWhiteCount: 0, category: "random", excludedSources: [] },
+    currentPairId: null,
+    feedbackVotes: {},
   };
 }

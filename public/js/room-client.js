@@ -1,6 +1,6 @@
 // Shared room plumbing for every game's app.js (no bundler, so one global object).
 //
-// Owns everything that was copy-pasted identically in the nine app.js files:
+// Owns everything that was copy-pasted identically in the app.js files:
 // the WebSocket + reconnection, the join/create screen, localStorage identity,
 // the room badge, the "changer de jeu" header, the toast, the player rows and
 // the lobby. Each app.js keeps only its own game screens and messages.
@@ -26,6 +26,7 @@ const Room = (() => {
     { slug: "bomb", label: "Alphabombe" },
     { slug: "codenames", label: "Codenames Anime" },
     { slug: "sync", label: "Même longueur d'onde" },
+    { slug: "guesswho", label: "Qui est-ce ?" },
   ];
 
   const el = {};
@@ -40,6 +41,10 @@ const Room = (() => {
   let wantSpectator = false;
   let promoting = false;
   let reconnectDelay = 2000;
+  let partyWs = null;
+  let partyCode = null;
+  let partyReconnectTimer = null;
+  let partyFinishSent = false;
 
   const api = {
     playerId: null,
@@ -132,14 +137,20 @@ const Room = (() => {
     }
   }
 
-  function connect(code, name, token, spectator = false) {
+  function connect(code, name, token, spectator = false, preserveHost = false) {
     api.code = code.toUpperCase();
     wantSpectator = spectator;
     const proto = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${proto}://${location.host}/ws/${cfg.slug}/${api.code}`);
 
     ws.addEventListener("open", () => {
-      send({ type: "join", name, token: token || undefined, spectator: spectator || undefined });
+      send({
+        type: "join",
+        name,
+        token: token || undefined,
+        spectator: spectator || undefined,
+        preserveHost: preserveHost || undefined,
+      });
     });
 
     ws.addEventListener("message", (event) => {
@@ -241,10 +252,12 @@ const Room = (() => {
       }
       cfg.onState(msg.state, previous);
       applySpectatorMode();
+      renderPartyFinish(msg.state);
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
       const spectator = wantSpectator ? "&spectator=1" : "";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}`;
+      const preserveHost = msg.preserveHost ? "&host=1" : "";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}${preserveHost}`;
     } else if (msg.type === "kicked") {
       // Token dropped so the auto-reconnect on the next page load doesn't
       // silently walk back into the salon we were just thrown out of.
@@ -259,7 +272,7 @@ const Room = (() => {
 
   // ---- shared rendering ----
 
-  // Créé à la volée : aucun jeu n'a besoin de connaître cet écran, et les neuf
+  // Créé à la volée : aucun jeu n'a besoin de connaître cet écran, et les
   // index.html n'ont pas à porter une section identique.
   let waitingScreen = null;
   function showWaitingScreen() {
@@ -282,7 +295,7 @@ const Room = (() => {
     waitingScreen.classList.remove("hidden");
   }
 
-  // Sortie de secours de l'hôte, valable pour les neuf jeux (tous acceptent
+  // Sortie de secours de l'hôte, valable pour tous les jeux (tous acceptent
   // "restart" depuis n'importe quelle phase sauf le lobby) : un joueur parti
   // en pleine manche sans revenir peut laisser une phase en attente de lui.
   function renderBackToLobby(state) {
@@ -296,6 +309,79 @@ const Room = (() => {
     const count = (state.waiting ?? []).filter((w) => w.id !== api.playerId).length;
     el.waitingBadge.textContent = count ? `${count} en attente` : "";
     el.waitingBadge.classList.toggle("hidden", count === 0);
+  }
+
+  // Une partie lancée depuis le mode soirée garde une seconde connexion au
+  // lobby organisateur. Le jeu reste totalement autonome ; cette connexion ne
+  // transporte que le résultat final et la redirection collective.
+  function connectParty(name, token) {
+    if (!partyCode || !name || !token) return;
+    clearTimeout(partyReconnectTimer);
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    partyWs = new WebSocket(`${proto}://${location.host}/ws/party/${partyCode}`);
+    partyWs.addEventListener("open", () => {
+      partyWs.send(JSON.stringify({ type: "join", name, token }));
+    });
+    partyWs.addEventListener("message", (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.type === "returnToParty") location.href = `/party/?room=${partyCode}`;
+      if (
+        msg.type === "state" &&
+        (msg.state.phase !== "playing" || (api.code && msg.state.currentGame?.code !== api.code))
+      ) {
+        // Le signal ponctuel a pu partir pendant une coupure réseau. L'état
+        // persistant permet au joueur revenu plus tard de rejoindre quand même
+        // le classement, sans rester bloqué sur l'ancien écran de fin.
+        location.href = `/party/?room=${partyCode}`;
+      }
+      if (msg.type === "error") toast(msg.message);
+    });
+    partyWs.addEventListener("close", () => {
+      partyReconnectTimer = setTimeout(() => connectParty(name, token), 2000);
+    });
+  }
+
+  let partyFinish = null;
+  function renderPartyFinish(state) {
+    if (!partyCode) return;
+    if (!partyFinish) {
+      partyFinish = document.createElement("div");
+      partyFinish.className = "party-finish hidden";
+      document.body.appendChild(partyFinish);
+    }
+    const ended = state.phase === "ended";
+    partyFinish.classList.toggle("hidden", !ended);
+    if (!ended) {
+      partyFinishSent = false;
+      return;
+    }
+    partyFinish.innerHTML = "";
+    const text = document.createElement("strong");
+    text.textContent = state.hostId === api.playerId
+      ? "🎉 La manche est finie : ajoute le résultat au classement de la soirée."
+      : "🎉 Manche terminée — l'hôte va valider le classement de la soirée.";
+    partyFinish.appendChild(text);
+    if (state.hostId !== api.playerId) return;
+    const button = document.createElement("button");
+    button.className = "btn small";
+    button.textContent = partyFinishSent ? "Résultat envoyé…" : "Valider et voir le classement";
+    button.disabled = partyFinishSent;
+    button.addEventListener("click", () => {
+      if (!partyWs || partyWs.readyState !== WebSocket.OPEN) {
+        toast("Le lobby soirée se reconnecte, réessaie dans un instant.");
+        return;
+      }
+      const results = (state.players ?? []).map((player) => ({
+        name: player.name,
+        score: Number(state.scores?.[player.id] ?? 0),
+      }));
+      partyFinishSent = true;
+      button.disabled = true;
+      button.textContent = "Résultat envoyé…";
+      partyWs.send(JSON.stringify({ type: "finishGame", results }));
+    });
+    partyFinish.appendChild(button);
   }
 
   function renderSpectators(state) {
@@ -606,6 +692,12 @@ const Room = (() => {
     window.addEventListener("online", reconnectNow);
 
     const params = new URLSearchParams(location.search);
+    partyCode = params.get("party")?.toUpperCase() || null;
+    if (partyCode) {
+      const partyName = localStorage.getItem(`party:${partyCode}:name`) || params.get("autojoin");
+      const partyToken = localStorage.getItem(`party:${partyCode}:token`);
+      connectParty(partyName, partyToken);
+    }
     const codeFromUrl = params.get("room");
     const lastName = localStorage.getItem(`${cfg.slug}:lastName`);
     if (lastName) el.nameInput.value = lastName;
@@ -630,7 +722,7 @@ const Room = (() => {
     const autojoinName = params.get("autojoin");
     if (autojoinName) {
       el.nameInput.value = autojoinName;
-      connect(code, autojoinName, undefined, spectatorFromUrl);
+      connect(code, autojoinName, undefined, spectatorFromUrl, params.get("host") === "1");
     }
   }
 
