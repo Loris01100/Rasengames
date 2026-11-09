@@ -169,6 +169,17 @@ const Sound = (() => {
 
   // ---- boutons dans l'entête ----
 
+  // sound.js tourne avant room-client.js : pas de Room.icon ici.
+  function setIcon(btn, name) {
+    const img = document.createElement("img");
+    img.src = `/icons/${name}.png`;
+    img.width = img.height = 32;
+    img.alt = "";
+    img.className = "px-icon";
+    btn.textContent = "";
+    btn.appendChild(img);
+  }
+
   function mountToggles() {
     const header = document.querySelector(".site-header");
     if (!header) return;
@@ -181,7 +192,7 @@ const Sound = (() => {
     sfxBtn.className = "audio-btn";
     sfxBtn.type = "button";
     const paintSfx = () => {
-      sfxBtn.textContent = sfxOn ? "🔊" : "🔇";
+      setIcon(sfxBtn, sfxOn ? "son" : "muet");
       sfxBtn.title = sfxOn ? "Couper les sons" : "Activer les sons";
       sfxBtn.setAttribute("aria-label", sfxBtn.title);
     };
@@ -200,7 +211,7 @@ const Sound = (() => {
     const paintMusic = () => {
       // Pause, not stop: the <audio> keeps its position, so resuming picks the
       // track back up where it was.
-      musicBtn.textContent = musicOn ? "⏸" : "🎵";
+      setIcon(musicBtn, musicOn ? "pause" : "musique");
       musicBtn.classList.toggle("off", !musicOn);
       musicBtn.title = musicOn ? "Mettre la musique en pause" : "Lancer la musique";
       musicBtn.setAttribute("aria-label", musicBtn.title);

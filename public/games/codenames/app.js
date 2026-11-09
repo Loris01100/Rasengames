@@ -145,7 +145,7 @@
   function crown() {
     const span = document.createElement("span");
     span.className = "roster-crown";
-    span.textContent = "★";
+    span.appendChild(Room.icon("etoile"));
     return span;
   }
 

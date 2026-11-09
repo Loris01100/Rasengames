@@ -43,6 +43,17 @@ const Room = (() => {
     spectator: false,
   };
 
+  // Icône pixel de public/icons/ (générée par scripts/icons.mjs), toujours en
+  // multiple entier de 16 px pour que les pixels restent nets.
+  function icon(name, scale = 1) {
+    const img = document.createElement("img");
+    img.src = `/icons/${name}.png`;
+    img.width = img.height = 16 * scale;
+    img.alt = "";
+    img.className = "px-icon";
+    return img;
+  }
+
   function toast(message) {
     el.toast.textContent = message;
     el.toast.classList.remove("hidden");
@@ -274,11 +285,17 @@ const Room = (() => {
 
   function renderSpectators(state) {
     const count = state.spectatorCount ?? 0;
-    el.spectatorBadge.textContent = api.spectator
-      ? `👁 Spectateur${count > 1 ? ` · ${count}` : ""}`
+    const text = api.spectator
+      ? `Spectateur${count > 1 ? ` · ${count}` : ""}`
       : count
-        ? `👁 ${count} spectateur${count > 1 ? "s" : ""}`
+        ? `${count} spectateur${count > 1 ? "s" : ""}`
         : "";
+    el.spectatorBadge.textContent = "";
+    if (text) {
+      // Le badge est sur fond encre : variante claire de l'œil.
+      el.spectatorBadge.appendChild(icon("oeil-nuit"));
+      el.spectatorBadge.appendChild(document.createTextNode(` ${text}`));
+    }
     el.spectatorBadge.classList.toggle("hidden", count === 0);
   }
 
@@ -483,7 +500,8 @@ const Room = (() => {
     el.spectateBtn = document.createElement("button");
     el.spectateBtn.className = "btn secondary spectator-join-btn";
     el.spectateBtn.id = "spectate-btn";
-    el.spectateBtn.textContent = "👁 Regarder en spectateur";
+    el.spectateBtn.appendChild(icon("oeil"));
+    el.spectateBtn.appendChild(document.createTextNode("Regarder en spectateur"));
     el.joinBtn.parentNode.parentNode.appendChild(el.spectateBtn);
 
     initRules();
@@ -612,7 +630,7 @@ const Room = (() => {
     return () => Array.from(container.querySelectorAll("input:checked"), (i) => i.value);
   }
 
-  return Object.assign(api, { init, send, toast, showScreen, playerRow, renderLobby, showSwitchGame, letterPicker });
+  return Object.assign(api, { init, send, toast, showScreen, playerRow, renderLobby, showSwitchGame, letterPicker, icon });
 
   function showSwitchGame(visible) {
     el.switchGame.classList.toggle("hidden", !visible);

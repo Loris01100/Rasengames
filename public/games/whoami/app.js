@@ -342,7 +342,9 @@
     if (best) {
       const tries = best.guesses.length;
       const questions = best.questionsAsked ?? 0;
-      el.endBest.textContent = `★ ${best.name}${best.id === Room.playerId ? " (toi)" : ""} a trouvé avec ${questions} question${questions > 1 ? "s" : ""} et ${tries} proposition${tries > 1 ? "s" : ""} (score ${cost(best)}) !`;
+      el.endBest.textContent = "";
+      el.endBest.appendChild(Room.icon("etoile"));
+      el.endBest.appendChild(document.createTextNode(` ${best.name}${best.id === Room.playerId ? " (toi)" : ""} a trouvé avec ${questions} question${questions > 1 ? "s" : ""} et ${tries} proposition${tries > 1 ? "s" : ""} (score ${cost(best)}) !`));
     }
 
     el.revealGrid.innerHTML = "";

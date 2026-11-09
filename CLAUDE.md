@@ -18,6 +18,7 @@ npm run deploy         # déploiement manuel (secours)
 npm run typecheck      # tsc --noEmit
 npm test               # words-test.mts (règle "même mot") + logic-test.mts (les 9 logic.ts) + smoke-test.js (les 9 frontends contre un DOM bouchon)
 npm run loc            # lignes de code par poste
+node scripts/icons.mjs # régénère les PNG de public/icons/ depuis les grilles du script
 node scripts/disconnect-test.mjs   # exige un `npm run dev` en face : hôte réattribué, phase débloquée, sonde /exists
 ```
 

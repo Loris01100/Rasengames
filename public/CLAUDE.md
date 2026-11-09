@@ -15,6 +15,10 @@ Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnex
 - les deux boutons d'hôte sur les lignes des *autres* joueurs au lobby (`.row-actions`) : « Passer hôte » (envoie `transferHost`, seulement si la cible est connectée) et « Exclure » (`kick`).
 - le mode spectateur : une arrivée sans ancien token pendant une partie devient automatiquement spectatrice ; elle voit l'état courant sans entrer dans `players` ni pouvoir envoyer d'action.
 
+## Icônes
+
+Pas d'emoji dans l'interface : les icônes sont des PNG 16 × 16 dans `icons/`, générés par `scripts/icons.mjs` à partir de grilles de texte (encre pour la forme, rouge pour le signal, papier pour l'intérieur). `Room.icon(name, scale)` rend un `<img class="px-icon">` en multiple entier de 16 px, et `.px-icon` force `image-rendering: pixelated`. `sound.js` a sa propre copie de trois lignes, car il est chargé avant `room-client.js`. Une retouche faite dans Aseprite doit être reportée dans la grille, sinon la prochaine génération l'écrase.
+
 ## `js/anilist.js`
 
 `Anilist.suggest(text, kind)` (complétion) et `Anilist.setImage(img, name, kind)` (illustration) interrogent graphql.anilist.co **depuis le navigateur du joueur**, avec un cache par onglet. Ça tournait dans le Worker jusqu'à un `403 "You have been manually blocked"` : les Workers partagent quelques IP de sortie qu'AniList blackliste, aucun throttling de notre côté n'y change rien. Depuis le navigateur, chaque joueur utilise sa propre IP et le CORS d'AniList. Les salons ne stockent donc plus d'URL d'image — le client résout l'illustration à partir du nom qu'il affiche déjà.

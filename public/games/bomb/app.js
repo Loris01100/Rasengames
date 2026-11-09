@@ -64,10 +64,10 @@
 
   // ---- rendering ----
 
-  // Une case pleine par vie restante, une vide par vie perdue : un éliminé
-  // affiche donc « □□ », sa ligne étant déjà barrée par « .dead ».
-  function livesText(p) {
-    return "■".repeat(p.lives) + "□".repeat(Math.max(0, 2 - p.lives));
+  // Un cœur plein par vie restante, un vide par vie perdue : un éliminé
+  // affiche donc deux cœurs vides, sa ligne étant déjà barrée par « .dead ».
+  function appendLives(node, p) {
+    for (let i = 0; i < 2; i++) node.appendChild(Room.icon(i < p.lives ? "coeur" : "coeur-vide"));
   }
 
   // Les vies en tag ;
@@ -75,7 +75,8 @@
   function decorateLives(row, p) {
     const tag = document.createElement("span");
     tag.className = "tag lives-tag";
-    tag.textContent = p.eliminated ? "Éliminé" : livesText(p);
+    if (p.eliminated) tag.textContent = "Éliminé";
+    else appendLives(tag, p);
     row.appendChild(tag);
   }
 
@@ -138,7 +139,8 @@
 
       const order = document.createElement("span");
       order.className = "bomb-player-order";
-      order.textContent = p.id === state.turnId ? "💣" : String(index + 1);
+      if (p.id === state.turnId) order.appendChild(Room.icon("bombe"));
+      else order.textContent = String(index + 1);
       row.appendChild(order);
 
       const name = document.createElement("span");
@@ -148,7 +150,7 @@
 
       const lives = document.createElement("span");
       lives.className = "bomb-player-lives";
-      lives.textContent = livesText(p);
+      appendLives(lives, p);
       row.appendChild(lives);
 
       el.playersStatus.appendChild(row);
@@ -180,7 +182,7 @@
 
       const lives = document.createElement("span");
       lives.className = "bomb-seat-lives";
-      lives.textContent = livesText(p);
+      appendLives(lives, p);
       seat.appendChild(lives);
 
       el.bombSeats.appendChild(seat);
@@ -279,7 +281,8 @@
 
       const medal = document.createElement("span");
       medal.className = "ranking-medal";
-      medal.textContent = i === 0 ? "1er" : `${i + 1}e`;
+      if (i === 0) medal.appendChild(Room.icon("etoile", 2));
+      else medal.textContent = `${i + 1}e`;
       row.appendChild(medal);
 
       const name = document.createElement("span");

@@ -159,7 +159,16 @@ h3 {
   margin-left: 8px;
 }
 
+/* Icônes pixel de public/icons/ (scripts/icons.mjs). */
+.px-icon {
+  image-rendering: pixelated;
+  vertical-align: -3px;
+}
+
 .audio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--surface);
   border: 2px solid var(--ink);
   border-radius: 0;
@@ -169,7 +178,7 @@ h3 {
   line-height: 1;
   min-width: 40px;
   min-height: 40px;
-  padding: 6px 9px;
+  padding: 2px;
 }
 
 .audio-btn:hover {

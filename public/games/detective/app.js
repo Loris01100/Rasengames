@@ -206,7 +206,8 @@
 
       const medal = document.createElement("span");
       medal.className = "ranking-medal";
-      medal.textContent = index === 0 ? "1er" : `${index + 1}e`;
+      if (index === 0) medal.appendChild(Room.icon("etoile", 2));
+      else medal.textContent = `${index + 1}e`;
       row.appendChild(medal);
 
       const name = document.createElement("span");
