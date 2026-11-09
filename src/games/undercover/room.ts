@@ -344,13 +344,6 @@ export class UndercoverRoom {
 
     await this.saveRoom();
     this.broadcast();
-
-    // The room may have moved on (restart, etc.) while these lookups were in
-    // flight; only apply them if we're still in the round they were fetched for.
-    if (room.civilianWord && room.undercoverWord) {
-      await this.saveRoom();
-      this.broadcast();
-    }
   }
 
   private async onClue(session: Session, room: RoomState, msg: Record<string, unknown>) {
