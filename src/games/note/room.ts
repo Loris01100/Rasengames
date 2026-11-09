@@ -427,6 +427,7 @@ export class NoteRoom {
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
     const iAmGuesser = forPlayerId === room.guesserId;
+    const seesNumber = revealAll || (!iAmGuesser && !!room.players[forPlayerId]);
 
     const players = room.playerOrder
       .map((id) => room.players[id])
@@ -450,8 +451,7 @@ export class NoteRoom {
       players,
       guesserId: room.guesserId,
       step: room.step,
-      // Hidden from the guesser until the round ends — that's the whole game.
-      number: revealAll || !iAmGuesser ? room.number : null,
+      number: seesNumber ? room.number : null,
       clues: room.clues,
       guess: room.guess,
     };
