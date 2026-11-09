@@ -165,7 +165,9 @@ const Room = (() => {
   // remis au premier plan (mobile qui coupe le WebSocket en arrière-plan) ou
   // un réseau qui revient relance tout de suite.
   function reconnectNow() {
-    if (!api.playerId || (ws && ws.readyState === WebSocket.OPEN)) return;
+    // CONNECTING compte aussi : sinon une deuxième socket s'ouvre et la
+    // première reste orpheline (elles s'empilent sur un réseau mobile instable).
+    if (!api.playerId || (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING))) return;
     reconnectDelay = 2000;
     clearTimeout(reconnectTimer);
     const token = localStorage.getItem(storageKey(api.code, "token"));
