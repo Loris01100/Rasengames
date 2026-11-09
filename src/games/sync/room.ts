@@ -19,6 +19,7 @@ import {
   broadcastState,
   handleSpectatorMessage,
   kickPlayer,
+  lobbyFull,
   nameTaken,
   promoteWaiting,
   sendError,
@@ -195,7 +196,7 @@ export class SyncRoom {
       return;
     }
 
-    if (room.playerOrder.length >= MAX_PLAYERS) {
+    if (lobbyFull(room, MAX_PLAYERS)) {
       sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
       return;
     }

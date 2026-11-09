@@ -17,6 +17,7 @@ import * as detective from "../src/games/detective/logic.ts";
 import { createEmptyRoom as emptyDetective } from "../src/games/detective/types.ts";
 import * as codenames from "../src/games/codenames/logic.ts";
 import { createEmptyRoom as emptyCodenames } from "../src/games/codenames/types.ts";
+import { lobbyFull } from "../src/lib/session.ts";
 import * as sync from "../src/games/sync/logic.ts";
 import { createEmptyRoom as emptySync } from "../src/games/sync/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
@@ -582,6 +583,16 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   assert.deepEqual(sync.answererIdsForQuestion(room, 1), ["a", "b"], "une réponse partielle ne crée pas de révélation vide");
   room.answers.c = ["Pain", "One Piece", "Bleach"];
   assert.deepEqual(sync.calculateScores(room), { a: 2, b: 3, c: 1 });
+}
+
+// lobbyFull : au lobby, un absent (hors hôte) cède sa place au nouveau venu.
+{
+  const p = (connected: boolean) => ({ connected });
+  const room = { hostId: "h", players: { h: p(false), a: p(true), b: p(false) }, playerOrder: ["h", "a", "b"] };
+  assert.equal(lobbyFull(room, 3), false);
+  assert.deepEqual(room.playerOrder, ["h", "a"]);
+  room.players.b = p(true); room.playerOrder.push("b");
+  assert.equal(lobbyFull(room, 3), true); // seul l'hôte est absent : pas évincé
 }
 
 console.log("logic: ok");

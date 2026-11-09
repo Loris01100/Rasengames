@@ -121,6 +121,22 @@ export function promoteWaiting<P extends { id: string }>(room: {
   room.waiting = [];
 }
 
+// Au lobby seulement : un salon plein dont un joueur est parti libère la place
+// du premier déconnecté (hors hôte) au profit du nouveau venu, sinon un seul
+// départ bloque tout remplaçant tant que l'hôte n'exclut pas l'absent. En
+// partie, le plafond compte toujours les absents (ils peuvent revenir).
+export function lobbyFull<P extends { connected: boolean }>(
+  room: { hostId: string | null; players: Record<string, P>; playerOrder: string[] },
+  max: number,
+): boolean {
+  if (room.playerOrder.length < max) return false;
+  const gone = room.playerOrder.find((id) => id !== room.hostId && !room.players[id]?.connected);
+  if (!gone) return true;
+  delete room.players[gone];
+  room.playerOrder = room.playerOrder.filter((id) => id !== gone);
+  return false;
+}
+
 // Host-only, lobby-only: mid-game removal would need per-game turn/vote
 // fixups, and a disconnect already covers someone who just leaves.
 // Renvoie true quand l'état a changé — au jeu de sauvegarder et diffuser.

@@ -20,6 +20,7 @@ import {
   broadcastState,
   handleSpectatorMessage,
   kickPlayer,
+  lobbyFull,
   nameTaken,
   promoteWaiting,
   sendError,
@@ -282,9 +283,7 @@ export class BombRoom {
       return;
     }
 
-    // Capped at MAX_PLAYERS ever, not just connected, so a late arrival can't
-    // sneak into a slot freed by someone dropping mid-game.
-    if (room.playerOrder.length >= MAX_PLAYERS) {
+    if (lobbyFull(room, MAX_PLAYERS)) {
       sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
       return;
     }
