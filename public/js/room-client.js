@@ -441,11 +441,18 @@ const Room = (() => {
     if (!isHost) return;
 
     el.publicToggle.checked = state.visibility === "public";
-    const canStart = connected >= min && (!max || connected <= max);
+    // playerCounts (optionnel) : liste exacte des effectifs jouables, ex. [2, 4] pour Codenames.
+    const counts = cfg.playerCounts;
+    const canStart = counts
+      ? counts.includes(connected)
+      : connected >= min && (!max || connected <= max);
     el.startBtn.disabled = !canStart;
+    const need = counts
+      ? `exactement ${counts.join(" ou ")}`
+      : max ? `entre ${min} et ${max}` : `au moins ${min}`;
     el.startHint.textContent = canStart
       ? ""
-      : `Il faut ${max ? `entre ${min} et ${max}` : `au moins ${min}`} joueurs connectés (actuellement ${connected}).`;
+      : `Il faut ${need} joueurs connectés (actuellement ${connected}).`;
   }
 
   // ---- boot ----

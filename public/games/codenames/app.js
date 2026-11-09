@@ -595,9 +595,9 @@
     slug: "codenames",
     minPlayers: 2,
     maxPlayers: 4,
+    playerCounts: [2, 4],
     // Le nombre de connectés (2 ou 4) détermine seul le mode : pas de réglage
-    // à envoyer, le serveur refuse (et prévient par toast) si ce n'est ni
-    // l'un ni l'autre — pas besoin de le redire côté client.
+    // à envoyer. Le lobby grise « Lancer » à 3, le serveur refuse quand même.
     // À 2 joueurs il n'y a ni chiffreur ni agent (chacun donne ses indices
     // à son tour) : rien à envoyer, le serveur tire les sièges.
     onStart: () => {

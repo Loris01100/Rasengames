@@ -453,7 +453,9 @@ function run(slug) {
       assert.strictEqual(byId("lobby-code").textContent, "ABCD");
       assert.strictEqual(byId("players-list").children.length, 3);
       assert.strictEqual(byId("public-toggle").checked, true);
-      assert.strictEqual(byId("start-btn").disabled, false, `${slug}: start should be enabled with 3 players`);
+      // Codenames ne se joue qu'à 2 ou 4 : à 3, « Lancer » doit rester grisé.
+      const startableAt3 = slug !== "codenames";
+      assert.strictEqual(byId("start-btn").disabled, !startableAt3, `${slug}: start ${startableAt3 ? "should" : "should not"} be enabled with 3 players`);
       assert.ok(!byId("screen-lobby").classList.contains("hidden"), `${slug}: lobby screen hidden`);
 
       // Score cumulé du salon, rendu par le client partagé pour les neuf jeux.
