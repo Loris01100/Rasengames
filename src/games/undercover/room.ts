@@ -38,6 +38,13 @@ const MAX_NAME_LENGTH = 20;
 const MIN_NAME_LENGTH = 4;
 const MIN_PLAYERS_TO_START = 3;
 
+function voterIds(room: RoomState): string[] {
+  return room.playerOrder.filter((id) => {
+    const p = room.players[id];
+    return !!p && p.alive && p.connected;
+  });
+}
+
 export class UndercoverRoom {
   private state: DurableObjectState;
   private sessions: Session[] = [];
@@ -425,10 +432,7 @@ export class UndercoverRoom {
     }
 
     if (room.phase === "vote") {
-      const voters = room.playerOrder.filter((id) => {
-        const p = room.players[id];
-        return !!p && p.alive && p.connected;
-      });
+      const voters = voterIds(room);
       if (voters.length === 0 || !voters.every((id) => room.votes[id])) return false;
       this.resolveVote(room);
       return true;
@@ -563,6 +567,7 @@ export class UndercoverRoom {
 
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
+    const voters = voterIds(room);
     // An undercover must not know they're the undercover — their own role
     // reads as "civilian" until the reveal, so the app never tells them and
     // they only have their (slightly off) word to go on. Mr White inevitably
@@ -602,8 +607,8 @@ export class UndercoverRoom {
       clues: room.clues,
       // Le client résout les noms via state.players (les éliminés y restent).
       clueHistory: room.clueHistory,
-      votesCast: Object.keys(room.votes).length,
-      votesNeeded: room.playerOrder.filter((id) => room.players[id]?.alive).length,
+      votesCast: voters.filter((id) => room.votes[id]).length,
+      votesNeeded: voters.length,
       myVote: room.votes[forPlayerId] ?? null,
       lastVoteResult: room.lastVoteResult,
       eliminatedHistory: room.eliminatedHistory.map((e) => ({
