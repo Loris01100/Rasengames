@@ -440,7 +440,7 @@ export class DetectiveRoom {
 
     // Ends only once every connected player's category has been found, not
     // after some fixed count — nobody's secret is left hanging.
-    if (room.solved.length >= ids.length) {
+    if (ids.every((id) => this.isSolved(room, id))) {
       // Trouvée en dernier = a tenu le plus longtemps : c'est le gagnant
       // affiché sur l'écran de fin, il prend le point de la manche.
       const winner = room.solved[room.solved.length - 1]?.target;
