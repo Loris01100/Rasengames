@@ -61,8 +61,11 @@ namespace de son jeu (`UNDERCOVER_ROOM`, `BOMB_ROOM`, …). Il détient :
 - **l'état de la partie** (`RoomState`), persisté sous la clé `room` de son
   stockage — le seul état durable du produit, il n'y a pas de base de données ;
 - **les sockets connectées** en mémoire (`sessions: { ws, playerId }[]`) ;
-- éventuellement **une alarme** (Petit Bac, Alphabombe) pour les fins de tour
-  au chrono.
+- éventuellement **une alarme** de jeu (Petit Bac, Alphabombe, Qui est-ce,
+  soirée) pour les fins de tour au chrono ou les délais de grâce ;
+- dans tous les cas **une alarme de purge** : 24 h sans aucune connexion, le
+  stockage est effacé (`deleteAll`) — voir [salon.md](salon.md) et
+  [src/lib/idle.ts](../src/lib/idle.ts).
 
 Le protocole WebSocket est le même partout : le client envoie
 `{ type: "...", ... }`, le serveur répond en diffusant l'état.

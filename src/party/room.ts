@@ -1,5 +1,6 @@
 import type { Env } from "../env";
 import { GAME_NAMESPACES, GAME_SLUGS, type GameSlug } from "../lib/gameSlugs";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../lib/idle";
 import { createRoomCode } from "../lib/rooms";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../lib/throttle";
 import { PARTY_GAMES, gameSupportsPlayers } from "./games";
@@ -38,6 +39,7 @@ export class PartyRoom {
       return new Response("Expected a WebSocket upgrade request", { status: 426 });
     }
     await this.loadRoom(code);
+    await cancelIdlePurge(this.state.storage);
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     server.accept();
@@ -49,7 +51,13 @@ export class PartyRoom {
         error instanceof Error ? error.message : "Erreur inconnue.",
       ));
     });
-    const close = () => this.handleClose(session);
+    // Le drapeau évite un double passage quand error et close arrivent tous les deux.
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      void this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length));
+    };
     server.addEventListener("close", close);
     server.addEventListener("error", close);
     return new Response(null, { status: 101, webSocket: client });
@@ -104,7 +112,17 @@ export class PartyRoom {
     await this.state.storage.setAlarm(Date.now() + HOST_GRACE_MS);
   }
 
+  // Purge de la soirée après 24 h sans connexion (lib/idle.ts), sinon délai de l'hôte.
   async alarm(): Promise<void> {
+    if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
+      this.room = null;
+      return;
+    }
+    await this.onHostGraceAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  private async onHostGraceAlarm(): Promise<void> {
     const stored = this.room ?? (await this.state.storage.get<PartyState>("room"));
     if (!stored) return;
     this.room = stored;

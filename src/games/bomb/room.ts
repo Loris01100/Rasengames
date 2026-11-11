@@ -12,6 +12,7 @@ import {
 import { sameWord } from "../../lib/words";
 import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
 import { reportRoom } from "../../lib/registry";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -69,6 +70,7 @@ export class BombRoom {
     }
 
     await this.loadRoom(code);
+    await cancelIdlePurge(this.state.storage);
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -77,10 +79,21 @@ export class BombRoom {
       this.sessions,
       server,
       (session, raw) => this.handleMessage(session, raw),
-      (session) => this.handleClose(session),
+      (session) => this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length)),
     );
 
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon alarme de jeu.
+  async alarm(): Promise<void> {
+    if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
+      this.room = null;
+      this.lastReport = "";
+      return;
+    }
+    await this.onGameAlarm();
+    await rearmIdlePurge(this.state.storage);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -415,7 +428,7 @@ export class BombRoom {
   // Réveillé par le runtime à l'heure fixée par scheduleBomb(), même si ce
   // Durable Object avait été déchargé entre-temps — c'est ce qui rend la mèche
   // fiable sans qu'aucun client n'ait à la faire tourner lui-même.
-  async alarm(): Promise<void> {
+  private async onGameAlarm(): Promise<void> {
     // Par loadRoom() : recharger la visibilité et les champs rétro-compatibles
     // compte autant ici qu'à l'ouverture d'un WebSocket. Sans ça, un salon
     // réveillé après éviction du DO repassait en privé (donc disparaissait de

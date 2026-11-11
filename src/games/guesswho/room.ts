@@ -2,6 +2,7 @@ import type { Env } from "../../env";
 import { type Player, type RoomState, createEmptyRoom } from "./types";
 import { MAX_PLAYERS, MIN_PLAYERS, absentPlayerId, connectedIds, drawBoard, drawTargets, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
 import { reportRoom } from "../../lib/registry";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -44,6 +45,7 @@ export class GuessWhoRoom {
       return new Response("Expected a WebSocket upgrade request", { status: 426 });
     }
     await this.loadRoom(code);
+    await cancelIdlePurge(this.state.storage);
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     server.accept();
@@ -51,9 +53,20 @@ export class GuessWhoRoom {
       this.sessions,
       server,
       (session, raw) => this.handleMessage(session, raw),
-      (session) => this.handleClose(session),
+      (session) => this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length)),
     );
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon alarme de jeu.
+  async alarm(): Promise<void> {
+    if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
+      this.room = null;
+      this.lastReport = "";
+      return;
+    }
+    await this.onGameAlarm();
+    await rearmIdlePurge(this.state.storage);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -139,7 +152,7 @@ export class GuessWhoRoom {
     await this.state.storage.setAlarm(Date.now() + FORFEIT_DELAY_MS);
   }
 
-  async alarm(): Promise<void> {
+  private async onGameAlarm(): Promise<void> {
     // Par loadRoom(), jamais le stockage en direct (cf. src/CLAUDE.md).
     const room = await this.loadRoom("");
     const absentId = absentPlayerId(room);

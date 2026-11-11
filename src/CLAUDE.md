@@ -32,6 +32,8 @@ Chaque `room.ts` réimplémente sa propre plomberie session/join/reconnexion/bro
 
 Une alarme (`bomb`, `bac`) passe par `loadRoom()` et jamais par `storage.get("room")` en direct — c'est `loadRoom()` qui recharge la visibilité et rétro-remplit les champs récents. Elle doit s'arrêter quand plus personne n'est connecté, sinon elle se reprogramme dans le vide indéfiniment.
 
+**Purge des salons abandonnés (`lib/idle.ts`)** : un DO n'a qu'une alarme, partagée entre le jeu et la purge (24 h sans connexion → `deleteAll`). Chaque salon (soirée comprise) appelle `cancelIdlePurge` à l'ouverture d'un WebSocket, `armIdlePurge(storage, sessions.length)` après `handleClose`, et son `alarm()` commence par `purgeIfIdle` (si vrai : `this.room = null`, rien d'autre). Un jeu qui a sa propre alarme la met dans `onGameAlarm()` et finit `alarm()` par `rearmIdlePurge`. L'échéance vit sous la clé `idlePurgeAt`, jamais dans `RoomState` : `armIdlePurge` n'écrase pas une alarme de jeu en attente (un rafraîchissement ferme la dernière socket en pleine manche). Tout nouveau `setAlarm` de jeu reste compatible tant qu'il n'est programmé qu'avec quelqu'un de connecté.
+
 ## Manches, scores et retardataires
 
 Chaque `RoomState` porte `scores` (cumul sur les manches du salon, attribué en fin de manche — la règle diffère par jeu) et conserve `waiting` pour relire les anciens salons persistés. Toute nouvelle arrivée sans token pendant une manche est désormais une session spectatrice éphémère, hors de `players`/`playerOrder` et en lecture seule ; `promoteWaiting()` ne sert plus qu'aux retardataires déjà persistés avant ce changement.

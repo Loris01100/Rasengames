@@ -4,6 +4,7 @@ import { buildRoundResult, recomputeScores } from "./logic";
 import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
 import { CATEGORY_IDS, CATEGORY_LABELS } from "./categories";
 import { reportRoom } from "../../lib/registry";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -77,6 +78,7 @@ export class BacRoom {
     }
 
     await this.loadRoom(code);
+    await cancelIdlePurge(this.state.storage);
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -85,10 +87,21 @@ export class BacRoom {
       this.sessions,
       server,
       (session, raw) => this.handleMessage(session, raw),
-      (session) => this.handleClose(session),
+      (session) => this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length)),
     );
 
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon alarme de jeu.
+  async alarm(): Promise<void> {
+    if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
+      this.room = null;
+      this.lastReport = "";
+      return;
+    }
+    await this.onGameAlarm();
+    await rearmIdlePurge(this.state.storage);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -437,7 +450,7 @@ export class BacRoom {
   }
 
   // Déclenchée par le storage même si plus personne n'est connecté au moment T.
-  async alarm() {
+  private async onGameAlarm() {
     const room = await this.loadRoom("");
     if (room.phase !== "play") return;
     await this.endRound(room, null);

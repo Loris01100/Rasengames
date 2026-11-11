@@ -30,6 +30,12 @@ fois ici plutôt que répétée dans chaque fiche. Le code correspondant vit dan
   en revenant. Le client se reconnecte automatiquement (backoff jusqu'à 30 s,
   mais immédiatement sur `visibilitychange` et `online` — le cas du téléphone
   qu'on rallume).
+- **Un salon abandonné est effacé** : 24 h après la fermeture de sa dernière
+  socket (spectateurs compris), sans retour entre-temps, une alarme vide tout
+  son stockage. Le code ne répond plus à la sonde `exists` et les tokens gardés
+  par les clients ne rattachent plus rien. Une alarme de jeu en cours (mèche,
+  chrono, forfait, délai de l'hôte soirée) passe d'abord ; la purge est
+  reprogrammée derrière. Vaut aussi pour la soirée.
 
 ## L'hôte
 

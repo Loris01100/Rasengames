@@ -23,6 +23,7 @@ import {
 import { WORDS } from "./words";
 import { normalizeWord } from "../../lib/words";
 import { reportRoom } from "../../lib/registry";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -71,6 +72,7 @@ export class CodenamesRoom {
     }
 
     await this.loadRoom(code);
+    await cancelIdlePurge(this.state.storage);
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -79,10 +81,18 @@ export class CodenamesRoom {
       this.sessions,
       server,
       (session, raw) => this.handleMessage(session, raw),
-      (session) => this.handleClose(session),
+      (session) => this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length)),
     );
 
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  async alarm(): Promise<void> {
+    if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
+      this.room = null;
+      this.lastReport = "";
+    }
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
