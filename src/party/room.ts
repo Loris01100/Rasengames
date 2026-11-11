@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { GAME_SLUGS, type GameSlug } from "../lib/gameSlugs";
+import { GAME_NAMESPACES, GAME_SLUGS, type GameSlug } from "../lib/gameSlugs";
 import { createRoomCode } from "../lib/rooms";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../lib/throttle";
 import { PARTY_GAMES, gameSupportsPlayers } from "./games";
@@ -221,7 +221,7 @@ export class PartyRoom {
       this.sendError(session, `${game?.label ?? slug} n'accepte pas ${count} joueurs.`);
       return;
     }
-    const code = await createRoomCode(slug, game.namespace(this.env));
+    const code = await createRoomCode(slug, GAME_NAMESPACES[slug](this.env));
     room.currentGame = { slug, code };
     room.phase = "playing";
     room.lastResult = [];

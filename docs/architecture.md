@@ -31,7 +31,8 @@ Le site tourne sur Cloudflare Workers à l'adresse `rasengames.reesch.com`.
 ## Le Worker : un seul point d'entrée
 
 Tout le trafic passe par le `fetch` de [src/index.ts](../src/index.ts), piloté
-par le tableau `GAMES` (`{ slug, namespace }`) :
+par le tableau `GAMES` (`{ slug, namespace }`), dérivé de `GAME_NAMESPACES`
+dans [src/lib/gameSlugs.ts](../src/lib/gameSlugs.ts) :
 
 | Route | Rôle |
 | --- | --- |

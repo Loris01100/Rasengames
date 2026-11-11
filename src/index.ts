@@ -15,6 +15,7 @@ import { UndercoverFeedback } from "./feedback/undercover";
 import { UNDERCOVER_SOURCES } from "./games/undercover/words";
 import { createRoomCode } from "./lib/rooms";
 import { LobbyRegistry, listRooms } from "./lib/registry";
+import { GAME_NAMESPACES, GAME_SLUGS } from "./lib/gameSlugs";
 
 export {
   UndercoverRoom,
@@ -37,18 +38,7 @@ interface GameRoute {
   namespace: (env: Env) => DurableObjectNamespace;
 }
 
-const GAMES: GameRoute[] = [
-  { slug: "undercover", namespace: (env) => env.UNDERCOVER_ROOM },
-  { slug: "hundred", namespace: (env) => env.HUNDRED_ROOM },
-  { slug: "bac", namespace: (env) => env.BAC_ROOM },
-  { slug: "whoami", namespace: (env) => env.WHOAMI_ROOM },
-  { slug: "detective", namespace: (env) => env.DETECTIVE_ROOM },
-  { slug: "note", namespace: (env) => env.NOTE_ROOM },
-  { slug: "bomb", namespace: (env) => env.BOMB_ROOM },
-  { slug: "codenames", namespace: (env) => env.CODENAMES_ROOM },
-  { slug: "sync", namespace: (env) => env.SYNC_ROOM },
-  { slug: "guesswho", namespace: (env) => env.GUESSWHO_ROOM },
-];
+const GAMES: GameRoute[] = GAME_SLUGS.map((slug) => ({ slug, namespace: GAME_NAMESPACES[slug] }));
 
 const PARTY: GameRoute = { slug: "party", namespace: (env) => env.PARTY_ROOM };
 

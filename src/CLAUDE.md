@@ -2,7 +2,7 @@
 
 ## Routage des requêtes (`src/index.ts`)
 
-Un seul handler `fetch` pour tout le site, piloté par le tableau `GAMES` (`{ slug, namespace }`) :
+Un seul handler `fetch` pour tout le site, piloté par le tableau `GAMES` (`{ slug, namespace }`), dérivé de `GAME_NAMESPACES` (`lib/gameSlugs.ts`, seule table slug → namespace du dépôt) :
 - `POST /api/<slug>/create` → génère un code de salon unique et le renvoie en JSON.
 - `GET /api/<slug>/exists/<code>` → `{ exists }`, transmis au Durable Object du salon. Le client s'en sert avant de rejoindre : un DO naît à la demande, donc sans cette sonde un code mal tapé ouvre un salon fantôme où le joueur attend seul au lieu de recevoir une erreur.
 - `GET /ws/<slug>/<code>` → retrouve (ou crée) le DO du jeu par `idFromName(code)` et lui transmet l'upgrade WebSocket.

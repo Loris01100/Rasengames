@@ -1,4 +1,4 @@
-import { GAME_SLUGS } from "./gameSlugs";
+import { GAME_NAMESPACES, isGameSlug } from "./gameSlugs";
 import type { Env } from "../env";
 import { createRoomCode } from "./rooms";
 
@@ -16,8 +16,6 @@ export interface Session {
   // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
   recent: number[];
 }
-
-const VALID_GAME_SLUGS: Set<string> = new Set(GAME_SLUGS);
 
 export function sendError(ws: WebSocket, message: string): void {
   try {
@@ -241,23 +239,11 @@ export async function switchGame(
     return;
   }
   const slug = String(msg.slug ?? "");
-  if (!VALID_GAME_SLUGS.has(slug)) {
+  if (!isGameSlug(slug)) {
     sendError(session.ws, "Jeu invalide.");
     return;
   }
-  const namespaces: Record<string, DurableObjectNamespace> = {
-    undercover: env.UNDERCOVER_ROOM,
-    hundred: env.HUNDRED_ROOM,
-    bac: env.BAC_ROOM,
-    whoami: env.WHOAMI_ROOM,
-    detective: env.DETECTIVE_ROOM,
-    note: env.NOTE_ROOM,
-    bomb: env.BOMB_ROOM,
-    codenames: env.CODENAMES_ROOM,
-    sync: env.SYNC_ROOM,
-    guesswho: env.GUESSWHO_ROOM,
-  };
-  const code = await createRoomCode(slug, namespaces[slug]);
+  const code = await createRoomCode(slug, GAME_NAMESPACES[slug](env));
   for (const s of sessions) {
     try {
       s.ws.send(JSON.stringify({
