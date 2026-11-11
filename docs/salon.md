@@ -20,7 +20,11 @@ fois ici plutôt que répétée dans chaque fiche. Le code correspondant vit dan
   indexé par code de salon (dix derniers codes par jeu). Rejoindre avec un
   token connu **rattache le joueur existant** au lieu d'en créer un nouveau —
   c'est ce qui fait qu'un rafraîchissement ou un passage sous tunnel ne coûte
-  pas sa place.
+  pas sa place. La reconnexion n'est jamais refusée, mais elle ne peut pas
+  reprendre le pseudo d'un autre joueur, même déconnecté (`rejoinName`) : le
+  joueur garde alors son ancien pseudo, ou celui-ci suffixé d'un numéro
+  (« Naruto 2 ») si un nouveau venu l'a pris entre-temps. La soirée rattache
+  les scores par pseudo, deux homonymes s'y partageraient un même score.
 - **Une déconnexion ne supprime jamais un joueur** : elle le marque
   `connected: false`. Il garde son rôle, son mot et son score, et les retrouve
   en revenant. Le client se reconnecte automatiquement (backoff jusqu'à 30 s,

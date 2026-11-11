@@ -22,6 +22,7 @@ import {
   kickPlayer,
   lobbyFull,
   nameTaken,
+  rejoinName,
   promoteWaiting,
   sendError,
   switchGame,
@@ -161,7 +162,7 @@ export class SyncRoom {
       if (existing) {
         existing.connected = true;
         claimHost(room, existing.id);
-        existing.name = name;
+        existing.name = rejoinName(room, existing.id, name, existing.name, MAX_NAME_LENGTH);
         session.playerId = existing.id;
         session.ws.send(JSON.stringify({ type: "joined", playerId: existing.id, token: existing.token }));
         await this.saveRoom();
@@ -171,7 +172,7 @@ export class SyncRoom {
       const pending = room.waiting.find((p) => p.token === msg.token);
       if (pending) {
         pending.connected = true;
-        pending.name = name;
+        pending.name = rejoinName(room, pending.id, name, pending.name, MAX_NAME_LENGTH);
         session.playerId = pending.id;
         session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
         await this.saveRoom();

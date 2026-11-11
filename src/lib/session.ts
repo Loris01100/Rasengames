@@ -117,6 +117,31 @@ export function nameTaken(
   return Object.values(room.players).some(taken) || room.waiting.some(taken);
 }
 
+// Pseudo retenu quand un joueur revient avec son token. On ne refuse jamais la
+// reconnexion (le client n'aurait qu'un toast et resterait sans identité en
+// pleine manche) mais deux joueurs ne doivent jamais partager un pseudo, même
+// si l'un est déconnecté : la soirée rattache les scores par pseudo
+// (onFinishGame) et deux « Naruto » s'y partageraient un même score.
+// Ordre : le pseudo demandé s'il est libre, sinon l'ancien, sinon l'ancien
+// suffixé d'un numéro (cas d'un nouveau venu qui a pris le pseudo d'un absent).
+export function rejoinName(
+  room: { players: Record<string, { id: string; name: string }>; waiting: { id: string; name: string }[] },
+  selfId: string,
+  requested: string,
+  current: string,
+  maxLength: number,
+): string {
+  const others = [...Object.values(room.players), ...room.waiting].filter((p) => p.id !== selfId);
+  const free = (name: string) => !others.some((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (free(requested)) return requested;
+  if (free(current)) return current;
+  for (let n = 2; ; n++) {
+    const suffix = ` ${n}`;
+    const candidate = current.slice(0, maxLength - suffix.length).trimEnd() + suffix;
+    if (free(candidate)) return candidate;
+  }
+}
+
 // Lors d'un changement de jeu, tous les navigateurs ouvrent un nouveau
 // Durable Object. L'ancien hôte peut arriver après un autre
 // joueur : ce marqueur lui rend alors la main au lieu de dépendre de la course

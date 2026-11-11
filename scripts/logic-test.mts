@@ -25,7 +25,7 @@ import * as guesswho from "../src/games/guesswho/logic.ts";
 import { createEmptyRoom as emptyGuessWho } from "../src/games/guesswho/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
-import { switchGame } from "../src/lib/session.ts";
+import { rejoinName, switchGame } from "../src/lib/session.ts";
 import { awardPartyPoints } from "../src/party/logic.ts";
 import { UNDERCOVER_SOURCES, availablePairCount, pickRandomPair } from "../src/games/undercover/words.ts";
 
@@ -695,6 +695,21 @@ const duplicates = codenamesWords
   assert.deepEqual(room.playerOrder, ["h", "a"]);
   room.players.b = p(true); room.playerOrder.push("b");
   assert.equal(lobbyFull(room, 3), true); // seul l'hôte est absent : pas évincé
+}
+
+// rejoinName : une reconnexion n'emprunte jamais le pseudo d'un autre joueur,
+// même déconnecté (la soirée rattache les scores par pseudo).
+{
+  const p = (id: string, name: string) => ({ id, name });
+  const room = { players: { a: p("a", "Naruto"), b: p("b", "Sasuke") }, waiting: [p("w", "Sakura")] };
+  assert.equal(rejoinName(room, "a", "Kakashi", "Naruto", 20), "Kakashi"); // libre
+  assert.equal(rejoinName(room, "a", "naruto", "Naruto", 20), "naruto"); // son propre pseudo
+  assert.equal(rejoinName(room, "a", "SASUKE", "Naruto", 20), "Naruto"); // pris : garde l'ancien
+  assert.equal(rejoinName(room, "w", "Naruto", "Sakura", 20), "Sakura"); // file d'attente aussi
+  // Un nouveau venu a pris le pseudo de l'absent : suffixe numéroté.
+  room.players.b = p("b", "Naruto");
+  assert.equal(rejoinName(room, "a", "Naruto", "Naruto", 20), "Naruto 2");
+  assert.equal(rejoinName(room, "a", "Abcdefghijklmnopqrst", "Abcdefghijklmnopqrst", 20).length <= 20, true);
 }
 
 console.log("logic: ok");
