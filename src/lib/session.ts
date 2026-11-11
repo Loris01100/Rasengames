@@ -13,7 +13,12 @@ export interface Session {
   playerId: string;
   spectator: boolean;
   spectatorName: string;
-  // Horodatages des derniers messages reçus, cf. lib/throttle.ts.
+  // Code du salon, retenu pour recharger l'état après une hibernation : un
+  // salon où personne n'a encore rejoint n'a rien en stockage, et
+  // `createEmptyRoom` a besoin du code.
+  code: string;
+  // Horodatages des derniers messages reçus, cf. lib/throttle.ts. Perdu à
+  // l'hibernation, sans conséquence : un salon ne s'endort que s'il est calme.
   recent: number[];
 }
 
@@ -25,32 +30,120 @@ export function sendError(ws: WebSocket, message: string): void {
   }
 }
 
-export function attachSession(
+// --- WebSockets hibernables -------------------------------------------------
+// Les salons acceptent leurs sockets par `state.acceptWebSocket()` et non plus
+// `ws.accept()` : entre deux messages, le runtime peut décharger le DO de la
+// mémoire sans fermer les connexions, et la durée d'exécution cesse d'être
+// facturée pendant qu'un groupe réfléchit. Au réveil (message, fermeture,
+// alarme), le constructeur repart de zéro : `this.room` est relu par
+// `loadRoom()`, et chaque `Session` est reconstruite depuis l'« attachment »
+// de sa socket, seul état par connexion qui survit à l'hibernation.
+//
+// Un `setTimeout` en attente empêche l'hibernation (doc Cloudflare) : l'écriture
+// groupée du Petit Bac aboutit donc toujours, elle retarde juste l'endormissement.
+
+interface Attachment {
+  playerId: string;
+  spectator: boolean;
+  spectatorName: string;
+  code: string;
+}
+
+function fromAttachment(ws: WebSocket): Session {
+  const a = ws.deserializeAttachment() as Attachment | null;
+  return {
+    ws,
+    playerId: a?.playerId ?? "",
+    spectator: a?.spectator ?? false,
+    spectatorName: a?.spectatorName ?? "",
+    code: a?.code ?? "",
+    recent: [],
+  };
+}
+
+// À rappeler après toute modification de playerId/spectator : l'attachment est
+// une copie, pas une référence. `dispatchMessage` le fait après chaque message,
+// seul moment où une session change.
+export function persistSession(session: Session): void {
+  const a: Attachment = {
+    playerId: session.playerId,
+    spectator: session.spectator,
+    spectatorName: session.spectatorName,
+    code: session.code,
+  };
+  try {
+    session.ws.serializeAttachment(a);
+  } catch {
+    // socket fermée pendant le traitement (kick) : plus rien à retenir
+  }
+}
+
+// Dans le constructeur du salon : les sockets toujours ouvertes, telles
+// qu'avant l'hibernation (tableau vide au tout premier démarrage).
+export function restoreSessions(state: DurableObjectState): Session[] {
+  return state.getWebSockets().map(fromAttachment);
+}
+
+// Dans `fetch()`, à la place de `server.accept()`.
+export function acceptSession(state: DurableObjectState, sessions: Session[], ws: WebSocket, code: string): void {
+  state.acceptWebSocket(ws);
+  const session: Session = { ws, playerId: "", spectator: false, spectatorName: "", code, recent: [] };
+  persistSession(session);
+  sessions.push(session);
+}
+
+// La session d'une socket. Le repli ne devrait jamais servir (le constructeur
+// a tout restauré) mais une socket inconnue ne doit pas perdre son message.
+function sessionFor(sessions: Session[], ws: WebSocket): Session {
+  let session = sessions.find((s) => s.ws === ws);
+  if (!session) {
+    session = fromAttachment(ws);
+    sessions.push(session);
+  }
+  return session;
+}
+
+// Corps de `webSocketMessage()`. `load` recharge l'état du salon (no-op s'il est
+// déjà en mémoire) : après une hibernation, `this.room` est null.
+export async function dispatchMessage(
   sessions: Session[],
   ws: WebSocket,
+  raw: string | ArrayBuffer,
+  load: (code: string) => Promise<unknown>,
   onMessage: (session: Session, raw: string | ArrayBuffer) => Promise<void>,
-  onClose: (session: Session) => void,
-): void {
-  const session: Session = { ws, playerId: "", spectator: false, spectatorName: "", recent: [] };
-  sessions.push(session);
+): Promise<void> {
+  const session = sessionFor(sessions, ws);
+  try {
+    await load(session.code);
+    await onMessage(session, raw);
+  } catch (err) {
+    sendError(ws, err instanceof Error ? err.message : "Erreur inconnue.");
+  } finally {
+    persistSession(session);
+  }
+}
 
-  ws.addEventListener("message", (event) => {
-    onMessage(session, event.data).catch((err) => {
-      sendError(ws, err instanceof Error ? err.message : "Erreur inconnue.");
-    });
-  });
-
-  // `error` puis `close` arrivent souvent tous les deux pour la même socket :
-  // le drapeau garantit qu'onClose ne passe qu'une fois, même s'il cesse un
-  // jour d'être idempotent.
-  let closed = false;
-  const close = () => {
-    if (closed) return;
-    closed = true;
-    onClose(session);
-  };
-  ws.addEventListener("close", close);
-  ws.addEventListener("error", close);
+// Corps de `webSocketClose()` et `webSocketError()`. Les deux arrivent souvent
+// pour la même socket : la session est retirée du tableau *avant* tout await,
+// donc le second passage ne la trouve plus et onClose ne s'exécute qu'une fois.
+export async function dispatchClose(
+  sessions: Session[],
+  ws: WebSocket,
+  load: (code: string) => Promise<unknown>,
+  onClose: (session: Session) => Promise<void>,
+): Promise<void> {
+  // compatibility_date antérieure au 2026-04-07 : le runtime ne répond pas
+  // seul à la trame Close, c'est à nous de terminer la poignée de main.
+  try {
+    ws.close(1000, "");
+  } catch {
+    // déjà fermée
+  }
+  const index = sessions.findIndex((s) => s.ws === ws);
+  if (index === -1) return;
+  const [session] = sessions.splice(index, 1);
+  await load(session.code);
+  await onClose(session);
 }
 
 // Chaque socket reçoit une vue *personnalisée* : c'est `buildView` qui filtre

@@ -7,7 +7,10 @@ import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   assignHostAfterSwitch,
-  attachSession,
+  acceptSession,
+  dispatchClose,
+  dispatchMessage,
+  restoreSessions,
   broadcastState,
   handleSpectatorMessage,
   kickPlayer,
@@ -32,7 +35,9 @@ export class GuessWhoRoom {
   private lastReport = "";
   private visibility: "public" | "private" = "private";
 
-  constructor(private state: DurableObjectState, private env: Env) {}
+  constructor(private state: DurableObjectState, private env: Env) {
+    this.sessions = restoreSessions(state);
+  }
 
   async fetch(request: Request): Promise<Response> {
     const parts = new URL(request.url).pathname.split("/").filter(Boolean);
@@ -48,14 +53,26 @@ export class GuessWhoRoom {
     await cancelIdlePurge(this.state.storage);
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
-    server.accept();
-    attachSession(
-      this.sessions,
-      server,
-      (session, raw) => this.handleMessage(session, raw),
-      (session) => this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length)),
-    );
+    acceptSession(this.state, this.sessions, server, code);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+    await dispatchMessage(this.sessions, ws, raw, (code) => this.loadRoom(code), (session, msg) => this.handleMessage(session, msg));
+  }
+
+  async webSocketClose(ws: WebSocket): Promise<void> {
+    await this.onSocketGone(ws);
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    await this.onSocketGone(ws);
+  }
+
+  private async onSocketGone(ws: WebSocket): Promise<void> {
+    await dispatchClose(this.sessions, ws, (code) => this.loadRoom(code), async (session) => {
+      await this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length));
+    });
   }
 
   // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon alarme de jeu.

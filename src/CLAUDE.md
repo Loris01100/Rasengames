@@ -15,11 +15,11 @@ Un seul handler `fetch` pour tout le site, piloté par le tableau `GAMES` (`{ sl
 Chaque jeu est autonome et suit la même forme (`undercover/` et `hundred/` comme références) :
 - `types.ts` — la forme du `RoomState` persisté dans le stockage du DO, plus `createEmptyRoom(code)`.
 - `logic.ts` — fonctions pures (attribution des rôles/nombres, conditions de victoire, score), sans dépendance au DO ni aux WebSockets. C'est le seul endroit testé unitairement (`scripts/logic-test.mts`) : y mettre toute règle de jeu non triviale plutôt que de l'inliner dans `room.ts`.
-- `room.ts` — la classe Durable Object : un tableau `sessions: {ws, playerId}[]` en mémoire et un `RoomState` en cache (`this.room`), lu/écrit via `loadRoom()`/`saveRoom()`. Tout message qui change l'état finit par `saveRoom()` + `broadcast()`. `broadcast()` envoie à chaque socket une vue *personnalisée* via `buildView(room, playerId)` — c'est là que l'information cachée est filtrée par destinataire avant sérialisation.
+- `room.ts` — la classe Durable Object : un tableau `sessions: {ws, playerId}[]` reconstruit dans le constructeur (`restoreSessions`) et un `RoomState` en cache (`this.room`), lu/écrit via `loadRoom()`/`saveRoom()`. Tout message qui change l'état finit par `saveRoom()` + `broadcast()`. `broadcast()` envoie à chaque socket une vue *personnalisée* via `buildView(room, playerId)` — c'est là que l'information cachée est filtrée par destinataire avant sérialisation.
 - Les données statiques du jeu (`words.ts`, `themes.ts`, etc.).
 
 Chaque `room.ts` réimplémente sa propre plomberie session/join/reconnexion/broadcast plutôt que d'hériter d'une classe de base : les sémantiques de tour, de vote et de déconnexion divergent trop. Seul ce qui était *identique à l'octet près* dans les neuf salons a été factorisé (typage générique/structurel, chaque `RoomState` garde sa forme) :
-- `lib/session.ts` — `Session`, `attachSession`, `broadcastState`, `sendError`, `nameTaken`, `promoteWaiting`, `kickPlayer`, `switchGame`.
+- `lib/session.ts` — `Session`, `acceptSession`/`restoreSessions`/`dispatchMessage`/`dispatchClose` (cf. ci-dessous), `broadcastState`, `sendError`, `nameTaken`, `promoteWaiting`, `kickPlayer`, `switchGame`.
 - `lib/host.ts` — `reassignHost` (départ subi) et `transferHost` (l'hôte passe la main à un joueur connecté, message `transferHost`, lobby seulement comme `kickPlayer`), typés sur les trois champs que tout `RoomState` partage.
 - `lib/letters.ts` — alphabet, validation et tirage des lettres autorisées (bombe et petit bac : l'hôte décoche des lettres au lobby, la sélection part avec `start` et est stockée dans `letters`).
 - `lib/throttle.ts` — taille et débit max des messages entrants ; rien n'authentifie un client et chaque message coûte une écriture d'état, au-delà du quota les messages sont ignorés sans fermer la socket.
@@ -44,7 +44,15 @@ Rejoindre attribue un `id` et un `token` aléatoires ; le token revient dans le 
 
 ## Chrono et écritures (Petit Bac)
 
-La vue envoie `endsIn` (durée restante) et non `endsAt` : l'horloge d'un téléphone peut être décalée de plusieurs minutes et affichait un compte à rebours faux ; le client ancre la deadline sur son horloge à la réception. `onAnswer` ne sauvegarde pas à chaque frappe — les réponses sont privées jusqu'à la fin de la manche, l'écriture est groupée (2 s) via `scheduleAnswerSave()`. Ça suppose que le DO reste vivant entre-temps, vrai tant que des WebSockets y sont attachés sans hibernation.
+La vue envoie `endsIn` (durée restante) et non `endsAt` : l'horloge d'un téléphone peut être décalée de plusieurs minutes et affichait un compte à rebours faux ; le client ancre la deadline sur son horloge à la réception. `onAnswer` ne sauvegarde pas à chaque frappe — les réponses sont privées jusqu'à la fin de la manche, l'écriture est groupée (2 s) via `scheduleAnswerSave()`. Compatible avec l'hibernation : un `setTimeout` en attente empêche le DO de s'endormir, le flush aboutit toujours.
+
+## WebSockets hibernables
+
+Les salons (soirée comprise) acceptent leurs sockets par `state.acceptWebSocket()` (`acceptSession`), jamais `ws.accept()` : un salon calme est déchargé de la mémoire sans couper les connexions, et la durée d'exécution n'est plus facturée pendant qu'un groupe réfléchit. Le runtime appelle `webSocketMessage` / `webSocketClose` / `webSocketError` sur la classe, qui délèguent à `dispatchMessage` / `dispatchClose`. Conséquences :
+- **tout champ d'instance peut avoir été perdu** au début de chaque événement. `this.room` est rechargé par `loadRoom(session.code)` dans `dispatch*` ; `lastReport` repart vide (un rapport de plus à la registry, sans gravité) ; le quota `recent` repart à zéro. Un nouvel état en mémoire qui doit survivre à une pause va dans le stockage, pas dans un champ.
+- **l'état par socket vit dans l'attachment** (`playerId`, `spectator`, `spectatorName`, `code`), réécrit par `dispatchMessage` après chaque message. Une session modifiée hors du traitement de *son propre* message devrait appeler `persistSession` elle-même — aucun cas aujourd'hui.
+- `dispatchClose` retire la session du tableau avant tout `await` : c'est ce qui rend `handleClose` idempotent quand `error` et `close` arrivent tous deux. Il appelle aussi `ws.close()` : avant la compatibility_date 2026-04-07, le runtime ne répond pas seul à la trame Close.
+- un `setTimeout` en attente empêche l'hibernation ; une alarme, non (elle réveille le DO à l'échéance).
 
 ## Stockage
 

@@ -2,16 +2,15 @@ import type { Env } from "../env";
 import { GAME_NAMESPACES, GAME_SLUGS, type GameSlug } from "../lib/gameSlugs";
 import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../lib/idle";
 import { createRoomCode } from "../lib/rooms";
+import { type Session, acceptSession, dispatchClose, dispatchMessage, restoreSessions } from "../lib/session";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../lib/throttle";
 import { PARTY_GAMES, gameSupportsPlayers } from "./games";
 import { awardPartyPoints } from "./logic";
 import { createEmptyParty, type PartyPlayer, type PartyResult, type PartyState } from "./types";
 
-interface PartySession {
-  ws: WebSocket;
-  playerId: string;
-  recent: number[];
-}
+// La soirée n'a pas de spectateurs : les champs correspondants de Session
+// restent à leur valeur initiale.
+type PartySession = Session;
 
 const MIN_NAME_LENGTH = 4;
 const MAX_NAME_LENGTH = 20;
@@ -26,7 +25,9 @@ export class PartyRoom {
   private sessions: PartySession[] = [];
   private room: PartyState | null = null;
 
-  constructor(private state: DurableObjectState, private env: Env) {}
+  constructor(private state: DurableObjectState, private env: Env) {
+    this.sessions = restoreSessions(state);
+  }
 
   async fetch(request: Request): Promise<Response> {
     const parts = new URL(request.url).pathname.split("/").filter(Boolean);
@@ -42,25 +43,26 @@ export class PartyRoom {
     await cancelIdlePurge(this.state.storage);
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
-    server.accept();
-    const session: PartySession = { ws: server, playerId: "", recent: [] };
-    this.sessions.push(session);
-    server.addEventListener("message", (event) => {
-      this.handleMessage(session, event.data).catch((error) => this.sendError(
-        session,
-        error instanceof Error ? error.message : "Erreur inconnue.",
-      ));
-    });
-    // Le drapeau évite un double passage quand error et close arrivent tous les deux.
-    let closed = false;
-    const close = () => {
-      if (closed) return;
-      closed = true;
-      void this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length));
-    };
-    server.addEventListener("close", close);
-    server.addEventListener("error", close);
+    acceptSession(this.state, this.sessions, server, code);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+    await dispatchMessage(this.sessions, ws, raw, (code) => this.loadRoom(code), (session, msg) => this.handleMessage(session, msg));
+  }
+
+  async webSocketClose(ws: WebSocket): Promise<void> {
+    await this.onSocketGone(ws);
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    await this.onSocketGone(ws);
+  }
+
+  private async onSocketGone(ws: WebSocket): Promise<void> {
+    await dispatchClose(this.sessions, ws, (code) => this.loadRoom(code), async (session) => {
+      await this.handleClose(session).finally(() => armIdlePurge(this.state.storage, this.sessions.length));
+    });
   }
 
   private async loadRoom(code: string): Promise<PartyState> {

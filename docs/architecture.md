@@ -60,7 +60,10 @@ namespace de son jeu (`UNDERCOVER_ROOM`, `BOMB_ROOM`, …). Il détient :
 
 - **l'état de la partie** (`RoomState`), persisté sous la clé `room` de son
   stockage — le seul état durable du produit, il n'y a pas de base de données ;
-- **les sockets connectées** en mémoire (`sessions: { ws, playerId }[]`) ;
+- **les sockets connectées** (`sessions: { ws, playerId }[]`), acceptées en
+  mode *hibernable* : entre deux messages le runtime peut décharger le salon de
+  la mémoire sans couper les connexions, et chaque socket garde son `playerId`
+  dans son « attachment » pour le réveil ;
 - éventuellement **une alarme** de jeu (Petit Bac, Alphabombe, Qui est-ce,
   soirée) pour les fins de tour au chrono ou les délais de grâce ;
 - dans tous les cas **une alarme de purge** : 24 h sans aucune connexion, le
