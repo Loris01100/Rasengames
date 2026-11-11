@@ -19,7 +19,6 @@ export const CHARACTER_THEMES: string[] = [
   "Talent pour les punchlines",
   "Style vestimentaire",
   "Capacité à mourir bêtement",
-  "Histoire triste",
   "Capacité à retourner sa veste",
   "Bodycount",
   "Beauté (homme)",
