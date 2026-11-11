@@ -15,6 +15,7 @@ Pile volontairement minimale : Workers + Durable Objects pour l'état temps rée
 ## Commandes
 
 ```
+cp .dev.vars.example .dev.vars   # une fois : secrets locaux (ADMIN_KEY, pour /api/undercover/feedback) ; en prod : wrangler secret put ADMIN_KEY
 npm run dev            # wrangler dev — Durable Objects + assets statiques en local
 npm run deploy         # déploiement manuel (secours)
 npm run typecheck      # tsc --noEmit

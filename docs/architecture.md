@@ -37,6 +37,8 @@ par le tableau `GAMES` (`{ slug, namespace }`) :
 | --- | --- |
 | `GET /api/rooms` | Liste des salons publics en cours (registry, voir plus bas). |
 | `GET /api/codenames/words` | Catalogue complet des mots Codenames (statique), pour le filtre du lobby. |
+| `GET /api/undercover/sources` | Liste des séries d'où viennent les paires de mots d'Undercover. |
+| `GET /api/undercover/feedback` | Retours des joueurs sur les mots d'Undercover. Réservée à l'admin : en-tête `Authorization: Bearer <ADMIN_KEY>`, sinon 401 (503 si la clé n'est pas configurée). |
 | `POST /api/<slug>/create` | Tire un code libre et le renvoie en JSON. |
 | `GET /api/<slug>/exists/<code>` | `{ exists }` — sonde avant de rejoindre. |
 | `GET /ws/<slug>/<code>` | Upgrade WebSocket, transmis au Durable Object du salon. |
