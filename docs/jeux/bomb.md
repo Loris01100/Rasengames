@@ -16,7 +16,9 @@ un anime — qui commence par elle. Une réponse déjà donnée dans la manche n
 compte pas. Dès que la sienne passe, la bombe file au suivant avec une nouvelle
 lettre. **La mèche est tirée au sort une seule fois par bombe (entre 20 et 50
 secondes), n'est jamais affichée, et continue de courir d'un tour à l'autre** :
-passer la bombe vite est la seule défense.
+passer la bombe vite est la seule défense. Seule exception : celui qui reçoit
+la bombe a toujours au moins **3 secondes** devant lui — si la mèche devait
+finir plus tôt, sa fin est repoussée à cette limite (pas de « spawn kill »).
 
 Si elle explose entre ses mains, on perd une vie. Chacun en a deux, donc la
 troisième explosion élimine. Le dernier joueur en vie remporte la manche.

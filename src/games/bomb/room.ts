@@ -35,7 +35,7 @@ const MAX_NAME_LENGTH = 20;
 const MIN_NAME_LENGTH = 4;
 const MAX_WORD_LENGTH = 40;
 const MAX_ANIME_LENGTH = 80;
-const MIN_TURN_MS = 2_000;
+const MIN_TURN_MS = 3_000;
 const VALID_MODES: Mode[] = ["perso", "anime"];
 
 export class BombRoom {
@@ -403,7 +403,7 @@ export class BombRoom {
   }
 
   // La mèche globale continue de courir, mais si elle devait finir moins de
-  // deux secondes après un passage, on ne déplace que sa fin à cette limite.
+  // trois secondes après un passage, on ne déplace que sa fin à cette limite.
   private async protectNewTurn(room: RoomState): Promise<void> {
     room.turnSafeUntil = Date.now() + MIN_TURN_MS;
     const alarm = await this.state.storage.getAlarm();
@@ -424,7 +424,7 @@ export class BombRoom {
     if (room.phase !== "play") return;
 
     // Filet de sécurité contre la course entre une réponse et une alarme déjà
-    // en file d'attente : le nouveau porteur garde réellement ses 2 secondes.
+    // en file d'attente : le nouveau porteur garde réellement ses 3 secondes.
     if (Date.now() < room.turnSafeUntil) {
       await this.state.storage.setAlarm(room.turnSafeUntil);
       return;
