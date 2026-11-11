@@ -170,6 +170,11 @@ const CHARACTER_PAIRS: WordPair[] = [
     ["Akaza", "Doma"],
     ["Muzan", "Kokushibo"],
     ["Inosuke", "Shinobu"],
+    ["Akaza", "Muzan"],
+    ["Rengoku", "Akaza"],
+    ["Tanjiro", "Muzan"],
+    ["Zenitsu", "Inosuke"],
+    ["Kanao", "Genya"],
   ]),
   ...samePairs("My Hero Academia", [
     ["Deku", "Bakugo"],
@@ -626,6 +631,7 @@ const OBJECT_PAIRS: WordPair[] = [
 // classique ne doit pas tomber par surprise sur Coca Light ou Poudlard.
 const CROSSOVER_PAIRS: WordPair[] = [
   crossPair("Death Note", "Light Yagami", "Blague", "Coca Light"),
+  crossPair("One Punch Man", "Saitama", "Publicité", "Mr Propre"),
   crossPair("Dragon Ball", "Freezer", "Histoire", "Hitler"),
   crossPair("My Hero Academia", "Tenya Iida", "DC Comics", "Flash"),
   crossPair("Naruto", "Pain", "Boulangerie", "Pain au chocolat"),
