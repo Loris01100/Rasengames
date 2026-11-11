@@ -15,6 +15,10 @@ interface PartySession {
 const MIN_NAME_LENGTH = 4;
 const MAX_NAME_LENGTH = 20;
 const MAX_PLAYERS = 10;
+// Délai avant de céder la place d'un hôte déconnecté. Chaque passage du lobby
+// soirée à une page de jeu (et retour) ferme puis rouvre sa socket : une
+// réattribution immédiate lui volerait la main à chaque jeu lancé.
+const HOST_GRACE_MS = 30_000;
 const VALID_SLUGS = new Set<string>(GAME_SLUGS);
 
 export class PartyRoom {
@@ -84,7 +88,35 @@ export class PartyRoom {
       player.connected = false;
       await this.save();
       this.broadcast();
+      await this.scheduleHostHandover();
     }
+  }
+
+  // L'hôte est le seul à pouvoir lancer, valider et terminer : parti pour de
+  // bon, il figerait la soirée. On lui laisse HOST_GRACE_MS pour revenir.
+  private async scheduleHostHandover(): Promise<void> {
+    const room = this.room;
+    if (!room?.hostId || room.players[room.hostId]?.connected) return;
+    if (!this.connectedPlayers(room).length) return;
+    // Un délai déjà en cours n'est pas repoussé par les allées et venues des
+    // autres joueurs.
+    if (await this.state.storage.getAlarm()) return;
+    await this.state.storage.setAlarm(Date.now() + HOST_GRACE_MS);
+  }
+
+  async alarm(): Promise<void> {
+    const stored = this.room ?? (await this.state.storage.get<PartyState>("room"));
+    if (!stored) return;
+    this.room = stored;
+    const room = stored;
+    if (!room.hostId || room.players[room.hostId]?.connected) return;
+    // Personne en ligne : pas de reprogrammation, le prochain retour relancera
+    // le délai (et l'hôte qui revient le premier garde simplement sa place).
+    const next = this.connectedPlayers(room)[0];
+    if (!next) return;
+    room.hostId = next.id;
+    await this.save();
+    this.broadcast();
   }
 
   private async handleMessage(session: PartySession, raw: string | ArrayBuffer): Promise<void> {
@@ -126,6 +158,7 @@ export class PartyRoom {
         session.ws.send(JSON.stringify({ type: "joined", playerId: existing.id, token: existing.token }));
         await this.save();
         this.broadcast();
+        await this.scheduleHostHandover();
         return;
       }
     }

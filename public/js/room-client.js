@@ -45,6 +45,10 @@ const Room = (() => {
   let partyCode = null;
   let partyReconnectTimer = null;
   let partyFinishSent = false;
+  // Hôte de la soirée, pas du salon de jeu : c'est lui seul que le lobby
+  // soirée laisse valider, et il peut changer en cours de jeu (hôte parti).
+  let partyPlayerId = null;
+  let partyHostId = null;
 
   const api = {
     playerId: null,
@@ -326,6 +330,11 @@ const Room = (() => {
       let msg;
       try { msg = JSON.parse(event.data); } catch { return; }
       if (msg.type === "returnToParty") location.href = `/party/?room=${partyCode}`;
+      if (msg.type === "joined") partyPlayerId = msg.playerId;
+      if (msg.type === "state" && msg.state.hostId !== partyHostId) {
+        partyHostId = msg.state.hostId;
+        if (api.state) renderPartyFinish(api.state);
+      }
       if (
         msg.type === "state" &&
         (msg.state.phase !== "playing" || (api.code && msg.state.currentGame?.code !== api.code))
@@ -358,11 +367,12 @@ const Room = (() => {
     }
     partyFinish.innerHTML = "";
     const text = document.createElement("strong");
-    text.textContent = state.hostId === api.playerId
+    const isPartyHost = partyPlayerId !== null && partyHostId === partyPlayerId;
+    text.textContent = isPartyHost
       ? "La manche est finie : ajoute le résultat au classement de la soirée."
       : "Manche terminée — l'hôte va valider le classement de la soirée.";
     partyFinish.appendChild(text);
-    if (state.hostId !== api.playerId) return;
+    if (!isPartyHost) return;
     const button = document.createElement("button");
     button.className = "btn small";
     button.textContent = partyFinishSent ? "Résultat envoyé…" : "Valider et voir le classement";

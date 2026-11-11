@@ -104,6 +104,14 @@ Un joueur revenu sur `/party/` pendant un jeu voit un bouton « Rejoindre le jeu
 - La liste des jeux et leurs fourchettes de joueurs existent en double :
   `src/party/games.ts` (fait foi côté serveur) et le tableau `GAMES` de
   `public/party/app.js`. Ajouter un jeu, c'est mettre à jour les deux.
-- **Limite connue** : une déconnexion marque seulement le joueur hors ligne.
-  Contrairement aux salons de jeu, l'hôte n'est pas réattribué : si l'hôte de
-  la soirée part pour de bon, plus personne ne peut lancer le jeu suivant.
+- **Hôte parti** : une déconnexion marque le joueur hors ligne. Si c'est
+  l'hôte, il a **30 secondes** pour revenir avant que la main passe au premier
+  joueur connecté (alarme du Durable Object). Le délai existe parce que chaque
+  passage entre `/party/` et une page de jeu ferme puis rouvre sa socket : une
+  réattribution immédiate comme dans les salons de jeu lui volerait la main à
+  chaque lancement. Le délai en cours n'est pas repoussé par les allées et
+  venues des autres ; si personne n'est connecté à la sonnerie, rien ne change
+  et le prochain retour relance le délai.
+- Sur une page de jeu, le bouton « Valider et voir le classement » suit l'hôte
+  **de la soirée** (vu par la passerelle), pas celui du salon de jeu : les deux
+  peuvent diverger après un départ.
