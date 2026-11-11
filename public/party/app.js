@@ -18,6 +18,7 @@
   let state = null;
   let reconnectTimer = null;
   let toastTimer = null;
+  let kicked = false;
 
   const storageKey = (suffix) => `party:${code}:${suffix}`;
   const gameBySlug = (slug) => GAMES.find((game) => game.slug === slug);
@@ -61,9 +62,17 @@
       } else if (msg.type === "launchGame") {
         const host = msg.preserveHost ? "&host=1" : "";
         location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${host}&party=${code}`;
+      } else if (msg.type === "kicked") {
+        // Sans token, le rechargement de la page ne nous ramène pas dans la
+        // soirée dont on vient d'être sorti ; le drapeau coupe la reconnexion.
+        kicked = true;
+        localStorage.removeItem(storageKey("token"));
+        alert("Tu as été exclu de la soirée par l'hôte.");
+        location.href = "/";
       } else if (msg.type === "error") toast(msg.message);
     });
     ws.addEventListener("close", () => {
+      if (kicked) return;
       if (!playerId) return toast("Connexion impossible. Vérifie le code et réessaie.");
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(() => connect(
@@ -72,6 +81,18 @@
         localStorage.getItem(storageKey("token")),
       ), 2000);
     });
+  }
+
+  // Bouton « Exclure » de l'hôte, sur les lignes des autres joueurs.
+  function appendKick(row, player) {
+    if (state.hostId !== playerId || player.id === playerId) return;
+    const kick = document.createElement("button");
+    kick.className = "btn secondary small party-kick";
+    kick.textContent = "Exclure";
+    kick.addEventListener("click", () => {
+      if (confirm(`Exclure ${player.name} de la soirée ?`)) send({ type: "kick", playerId: player.id });
+    });
+    row.appendChild(kick);
   }
 
   function renderPlayers(container, players, scores = false) {
@@ -87,6 +108,7 @@
         score.textContent = `${player.score} pt${player.score > 1 ? "s" : ""}`;
         row.appendChild(score);
       }
+      appendKick(row, player);
       container.appendChild(row);
     }
   }
@@ -111,7 +133,7 @@
     if (game) send({ type: messageType, slug: game.slug });
   }
 
-  function rankingRows(container, players, useRound = false) {
+  function rankingRows(container, players, useRound = false, kickable = false) {
     container.innerHTML = "";
     players.forEach((player, index) => {
       const row = document.createElement("div");
@@ -119,6 +141,7 @@
       const points = useRound ? `+${player.partyPoints} pt${player.partyPoints > 1 ? "s" : ""}` : `${player.score} pt${player.score > 1 ? "s" : ""}`;
       row.innerHTML = `<span class="ranking-rank">#${index + 1}</span><strong></strong><span class="ranking-points">${points}</span>`;
       row.querySelector("strong").textContent = player.name;
+      if (kickable) appendKick(row, player);
       container.appendChild(row);
     });
   }
@@ -149,7 +172,7 @@
       show("summary");
       $("summary-progress").textContent = `${state.currentIndex + 1} jeu${state.currentIndex ? "x" : ""} joué${state.currentIndex ? "s" : ""}`;
       rankingRows($("round-result"), state.lastResult, true);
-      rankingRows($("overall-ranking"), overall);
+      rankingRows($("overall-ranking"), overall, false, true);
       renderPicker($("next-game-picker"), isHost, "nextGame");
       $("next-choice").classList.toggle("hidden", !isHost);
       $("next-wait").classList.toggle("hidden", isHost);

@@ -98,6 +98,7 @@ export class PartyRoom {
       case "nextGame": await this.onNextGame(session, msg); break;
       case "endParty": await this.onEndParty(session); break;
       case "restart": await this.onRestart(session); break;
+      case "kick": await this.onKick(session, msg); break;
       default: this.sendError(session, `Type de message inconnu : ${String(msg.type)}`);
     }
   }
@@ -273,6 +274,35 @@ export class PartyRoom {
     room.currentIndex = -1;
     room.currentGame = null;
     room.lastResult = [];
+    await this.save();
+    this.broadcast();
+  }
+
+  // Exclusion par l'hôte, entre deux jeux seulement (lobby ou récap) : pendant
+  // un jeu, le joueur est dans le salon du jeu, qui a sa propre exclusion au
+  // lobby. Le joueur disparaît aussi du classement de la soirée.
+  private async onKick(session: PartySession, msg: Record<string, unknown>): Promise<void> {
+    const room = this.room!;
+    if (session.playerId !== room.hostId) {
+      this.sendError(session, "Seul l'hôte peut exclure un joueur.");
+      return;
+    }
+    if (room.phase !== "lobby" && room.phase !== "summary") {
+      this.sendError(session, "Impossible d'exclure quelqu'un pendant un jeu.");
+      return;
+    }
+    const targetId = String(msg.playerId ?? "");
+    if (!targetId || targetId === room.hostId || !room.players[targetId]) return;
+    delete room.players[targetId];
+    room.playerOrder = room.playerOrder.filter((id) => id !== targetId);
+    room.lastResult = room.lastResult.filter((result) => result.playerId !== targetId);
+    for (const current of this.sessions.filter((item) => item.playerId === targetId)) {
+      try {
+        current.ws.send(JSON.stringify({ type: "kicked" }));
+        current.ws.close(1000, "kicked");
+      } catch { /* socket déjà fermée */ }
+    }
+    this.sessions = this.sessions.filter((item) => item.playerId !== targetId);
     await this.save();
     this.broadcast();
   }

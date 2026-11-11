@@ -47,3 +47,10 @@
   .party-game-picker { grid-template-columns: 1fr; }
   .party-status { margin-top: 3vh; padding: 30px 18px; }
 }
+
+/* Bouton « Exclure » de l'hôte : collé à droite de la ligne joueur, et une
+   quatrième colonne dans les lignes du classement qui en portent un. */
+.party-kick { margin-left: auto; padding: 4px 10px; min-height: 34px; font-size: .75rem; box-shadow: none; }
+.party-player-score + .party-kick { margin-left: 0; }
+.ranking-row:has(.party-kick) { grid-template-columns: 42px 1fr auto auto; }
+.ranking-row .party-kick { margin-left: 0; }
