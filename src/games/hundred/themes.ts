@@ -37,6 +37,9 @@ export const CHARACTER_THEMES: string[] = [
   "Meilleur prof",
   "Développement de personnage",
   "Transformation",
+  "Aimable",
+  "Personnage qui a le plus souffert",
+  "Peur qu'il procure",
 ];
 
 export const ANIME_THEMES: string[] = [
@@ -55,7 +58,8 @@ export const ANIME_THEMES: string[] = [
   "Qualité du rythme",
   "Sous-coté",
   "Sur-coté",
-  "Worldbuilding",
+  "Qualité du worldbuilding",
+  "Envie de vivre dans ce monde",
   "Chara-design",
   "Présence r34",
 ];
