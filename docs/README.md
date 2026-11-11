@@ -11,10 +11,11 @@ dans le dépôt et quels pièges éviter.
 | Fichier | Contenu |
 | --- | --- |
 | [architecture.md](architecture.md) | Le site de bout en bout : URL, Worker, Durable Objects, WebSocket, front, déploiement. |
-| [salon.md](salon.md) | Le cycle de vie d'un salon, identique aux huit jeux : rejoindre, hôte, manches, scores, déconnexions. |
+| [salon.md](salon.md) | Le cycle de vie d'un salon, identique aux dix jeux : rejoindre, hôte, manches, scores, déconnexions. |
+| [soiree.md](soiree.md) | Le mode soirée : plusieurs jeux d'affilée et un classement commun. |
 | [jeux/](jeux/README.md) | Un document par mini-jeu : règles, phases, réglages, score, messages. |
 
-## Les huit jeux
+## Les dix jeux
 
 | Jeu | Slug | Joueurs | Table | Fiche |
 | --- | --- | --- | --- | --- |
@@ -26,6 +27,8 @@ dans le dépôt et quels pièges éviter.
 | Le jeu de la note | `note` | 3 à 8 | Écrit | [note.md](jeux/note.md) |
 | Alphabombe | `bomb` | 2 à 10 | Écrit | [bomb.md](jeux/bomb.md) |
 | Codenames Anime | `codenames` | 2 ou 4 | Écrit | [codenames.md](jeux/codenames.md) |
+| Même longueur d'onde | `sync` | 3 à 10 | Écrit | [sync.md](jeux/sync.md) |
+| Qui est-ce ? | `guesswho` | 2 | Vocal | [guesswho.md](jeux/guesswho.md) |
 
 « Vocal » = le jeu suppose que la table se parle (en vrai ou en vocal) et que
 le site ne sert qu'à distribuer l'information secrète et à arbitrer. « Écrit »

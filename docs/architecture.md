@@ -10,7 +10,7 @@ Le site tourne sur Cloudflare Workers à l'adresse `rasengames.reesch.com`.
 
 ## Le parcours d'un joueur
 
-1. **L'accueil** (`public/index.html`) liste les huit jeux et, au-dessus, les
+1. **L'accueil** (`public/index.html`) liste les dix jeux et, au-dessus, les
    « parties en cours » — les salons déclarés publics par leur hôte.
 2. **Créer un salon** : `POST /api/<slug>/create` renvoie un code (5
    caractères, alphabet sans `0`/`O`/`1`/`I` pour éviter les confusions à la
@@ -42,6 +42,10 @@ par le tableau `GAMES` (`{ slug, namespace }`) :
 | `GET /ws/<slug>/<code>` | Upgrade WebSocket, transmis au Durable Object du salon. |
 | tout le reste | `env.ASSETS.fetch(request)`, qui sert `public/` tel quel. |
 
+Le mode soirée passe par les trois mêmes routes avec le slug `party`
+(`/api/party/create`, `/api/party/exists/<code>`, `/ws/party/<code>`), servi
+par son propre Durable Object `PartyRoom` — voir [soiree.md](soiree.md).
+
 La sonde `exists` n'est pas un détail : un Durable Object naît à la demande,
 donc sans elle un code mal tapé ouvre un salon fantôme où le joueur attend
 seul ses amis au lieu de recevoir une erreur.
@@ -61,7 +65,7 @@ Le protocole WebSocket est le même partout : le client envoie
 `{ type: "...", ... }`, le serveur répond en diffusant l'état.
 
 **Client → serveur** : `join`, `start`, `restart`, `kick`, `transferHost`,
-`setVisibility`, `switchGame` (communs aux huit jeux), plus les messages
+`setVisibility`, `switchGame` (communs aux dix jeux), plus les messages
 propres au jeu (`clue`, `vote`, `answer`, `guess`…).
 
 **Serveur → client** : `joined` (id + token de reconnexion), `state` (la vue du

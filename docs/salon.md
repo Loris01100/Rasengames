@@ -1,6 +1,6 @@
 # Le salon, de bout en bout
 
-Ce qui suit vaut pour les huit jeux : c'est la plomberie commune, décrite une
+Ce qui suit vaut pour les dix jeux : c'est la plomberie commune, décrite une
 fois ici plutôt que répétée dans chaque fiche. Le code correspondant vit dans
 [src/lib/](../src/lib/) (côté serveur) et
 [public/js/room-client.js](../public/js/room-client.js) (côté client).
