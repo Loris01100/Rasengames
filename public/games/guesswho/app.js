@@ -276,10 +276,15 @@
     const correct = state.guessedId === state.revealedTargetId;
     const guessedBy = playerName(state, state.guessedById);
     const questionCount = state.questionCounts?.[state.guessedById] ?? 0;
+    if (state.forfeitById) {
+      el.resultTitle.textContent = `${playerName(state, state.winnerId)} remporte le point !`;
+      el.resultDetail.textContent = `${playerName(state, state.forfeitById)} a quitté la partie. Il fallait trouver ${target?.name ?? "ce personnage"}.`;
+    } else {
     el.resultTitle.textContent = correct ? `${guessedBy} a trouvé en premier !` : `${playerName(state, state.winnerId)} remporte le point !`;
     el.resultDetail.textContent = correct
       ? `La bonne réponse était ${target?.name ?? "ce personnage"}, trouvée en ${questionLabel(questionCount)}.`
       : `${guessedBy} a tenté ${guessed?.name ?? "un autre personnage"} après ${questionLabel(questionCount)}.`;
+    }
     showCharacter(el.resultCharacter, target);
     renderBoard(state, el.endedBoard, false);
     const isHost = state.hostId === Room.playerId;

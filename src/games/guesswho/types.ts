@@ -29,6 +29,8 @@ export interface RoomState {
   guessedId: string | null;
   guessedById: string | null;
   winnerId: string | null;
+  // Joueur parti trop longtemps en pleine manche : il perd par forfait.
+  forfeitById: string | null;
   round: number;
 }
 
@@ -48,6 +50,7 @@ export function createEmptyRoom(code: string): RoomState {
     guessedId: null,
     guessedById: null,
     winnerId: null,
+    forfeitById: null,
     round: 0,
   };
 }

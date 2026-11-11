@@ -620,6 +620,18 @@ const duplicates = codenamesWords
   assert.notEqual(targets.a, targets.b, "les deux secrets doivent être différents");
   assert.ok(board.some((card) => card.id === targets.a), "le premier secret doit appartenir à la grille");
   assert.ok(board.some((card) => card.id === targets.b), "le second secret doit appartenir à la grille");
+
+  // Forfait : seul un joueur de la manche, déconnecté, pendant `play`, compte.
+  const forfeit = emptyGuessWho("FORF");
+  forfeit.players.a = { id: "a", token: "ta", name: "Alice", connected: true };
+  forfeit.players.b = { id: "b", token: "tb", name: "Bobby", connected: false };
+  forfeit.playerOrder = ["a", "b"];
+  forfeit.targetIds = { a: "x", b: "y" };
+  assert.equal(guesswho.absentPlayerId(forfeit), null, "hors manche, personne n'est absent");
+  forfeit.phase = "play";
+  assert.equal(guesswho.absentPlayerId(forfeit), "b", "le joueur déconnecté en pleine manche est absent");
+  forfeit.players.b.connected = true;
+  assert.equal(guesswho.absentPlayerId(forfeit), null, "un joueur revenu n'est plus absent");
 }
 
 // --- Changement de jeu : salon neuf et hôte conservé -------------------------

@@ -1,6 +1,6 @@
 import type { Env } from "../../env";
 import { type Player, type RoomState, createEmptyRoom } from "./types";
-import { MAX_PLAYERS, MIN_PLAYERS, connectedIds, drawBoard, drawTargets, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
+import { MAX_PLAYERS, MIN_PLAYERS, absentPlayerId, connectedIds, drawBoard, drawTargets, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
 import { reportRoom } from "../../lib/registry";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
@@ -20,6 +20,9 @@ import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
 
 const MIN_NAME_LENGTH = 4;
 const MAX_NAME_LENGTH = 20;
+// Délai laissé à un joueur parti en pleine manche pour revenir (rechargement,
+// coupure réseau) avant que l'autre gagne par forfait.
+const FORFEIT_DELAY_MS = 30_000;
 
 export class GuessWhoRoom {
   private sessions: Session[] = [];
@@ -58,6 +61,7 @@ export class GuessWhoRoom {
       this.room.scores ??= {};
       this.room.waiting ??= [];
       this.room.round ??= 0;
+      this.room.forfeitById ??= null;
       const legacy = this.room as RoomState & {
         guesserId?: string | null;
         clueGiverId?: string | null;
@@ -122,7 +126,34 @@ export class GuessWhoRoom {
       reassignHost(this.room, player.id);
       await this.saveRoom();
       this.broadcast();
+      await this.scheduleForfeit();
     }
+  }
+
+  // Sans ça, un départ en pleine manche la figeait : passer la main exige que
+  // l'autre soit connecté. Programmé au départ, et aussi au retour de l'un des
+  // deux quand l'autre manque encore (l'alarme a pu sonner dans un salon vide).
+  private async scheduleForfeit(): Promise<void> {
+    if (!this.room || !absentPlayerId(this.room) || connectedIds(this.room).length === 0) return;
+    await this.state.storage.setAlarm(Date.now() + FORFEIT_DELAY_MS);
+  }
+
+  async alarm(): Promise<void> {
+    // Par loadRoom(), jamais le stockage en direct (cf. src/CLAUDE.md).
+    const room = await this.loadRoom("");
+    const absentId = absentPlayerId(room);
+    // Personne de connecté : on ne reprogramme rien, le prochain retour le fera.
+    if (!absentId || connectedIds(room).length === 0) return;
+    const winnerId = Object.keys(room.targetIds).find((id) => id !== absentId && room.players[id]?.connected);
+    if (!winnerId) return;
+    room.forfeitById = absentId;
+    room.winnerId = winnerId;
+    room.guessedId = null;
+    room.guessedById = null;
+    room.scores[winnerId] = (room.scores[winnerId] ?? 0) + 1;
+    room.phase = "ended";
+    await this.saveRoom();
+    this.broadcast();
   }
 
   private async handleMessage(session: Session, raw: string | ArrayBuffer) {
@@ -184,6 +215,7 @@ export class GuessWhoRoom {
         session.ws.send(JSON.stringify({ type: "joined", playerId: existing.id, token: existing.token }));
         await this.saveRoom();
         this.broadcast();
+        await this.scheduleForfeit();
         return;
       }
     }
@@ -247,6 +279,7 @@ export class GuessWhoRoom {
     room.guessedId = null;
     room.guessedById = null;
     room.winnerId = null;
+    room.forfeitById = null;
     room.round += 1;
     room.phase = "play";
   }
@@ -305,13 +338,15 @@ export class GuessWhoRoom {
     room.guessedId = null;
     room.guessedById = null;
     room.winnerId = null;
+    room.forfeitById = null;
     room.phase = "lobby";
     await this.saveRoom();
     this.broadcast();
   }
 
   private buildView(room: RoomState, forPlayerId: string) {
-    const guessedAgainstId = findOtherPlayer(room, room.guessedById);
+    // Forfait : on révèle le personnage que le joueur resté devait trouver.
+    const guessedAgainstId = room.forfeitById ?? findOtherPlayer(room, room.guessedById);
     return {
       code: room.code,
       phase: room.phase,
@@ -336,6 +371,7 @@ export class GuessWhoRoom {
       guessedId: room.phase === "ended" ? room.guessedId : null,
       guessedById: room.phase === "ended" ? room.guessedById : null,
       winnerId: room.phase === "ended" ? room.winnerId : null,
+      forfeitById: room.phase === "ended" ? room.forfeitById : null,
       round: room.round,
     };
   }

@@ -25,13 +25,18 @@ Quand il ne reste qu'**une seule carte** non éliminée et que c'est son tour, e
 devient automatiquement sa tentative. Si c'est le bon personnage, il gagne la
 manche ; sinon, **c'est l'adversaire qui gagne**.
 
+Un joueur qui quitte la partie en pleine manche a **30 secondes** pour revenir
+(rechargement, coupure réseau). Passé ce délai, l'autre gagne la manche **par
+forfait**.
+
 ## Déroulé d'une manche
 
 1. **`play`** — la grille et les deux personnages secrets sont tirés. Le premier
    à questionner est celui choisi par l'hôte (ou tiré au sort). Les tours
    alternent à chaque « J'ai posé ma question ».
-2. **`ended`** — dès qu'une tentative est faite. L'écran révèle le personnage
-   visé, la tentative et le nombre de questions posées.
+2. **`ended`** — dès qu'une tentative est faite, ou qu'un joueur perd par
+   forfait. L'écran révèle le personnage visé, la tentative (ou le départ) et le
+   nombre de questions posées.
 
 À la manche suivante (`nextRound`), le joueur qui n'a **pas** commencé la
 précédente ouvre.
@@ -72,6 +77,9 @@ précédente ouvre.
   l'anime si le service est indisponible.
 - La tentative automatique attend 700 ms et revérifie qu'il ne reste bien
   qu'une carte : un clic de trop ne part pas en tentative.
-- Si l'un des deux se déconnecte, la manche ne se termine pas d'elle-même :
-  passer la main est refusé tant que l'autre n'est pas revenu. L'hôte peut
-  toujours revenir au lobby.
+- Le forfait est une alarme du Durable Object, programmée à chaque départ en
+  pleine manche et à chaque retour quand l'autre manque encore. À la sonnerie,
+  rien ne se passe si l'absent est revenu ; si personne n'est connecté, elle
+  ne se reprogramme pas (le prochain retour la relancera). En attendant, passer
+  la main reste refusé tant que l'autre n'est pas là.
+- `forfeitById` dans la vue de fin distingue un forfait d'une tentative.

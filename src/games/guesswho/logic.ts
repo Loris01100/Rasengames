@@ -35,6 +35,13 @@ export function findOtherPlayer(room: RoomState, playerId: string | null): strin
   return connectedIds(room).find((id) => id !== playerId) ?? null;
 }
 
+// Pendant une manche, le joueur de la manche (il a un personnage secret) qui
+// n'est plus connecté — celui qui perdra par forfait s'il ne revient pas.
+export function absentPlayerId(room: RoomState): string | null {
+  if (room.phase !== "play") return null;
+  return Object.keys(room.targetIds).find((id) => !room.players[id]?.connected) ?? null;
+}
+
 export function nextGuesser(room: RoomState): string | null {
   return findOtherPlayer(room, room.currentTurnId);
 }
