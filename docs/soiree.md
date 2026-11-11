@@ -68,7 +68,10 @@ tenir compte de la casse : un joueur qui change de pseudo dans le jeu compte 0.
 
 Un joueur exclu disparaît de la soirée et du classement, reçoit `kicked` et
 revient à l'accueil ; son token est oublié pour qu'un rechargement ne le fasse
-pas rentrer.
+pas rentrer. S'il est encore sur une page de jeu, la connexion de soirée de
+cette page se coupe définitivement (plus de reconnexion), et il en va de même
+quand elle se voit refuser l'entrée : la partie en cours reste jouable, sans
+lien avec la soirée.
 
 ## Messages
 

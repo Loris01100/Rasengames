@@ -44,6 +44,9 @@ const Room = (() => {
   let partyWs = null;
   let partyCode = null;
   let partyReconnectTimer = null;
+  // Coupe définitivement le pont soirée (exclusion, entrée refusée) : sans
+  // lui, la reconnexion toutes les 2 s rejouerait le même refus en boucle.
+  let partyStopped = false;
   let partyFinishSent = false;
   // Hôte de la soirée, pas du salon de jeu : c'est lui seul que le lobby
   // soirée laisse valider, et il peut changer en cours de jeu (hôte parti).
@@ -319,18 +322,39 @@ const Room = (() => {
   // lobby organisateur. Le jeu reste totalement autonome ; cette connexion ne
   // transporte que le résultat final et la redirection collective.
   function connectParty(name, token) {
-    if (!partyCode || !name || !token) return;
+    if (partyStopped || !partyCode || !name || !token) return;
     clearTimeout(partyReconnectTimer);
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    partyWs = new WebSocket(`${proto}://${location.host}/ws/party/${partyCode}`);
-    partyWs.addEventListener("open", () => {
-      partyWs.send(JSON.stringify({ type: "join", name, token }));
+    const socket = new WebSocket(`${proto}://${location.host}/ws/party/${partyCode}`);
+    partyWs = socket;
+    // Une erreur reçue avant "joined" est un refus d'entrée (soirée commencée,
+    // complète, pseudo pris…) : retenter avec les mêmes identifiants n'y
+    // changera rien.
+    let joined = false;
+    socket.addEventListener("open", () => {
+      socket.send(JSON.stringify({ type: "join", name, token }));
     });
-    partyWs.addEventListener("message", (event) => {
+    socket.addEventListener("message", (event) => {
       let msg;
       try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.type === "kicked") {
+        // Même traitement que la page /party/ : le token est oublié pour ne
+        // pas revenir dans la soirée, mais la partie en cours reste jouable.
+        stopParty();
+        localStorage.removeItem(`party:${partyCode}:token`);
+        toast("Tu as été exclu de la soirée par l'hôte.");
+        return;
+      }
+      if (msg.type === "error" && !joined) {
+        stopParty();
+        toast(msg.message);
+        return;
+      }
       if (msg.type === "returnToParty") location.href = `/party/?room=${partyCode}`;
-      if (msg.type === "joined") partyPlayerId = msg.playerId;
+      if (msg.type === "joined") {
+        joined = true;
+        partyPlayerId = msg.playerId;
+      }
       if (msg.type === "state" && msg.state.hostId !== partyHostId) {
         partyHostId = msg.state.hostId;
         if (api.state) renderPartyFinish(api.state);
@@ -346,9 +370,21 @@ const Room = (() => {
       }
       if (msg.type === "error") toast(msg.message);
     });
-    partyWs.addEventListener("close", () => {
+    socket.addEventListener("close", () => {
+      if (partyStopped) return;
       partyReconnectTimer = setTimeout(() => connectParty(name, token), 2000);
     });
+  }
+
+  // Le jeu continue normalement ; seul le lien avec la soirée disparaît, y
+  // compris le bandeau de validation du classement.
+  function stopParty() {
+    partyStopped = true;
+    clearTimeout(partyReconnectTimer);
+    try { partyWs?.close(); } catch { /* déjà fermée */ }
+    partyWs = null;
+    partyFinish?.classList.add("hidden");
+    partyCode = null;
   }
 
   let partyFinish = null;
