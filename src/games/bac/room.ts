@@ -491,6 +491,8 @@ export class BacRoom {
     room.result = null;
     // room.categories is kept so the host doesn't have to re-pick them.
 
+    // Filet de sécurité : pas de fin de chrono en attente une fois la manche finie.
+    await this.state.storage.deleteAlarm();
     await this.saveRoom();
     this.broadcast();
   }
