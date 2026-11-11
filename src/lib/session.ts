@@ -200,11 +200,18 @@ export function handleSpectatorMessage(
     return "blocked";
   }
 
+  joinAsSpectator(session, name);
+  return "joined";
+}
+
+// Fait de la session un spectateur éphémère. Sert aussi à onJoin pour un token
+// inconnu en pleine partie (salon recréé, joueur exclu) : il est traité comme
+// une arrivée sans token, jamais rangé dans `waiting`.
+export function joinAsSpectator(session: Session, name: string): void {
   session.playerId = `spectator:${crypto.randomUUID()}`;
   session.spectator = true;
   session.spectatorName = name;
   session.ws.send(JSON.stringify({ type: "joined", playerId: session.playerId, spectator: true }));
-  return "joined";
 }
 
 export function nameTaken(

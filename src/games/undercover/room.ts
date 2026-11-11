@@ -22,6 +22,7 @@ import {
   restoreSessions,
   broadcastState,
   handleSpectatorMessage,
+  joinAsSpectator,
   kickPlayer,
   nameTaken,
   rejoinName,
@@ -266,7 +267,7 @@ export class UndercoverRoom {
     }
   }
 
-  // Un joueur neuf, qu'il entre tout de suite ou qu'il patiente (waiting).
+  // Un joueur neuf ; `waiting` ne contient plus que d'anciens retardataires persistés.
   private makePlayer(id: string, token: string, name: string): Player {
     return { id, token, name, connected: true, alive: true };
   }
@@ -304,17 +305,8 @@ export class UndercoverRoom {
     }
 
     if (room.phase !== "lobby") {
-      // La partie tourne : au lieu de renvoyer le nouveau venu créer son propre
-      // salon, on le met de côté et il entrera à la manche suivante.
-      if (nameTaken(room, name)) {
-        sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
-        return;
-      }
-      const pending = this.makePlayer(crypto.randomUUID(), crypto.randomUUID(), name);
-      room.waiting.push(pending);
-      session.playerId = pending.id;
-      session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
-      await this.saveRoom();
+      // Token inconnu en pleine partie : spectateur, comme une arrivée sans token.
+      joinAsSpectator(session, name);
       this.broadcast();
       return;
     }

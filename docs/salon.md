@@ -63,10 +63,13 @@ sur un autre jeu. Certains jeux lui confient en plus un rôle d'arbitre
   depuis n'importe quelle phase **sauf** le lobby : c'est aussi la sortie de
   secours de l'hôte quand une manche reste bloquée. Il purge les joueurs
   déconnectés (eux perdent leur score) et fait entrer les joueurs en attente.
-- **`waiting`** : quelqu'un qui rejoint alors qu'une manche tourne n'est pas
-  renvoyé créer son propre salon — il est mis de côté, tenu hors de `players`
-  et `playerOrder` pour que la manche en cours ne le voie pas, et voit un écran
-  d'attente. Il entre à la manche suivante.
+- **Arrivée en cours de manche** : quelqu'un qui rejoint alors qu'une manche
+  tourne, sans token ou avec un token que le salon ne connaît pas (salon
+  recréé, joueur exclu), n'est pas renvoyé créer son propre salon — il devient
+  spectateur, hors de `players` et `playerOrder`, en lecture seule. De retour
+  au lobby, son client le fait rejoindre comme joueur pour la manche suivante.
+  `waiting` ne sert plus qu'à relire les retardataires d'anciens salons
+  persistés, que `restart` fait entrer.
 - **`switchGame`** : l'hôte emmène tout le groupe sur un autre jeu. C'est un
   simple signal de redirection — le groupe garde son code de salon et pointe
   simplement son WebSocket vers le salon d'un autre jeu, sans avoir à

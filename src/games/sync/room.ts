@@ -23,6 +23,7 @@ import {
   restoreSessions,
   broadcastState,
   handleSpectatorMessage,
+  joinAsSpectator,
   kickPlayer,
   lobbyFull,
   nameTaken,
@@ -208,19 +209,8 @@ export class SyncRoom {
     }
 
     if (room.phase !== "lobby") {
-      if (room.playerOrder.length + room.waiting.length >= MAX_PLAYERS) {
-        sendError(session.ws, `Ce salon est complet (${MAX_PLAYERS} joueurs max).`);
-        return;
-      }
-      if (nameTaken(room, name)) {
-        sendError(session.ws, "Ce pseudo est déjà pris dans ce salon.");
-        return;
-      }
-      const pending = this.makePlayer(crypto.randomUUID(), crypto.randomUUID(), name);
-      room.waiting.push(pending);
-      session.playerId = pending.id;
-      session.ws.send(JSON.stringify({ type: "joined", playerId: pending.id, token: pending.token }));
-      await this.saveRoom();
+      // Token inconnu en pleine partie : spectateur, comme une arrivée sans token.
+      joinAsSpectator(session, name);
       this.broadcast();
       return;
     }

@@ -13,6 +13,7 @@ import {
   restoreSessions,
   broadcastState,
   handleSpectatorMessage,
+  joinAsSpectator,
   kickPlayer,
   lobbyFull,
   nameTaken,
@@ -250,7 +251,13 @@ export class GuessWhoRoom {
         return;
       }
     }
-    if (room.phase !== "lobby" || lobbyFull(room, MAX_PLAYERS)) {
+    if (room.phase !== "lobby") {
+      // Token inconnu en pleine partie : spectateur, comme une arrivée sans token.
+      joinAsSpectator(session, name);
+      this.broadcast();
+      return;
+    }
+    if (lobbyFull(room, MAX_PLAYERS)) {
       sendError(session.ws, "Ce duel est complet. Utilise le mode spectateur pour regarder.");
       return;
     }
