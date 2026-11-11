@@ -221,7 +221,7 @@ export class PartyRoom {
       this.sendError(session, `${game?.label ?? slug} n'accepte pas ${count} joueurs.`);
       return;
     }
-    const code = await createRoomCode([{ slug, namespace: game.namespace(this.env) }]);
+    const code = await createRoomCode(slug, game.namespace(this.env));
     room.currentGame = { slug, code };
     room.phase = "playing";
     room.lastResult = [];

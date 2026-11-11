@@ -257,7 +257,7 @@ export async function switchGame(
     sync: env.SYNC_ROOM,
     guesswho: env.GUESSWHO_ROOM,
   };
-  const code = await createRoomCode(Object.entries(namespaces).map(([slug, namespace]) => ({ slug, namespace })));
+  const code = await createRoomCode(slug, namespaces[slug]);
   for (const s of sessions) {
     try {
       s.ws.send(JSON.stringify({

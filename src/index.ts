@@ -82,11 +82,7 @@ export default {
     if (createMatch && request.method === "POST") {
       const game = createMatch[1] === PARTY.slug ? PARTY : GAMES.find((g) => g.slug === createMatch[1]);
       if (!game) return new Response("Unknown game", { status: 404 });
-      // Les dix jeux sont toujours sondés (cf. createRoomCode) ; une soirée
-      // vit dans son propre namespace, qu'il faut donc ajouter à la sonde,
-      // sinon deux soirées peuvent hériter du même code.
-      const probed = game === PARTY ? [...GAMES, PARTY] : GAMES;
-      const code = await createRoomCode(probed.map((g) => ({ slug: g.slug, namespace: g.namespace(env) })));
+      const code = await createRoomCode(game.slug, game.namespace(env));
       return Response.json({ code });
     }
 
