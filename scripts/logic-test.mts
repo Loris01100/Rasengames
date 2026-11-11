@@ -123,7 +123,11 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
   room.players.d.eliminated = true;
   assert.equal(bomb.nextTurn(room, "a"), null);
 
-  assert.deepEqual(bomb.aliveIds(room), ["c"], "éliminé reste éliminé même déconnecté");
+  // c n'est pas éliminé mais il est parti : il ne compte plus pour la fin de
+  // manche, sinon il gagnerait sans être là.
+  assert.deepEqual(bomb.connectedAliveIds(room), [], "un absent non éliminé n'est pas un survivant");
+  room.players.d.eliminated = false;
+  assert.deepEqual(bomb.connectedAliveIds(room), ["d"]);
   assert.deepEqual(bomb.connectedIds(room), ["a", "b", "d"]);
 }
 

@@ -4,7 +4,6 @@ import {
   MIN_PLAYERS,
   MAX_PLAYERS,
   connectedIds,
-  aliveIds,
   connectedAliveIds,
   nextTurn,
   randomBombDelay,
@@ -440,7 +439,11 @@ export class BombRoom {
       }
     }
 
-    const survivors = aliveIds(room);
+    // Fin de manche dès qu'il ne reste qu'un joueur vivant *et connecté* : il
+    // gagne, même si d'autres non éliminés sont partis. Zéro (tout le monde
+    // est parti) : la manche s'arrête sans vainqueur, sinon l'alarme se
+    // reprogrammait toutes les 30 s dans le vide sur un salon déserté.
+    const survivors = connectedAliveIds(room);
     if (survivors.length <= 1) {
       room.winnerId = survivors[0] ?? null;
       if (room.winnerId) room.scores[room.winnerId] = (room.scores[room.winnerId] ?? 0) + 1;
@@ -457,16 +460,6 @@ export class BombRoom {
     room.turnId = nextTurn(room, holder?.id ?? room.turnId);
     room.turnSafeUntil = Date.now() + MIN_TURN_MS;
     room.letter = room.turnId ? pickLetter(room.letters) : null;
-
-    // Plus personne de connecté pour tenir la bombe : la manche s'arrête là.
-    // Sinon l'alarme se reprogrammait toutes les 30 s dans le vide, pour
-    // toujours, sur un salon que plus personne ne regarde.
-    if (!room.turnId) {
-      room.phase = "ended";
-      await this.saveRoom();
-      this.broadcast();
-      return;
-    }
 
     await this.saveRoom();
     await this.scheduleBomb();

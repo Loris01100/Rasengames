@@ -28,12 +28,10 @@ export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
 }
 
-// Elimination is permanent regardless of connection, so "who's still in the
-// game" (used to decide when it ends) is judged on this, not on `connected`.
-export function aliveIds(room: RoomState): string[] {
-  return room.playerOrder.filter((id) => room.players[id] && !room.players[id].eliminated);
-}
-
+// Ceux qui peuvent encore recevoir la bombe — et donc les seuls qui comptent
+// pour la fin de manche : un joueur parti sans être éliminé ne touche plus
+// jamais la bombe, le laisser « survivre » lui offrait la victoire pendant que
+// le dernier présent encaissait toutes les explosions à sa place.
 export function connectedAliveIds(room: RoomState): string[] {
   return connectedIds(room).filter((id) => !room.players[id]?.eliminated);
 }

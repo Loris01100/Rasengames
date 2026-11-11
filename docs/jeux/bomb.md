@@ -42,7 +42,11 @@ troisième explosion élimine. Le dernier joueur en vie remporte la manche.
 
 ## Score
 
-**1 point** au dernier survivant.
+**1 point** au dernier survivant. Seuls comptent les joueurs **encore
+connectés** : un joueur parti sans avoir été éliminé ne reçoit plus la bombe,
+il ne peut donc pas « survivre » à la place de celui qui joue encore. La manche
+se termine à l'explosion qui laisse un seul joueur vivant et connecté (ou
+aucun : fin sans vainqueur).
 
 ## Ce que le serveur cache
 
