@@ -42,7 +42,15 @@ export function attachSession(
     });
   });
 
-  const close = () => onClose(session);
+  // `error` puis `close` arrivent souvent tous les deux pour la même socket :
+  // le drapeau garantit qu'onClose ne passe qu'une fois, même s'il cesse un
+  // jour d'être idempotent.
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    onClose(session);
+  };
   ws.addEventListener("close", close);
   ws.addEventListener("error", close);
 }
