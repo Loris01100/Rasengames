@@ -75,6 +75,9 @@ export interface RoomState {
 
   currentClue: Clue | null;
   winner: Winner;
+  // Mots des derniers plateaux, du plus ancien au plus récent : le tirage les
+  // évite (lib/recent.ts). Persiste d'une manche à l'autre.
+  recentDraws: string[];
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -105,5 +108,6 @@ export function createEmptyRoom(code: string): RoomState {
     revealedColor: [],
     currentClue: null,
     winner: null,
+    recentDraws: [],
   };
 }

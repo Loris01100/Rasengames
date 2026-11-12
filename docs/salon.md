@@ -70,6 +70,17 @@ sur un autre jeu. Certains jeux lui confient en plus un rôle d'arbitre
   au lobby, son client le fait rejoindre comme joueur pour la manche suivante.
   `waiting` ne sert plus qu'à relire les retardataires d'anciens salons
   persistés, que `restart` fait entrer.
+- **Pas deux fois le même tirage** : chaque salon garde dans `recentDraws` ce
+  qui est déjà sorti et le tirage l'évite tant que le pool le permet — les 40
+  dernières paires Undercover, les 15 derniers thèmes de 1 à 100 (seuls ceux
+  tirés au hasard, pas ceux saisis par l'hôte), les mots des 4 derniers
+  plateaux Codenames, les personnages des 3 dernières grilles de Qui est-ce
+  (donc aussi les personnages secrets), les 8 dernières lettres du Petit Bac et
+  les 5 dernières de la Bombe (une par tour). Si les filtres de l'hôte
+  (catégorie, sources exclues, lettres décochées, mots retirés) laissent moins
+  de choix que l'historique, ce sont les tirages les plus anciens qui
+  reviennent en premier. L'historique vit dans le salon d'un jeu : il survit
+  aux manches et aux `restart`, pas à un `switchGame` (autre salon).
 - **`switchGame`** : l'hôte emmène tout le groupe sur un autre jeu. C'est un
   simple signal de redirection — le groupe garde son code de salon et pointe
   simplement son WebSocket vers le salon d'un autre jeu, sans avoir à

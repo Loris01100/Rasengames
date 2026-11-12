@@ -52,6 +52,9 @@ export interface RoomState {
   stoppedBy: string | null; // playerId who called stop this round, null if the round timed out
   endsAt: number | null; // epoch ms of the automatic end of the round
   result: RoundResult | null;
+  // Dernières lettres tirées, de la plus ancienne à la plus récente : le tirage
+  // les évite (lib/recent.ts).
+  recentDraws: string[];
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -71,5 +74,6 @@ export function createEmptyRoom(code: string): RoomState {
     stoppedBy: null,
     endsAt: null,
     result: null,
+    recentDraws: [],
   };
 }

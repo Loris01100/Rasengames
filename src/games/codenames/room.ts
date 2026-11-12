@@ -4,6 +4,7 @@ import {
   BOARD_SIZE,
   DUET_MAX_ERRORS,
   pickBoard,
+  RECENT_WORDS,
   generateDuetKey,
   countDuetAgents,
   countFoundAgents,
@@ -43,6 +44,7 @@ import {
   switchGame,
 } from "../../lib/session";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
+import { remember } from "../../lib/recent";
 
 const MAX_NAME_LENGTH = 20;
 const MIN_NAME_LENGTH = 4;
@@ -121,6 +123,7 @@ export class CodenamesRoom {
       this.room.waiting ??= [];
       this.room.wordHints ??= [];
       this.room.excludedWords ??= [];
+      this.room.recentDraws ??= [];
       this.visibility = (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
     return this.room;
@@ -358,8 +361,9 @@ export class CodenamesRoom {
       return;
     }
 
-    const board = pickBoard(pool);
+    const board = pickBoard(pool, BOARD_SIZE, room.recentDraws);
     room.words = board.map((entry) => entry.word);
+    room.recentDraws = remember(room.recentDraws, room.words, RECENT_WORDS);
     room.wordHints = board.map((entry) => entry.hint);
     room.revealed = new Array(BOARD_SIZE).fill(false);
     room.revealedColor = new Array(BOARD_SIZE).fill(null);

@@ -27,6 +27,9 @@ import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
 import { rejoinName, switchGame } from "../src/lib/session.ts";
 import { awardPartyPoints } from "../src/party/logic.ts";
+import { drawFresh, pickFresh, remember } from "../src/lib/recent.ts";
+import { drawLetter, pickLetter } from "../src/lib/letters.ts";
+import { RECENT_THEMES, pickRandomTheme } from "../src/games/hundred/themes.ts";
 import { UNDERCOVER_SOURCES, availablePairCount, pickRandomPair } from "../src/games/undercover/words.ts";
 
 // Les Player partagent id/token/name/connected ; le reste (alive,
@@ -710,6 +713,71 @@ const duplicates = codenamesWords
   room.players.b = p("b", "Naruto");
   assert.equal(rejoinName(room, "a", "Naruto", "Naruto", 20), "Naruto 2");
   assert.equal(rejoinName(room, "a", "Abcdefghijklmnopqrst", "Abcdefghijklmnopqrst", 20).length <= 20, true);
+}
+
+{
+  // Mémoire des derniers tirages (lib/recent.ts).
+  assert.deepEqual(remember(["a", "b", "c"], ["b", "d"], 3), ["c", "b", "d"], "un id déjà vu repasse en fin, la liste est tronquée par le début");
+
+  const pool = ["a", "b", "c", "d"];
+  for (let i = 0; i < 50; i++) {
+    assert.equal(pickFresh(pool, ["a", "b", "c"], (x) => x), "d", "seul l'élément hors historique peut sortir");
+  }
+  // Pool entièrement dans l'historique : on retombe sur le plus ancien.
+  assert.equal(pickFresh(pool, ["c", "a", "d", "b"], (x) => x), "c", "le tirage le plus ancien est réautorisé en premier");
+  assert.equal(pickFresh(["x"], ["x"], (x) => x), "x", "un pool d'un seul élément sort toujours");
+
+  const board = drawFresh(pool, 3, ["b", "a"], (x) => x);
+  assert.equal(new Set(board).size, 3);
+  assert.ok(board.includes("c") && board.includes("d") && board.includes("b"), "les neufs d'abord, puis le moins récent");
+
+  // Undercover : quarante manches sans revoir une paire.
+  const room = emptyUndercover("RECENT");
+  addPlayers(room, { a: { alive: true }, b: { alive: true }, c: { alive: true }, d: { alive: true } });
+  const seen = new Set<string>();
+  for (let i = 0; i < undercover.RECENT_PAIRS; i++) {
+    undercover.assignRoles(room);
+    assert.ok(!seen.has(room.currentPairId!), "une paire ne doit pas revenir tant qu'elle est dans l'historique");
+    seen.add(room.currentPairId!);
+  }
+  assert.equal(room.recentDraws.length, undercover.RECENT_PAIRS);
+
+  // 1 à 100 : les thèmes « anime » (19) sortent tous avant qu'un ne revienne.
+  const themes: string[] = [];
+  let recentThemes: string[] = [];
+  for (let i = 0; i < 15; i++) {
+    const theme = pickRandomTheme("anime", recentThemes);
+    assert.ok(!themes.includes(theme), "un thème ne doit pas revenir tout de suite");
+    themes.push(theme);
+    recentThemes = remember(recentThemes, [theme], RECENT_THEMES);
+  }
+
+  // Codenames : deux plateaux consécutifs ne partagent aucun mot.
+  const first = codenames.pickBoard();
+  const second = codenames.pickBoard(undefined, undefined, first.map((e) => e.word));
+  assert.ok(second.every((e) => !first.some((f) => f.word === e.word)), "le plateau suivant doit être entièrement neuf");
+
+  // Qui est-ce : trois grilles d'affilée sans personnage commun.
+  let recentCards: string[] = [];
+  const cards = new Set<string>();
+  for (let i = 0; i < 3; i++) {
+    const grid = guesswho.drawBoard(undefined, undefined, recentCards);
+    for (const card of grid) {
+      assert.ok(!cards.has(card.id), "un personnage ne doit pas revenir avant trois grilles");
+      cards.add(card.id);
+    }
+    recentCards = remember(recentCards, grid.map((card) => card.id), guesswho.RECENT_CHARACTERS);
+  }
+
+  // Lettres : la lettre précédente ne ressort pas, même avec deux lettres cochées.
+  const letterRoom = { letters: ["A", "B"], recentDraws: [] as string[] };
+  let previous = drawLetter(letterRoom, 5);
+  for (let i = 0; i < 20; i++) {
+    const letter = drawLetter(letterRoom, 5);
+    assert.notEqual(letter, previous, "deux tirages consécutifs doivent différer quand c'est possible");
+    previous = letter;
+  }
+  assert.equal(pickLetter(["Q"], ["Q"]), "Q", "une seule lettre cochée sort toujours");
 }
 
 console.log("logic: ok");

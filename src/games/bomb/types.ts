@@ -49,6 +49,9 @@ export interface RoomState {
   // Ordre d'élimination (premier éliminé en premier) : sert au classement final.
   eliminationOrder: string[];
   winnerId: string | null;
+  // Dernières lettres tirées (une par tour), de la plus ancienne à la plus
+  // récente : le tirage les évite (lib/recent.ts).
+  recentDraws: string[];
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -68,5 +71,6 @@ export function createEmptyRoom(code: string): RoomState {
     answers: [],
     eliminationOrder: [],
     winnerId: null,
+    recentDraws: [],
   };
 }

@@ -4,6 +4,8 @@
 // ne voit jamais l'autre côté de la paire, donc l'indice doit voyager avec
 // LUI, pas avec la paire dans son ensemble — utile pour deviner de quoi on
 // parle sans connaître le mot exact (cf. la même idée côté Codenames).
+import { pickFresh } from "../../lib/recent";
+
 export interface WordPair {
   a: string;
   b: string;
@@ -710,12 +712,18 @@ export function availablePairCount(category: WordCategory, excludedSources: stri
   ).length;
 }
 
-export function pickRandomPair(category: WordCategory, excludedSources: string[] = []): PickedPair {
+// `recent` : identifiants des dernières paires du salon, évitées tant que le
+// pool filtré le permet (lib/recent.ts).
+export function pickRandomPair(
+  category: WordCategory,
+  excludedSources: string[] = [],
+  recent: readonly string[] = [],
+): PickedPair {
   const excluded = new Set(excludedSources.map((source) => source.toLowerCase()));
   const pool = ALL_PAIRS.filter((pair) =>
     (category === "random" || pair.category === category) &&
     !sourcesOf(pair).some((source) => excluded.has(source.toLowerCase()))
   );
   if (pool.length === 0) throw new Error("Aucune paire disponible avec ces exclusions.");
-  return pool[Math.floor(Math.random() * pool.length)];
+  return pickFresh(pool, recent, (pair) => pair.id);
 }

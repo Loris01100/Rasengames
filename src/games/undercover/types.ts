@@ -76,6 +76,9 @@ export interface RoomState {
   settings: Settings;
   currentPairId: string | null;
   feedbackVotes: Record<string, "good" | "easy" | "far">;
+  // Identifiants des dernières paires tirées, du plus ancien au plus récent :
+  // le tirage les évite (lib/recent.ts). Persiste d'une manche à l'autre.
+  recentDraws: string[];
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -105,5 +108,6 @@ export function createEmptyRoom(code: string): RoomState {
     settings: { undercoverCount: 1, mrWhiteCount: 0, category: "random", excludedSources: [] },
     currentPairId: null,
     feedbackVotes: {},
+    recentDraws: [],
   };
 }

@@ -22,6 +22,7 @@ Chaque `room.ts` réimplémente sa propre plomberie session/join/reconnexion/bro
 - `lib/session.ts` — `Session`, `acceptSession`/`restoreSessions`/`dispatchMessage`/`dispatchClose` (cf. ci-dessous), `broadcastState`, `sendError`, `nameTaken`, `promoteWaiting`, `kickPlayer`, `switchGame`.
 - `lib/host.ts` — `reassignHost` (départ subi) et `transferHost` (l'hôte passe la main à un joueur connecté, message `transferHost`, lobby seulement comme `kickPlayer`), typés sur les trois champs que tout `RoomState` partage.
 - `lib/letters.ts` — alphabet, validation et tirage des lettres autorisées (bombe et petit bac : l'hôte décoche des lettres au lobby, la sélection part avec `start` et est stockée dans `letters`).
+- `lib/recent.ts` — mémoire des derniers tirages (`remember`, `pickFresh` pour un élément, `drawFresh` pour un plateau). Chaque jeu qui tire du contenu garde `recentDraws: string[]` dans son `RoomState` (rétro-rempli dans `loadRoom`), jamais envoyé au client ; la taille de la fenêtre est une constante `RECENT_*` du jeu.
 - `lib/throttle.ts` — taille et débit max des messages entrants ; rien n'authentifie un client et chaque message coûte une écriture d'état, au-delà du quota les messages sont ignorés sans fermer la socket.
 
 ## Un joueur qui part ne doit jamais figer un salon

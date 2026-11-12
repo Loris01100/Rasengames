@@ -10,7 +10,7 @@ import {
   startsWithLetter,
 } from "./logic";
 import { sameWord } from "../../lib/words";
-import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
+import { ALPHABET, drawLetter, parseLetters } from "../../lib/letters";
 import { reportRoom } from "../../lib/registry";
 import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
@@ -33,6 +33,10 @@ import {
   switchGame,
 } from "../../lib/session";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
+
+// Lettres dont le salon se souvient : une par tour, donc courte pour ne pas
+// vider l'alphabet quand l'hôte n'a laissé que quelques lettres.
+const RECENT_LETTERS = 5;
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -127,6 +131,7 @@ export class BombRoom {
       this.room.eliminationOrder ??= [];
       this.room.letters ??= [...ALPHABET];
       this.room.turnSafeUntil ??= 0;
+      this.room.recentDraws ??= [];
     }
     return this.room;
   }
@@ -362,7 +367,7 @@ export class BombRoom {
     room.letters = parseLetters(msg.letters);
     room.turnId = ids[Math.floor(Math.random() * ids.length)] ?? null;
     room.turnSafeUntil = Date.now() + MIN_TURN_MS;
-    room.letter = pickLetter(room.letters);
+    room.letter = drawLetter(room, RECENT_LETTERS);
     room.phase = "play";
 
     await this.saveRoom();
@@ -412,7 +417,7 @@ export class BombRoom {
 
   private advanceTurn(room: RoomState) {
     room.turnId = nextTurn(room, room.turnId);
-    room.letter = room.turnId ? pickLetter(room.letters) : null;
+    room.letter = room.turnId ? drawLetter(room, RECENT_LETTERS) : null;
   }
 
   private async scheduleBomb(): Promise<void> {
@@ -477,7 +482,7 @@ export class BombRoom {
     // bombe : on repart d'après elle pour que le suivant soit forcément en vie.
     room.turnId = nextTurn(room, holder?.id ?? room.turnId);
     room.turnSafeUntil = Date.now() + MIN_TURN_MS;
-    room.letter = room.turnId ? pickLetter(room.letters) : null;
+    room.letter = room.turnId ? drawLetter(room, RECENT_LETTERS) : null;
 
     await this.saveRoom();
     await this.scheduleBomb();

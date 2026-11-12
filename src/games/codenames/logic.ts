@@ -1,5 +1,6 @@
 import type { RoomState, DuetColor, TeamColor, Seat, Team, Role } from "./types";
 import { WORDS, type WordEntry } from "./words";
+import { drawFresh } from "../../lib/recent";
 
 export function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -17,8 +18,12 @@ export const DUET_MAX_ERRORS = 9;
 export const TEAM_START_COUNT = 9;
 export const TEAM_SECOND_COUNT = 8;
 
-export function pickBoard(pool: WordEntry[] = WORDS, size = BOARD_SIZE): WordEntry[] {
-  return shuffle(pool).slice(0, size);
+// Mots dont le salon se souvient : quatre plateaux, soit le quart du pool.
+export const RECENT_WORDS = 4 * BOARD_SIZE;
+
+// `recent` : mots des derniers plateaux, repris en dernier recours seulement.
+export function pickBoard(pool: WordEntry[] = WORDS, size = BOARD_SIZE, recent: readonly string[] = []): WordEntry[] {
+  return drawFresh(pool, size, recent, (entry) => entry.word);
 }
 
 function fillColors<C>(size: number, counts: [C, number][]): C[] {

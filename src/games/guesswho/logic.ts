@@ -1,9 +1,14 @@
 import { CHARACTERS } from "./characters";
 import type { CharacterCard, RoomState } from "./types";
+import { drawFresh } from "../../lib/recent";
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 2;
 export const BOARD_SIZE = 24;
+// Personnages dont le salon se souvient : trois grilles. Avec 120 cartes, il
+// en reste toujours assez pour une grille entièrement neuve, donc ni la grille
+// ni les personnages secrets ne reviennent avant trois manches.
+export const RECENT_CHARACTERS = 3 * BOARD_SIZE;
 
 export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
@@ -22,13 +27,9 @@ export function pickGuesser(
 export function drawBoard(
   pool: CharacterCard[] = CHARACTERS,
   random: () => number = Math.random,
+  recent: readonly string[] = [],
 ): CharacterCard[] {
-  const shuffled = [...pool];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, BOARD_SIZE);
+  return drawFresh(pool, BOARD_SIZE, recent, (card) => card.id, random);
 }
 
 export function findOtherPlayer(room: RoomState, playerId: string | null): string | null {

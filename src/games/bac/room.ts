@@ -1,7 +1,7 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, type RoundDuration, createEmptyRoom } from "./types";
 import { buildRoundResult, recomputeScores } from "./logic";
-import { ALPHABET, parseLetters, pickLetter } from "../../lib/letters";
+import { ALPHABET, drawLetter, parseLetters } from "../../lib/letters";
 import { CATEGORY_IDS, CATEGORY_LABELS } from "./categories";
 import { reportRoom } from "../../lib/registry";
 import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
@@ -24,6 +24,9 @@ import {
   switchGame,
 } from "../../lib/session";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../../lib/throttle";
+
+// Lettres dont le salon se souvient : une par manche.
+const RECENT_LETTERS = 8;
 
 const MAX_NAME_LENGTH = 20;
 // 4 minimum : les pseudos d'une lettre rendaient les listes illisibles (et un
@@ -132,6 +135,7 @@ export class BacRoom {
       this.room.letters ??= [...ALPHABET];
       this.room.categoryLabels ??= {};
       this.room.duration ??= "normal";
+      this.room.recentDraws ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -387,7 +391,7 @@ export class BacRoom {
     room.categoryLabels = categoryLabels;
     room.duration = duration;
     room.letters = parseLetters(msg.letters);
-    room.letter = pickLetter(room.letters);
+    room.letter = drawLetter(room, RECENT_LETTERS);
     room.stoppedBy = null;
     room.endsAt = Date.now() + ROUND_DURATIONS[duration];
     room.result = null;

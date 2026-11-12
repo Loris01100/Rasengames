@@ -1,5 +1,9 @@
 import type { Player, RoomState, Settings, VoteResult } from "./types";
 import { pickRandomPair } from "./words";
+import { remember } from "../../lib/recent";
+
+// Nombre de paires dont le salon se souvient pour ne pas les retirer.
+export const RECENT_PAIRS = 40;
 
 export function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -35,7 +39,8 @@ export function assignRoles(room: RoomState): void {
     .map((id) => room.players[id])
     .filter((p): p is Player => !!p && p.connected !== false);
 
-  const pair = pickRandomPair(room.settings.category, room.settings.excludedSources);
+  const pair = pickRandomPair(room.settings.category, room.settings.excludedSources, room.recentDraws);
+  room.recentDraws = remember(room.recentDraws, [pair.id], RECENT_PAIRS);
   room.currentPairId = pair.id;
   room.feedbackVotes = {};
   room.wordCategory = pair.category;

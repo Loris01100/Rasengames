@@ -1,7 +1,8 @@
 import type { Env } from "../../env";
 import { type RoomState, type Player, type Mode, createEmptyRoom } from "./types";
 import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
-import { pickRandomTheme } from "./themes";
+import { RECENT_THEMES, pickRandomTheme } from "./themes";
+import { remember } from "../../lib/recent";
 import { reportRoom } from "../../lib/registry";
 import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
@@ -122,6 +123,7 @@ export class HundredRoom {
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
       // Rooms persisted before the anime mode existed have no `mode` field.
       this.room.mode = VALID_MODES.includes(this.room.mode) ? this.room.mode : "perso";
+      this.room.recentDraws ??= [];
     }
     return this.room;
   }
@@ -354,7 +356,12 @@ export class HundredRoom {
     room.mode = VALID_MODES.includes(requestedMode) ? requestedMode : "perso";
 
     const customTheme = String(msg.theme ?? "").trim().slice(0, MAX_THEME_LENGTH);
-    room.theme = customTheme || pickRandomTheme(room.mode);
+    if (customTheme) {
+      room.theme = customTheme;
+    } else {
+      room.theme = pickRandomTheme(room.mode, room.recentDraws);
+      room.recentDraws = remember(room.recentDraws, [room.theme], RECENT_THEMES);
+    }
     room.order = [];
     room.score = null;
     assignNumbers(room);

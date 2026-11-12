@@ -37,6 +37,9 @@ export interface RoomState {
   order: string[];
   revealedCount: number;
   score: Score | null;
+  // Derniers thèmes tirés au hasard (pas les thèmes saisis par l'hôte), du plus
+  // ancien au plus récent : le tirage les évite (lib/recent.ts).
+  recentDraws: string[];
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -53,5 +56,6 @@ export function createEmptyRoom(code: string): RoomState {
     order: [],
     revealedCount: 0,
     score: null,
+    recentDraws: [],
   };
 }

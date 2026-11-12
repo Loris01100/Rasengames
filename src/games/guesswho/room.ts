@@ -1,6 +1,7 @@
 import type { Env } from "../../env";
 import { type Player, type RoomState, createEmptyRoom } from "./types";
-import { MAX_PLAYERS, MIN_PLAYERS, absentPlayerId, connectedIds, drawBoard, drawTargets, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
+import { MAX_PLAYERS, MIN_PLAYERS, RECENT_CHARACTERS, absentPlayerId, connectedIds, drawBoard, drawTargets, findOtherPlayer, nextGuesser, pickGuesser } from "./logic";
+import { remember } from "../../lib/recent";
 import { reportRoom } from "../../lib/registry";
 import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
@@ -94,6 +95,7 @@ export class GuessWhoRoom {
       this.room.waiting ??= [];
       this.room.round ??= 0;
       this.room.forfeitById ??= null;
+      this.room.recentDraws ??= [];
       const legacy = this.room as RoomState & {
         guesserId?: string | null;
         clueGiverId?: string | null;
@@ -311,7 +313,8 @@ export class GuessWhoRoom {
   private startRound(room: RoomState, guesserId: string | null) {
     const playerIds = connectedIds(room);
     room.currentTurnId = guesserId;
-    room.board = drawBoard();
+    room.board = drawBoard(undefined, undefined, room.recentDraws);
+    room.recentDraws = remember(room.recentDraws, room.board.map((card) => card.id), RECENT_CHARACTERS);
     room.targetIds = drawTargets(room.board, playerIds);
     room.questionCounts = Object.fromEntries(playerIds.map((id) => [id, 0]));
     room.guessedId = null;

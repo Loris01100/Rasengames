@@ -1,4 +1,5 @@
 import type { Mode } from "./types";
+import { pickFresh } from "../../lib/recent";
 
 // Two flavours of the same game: in "perso" mode the theme is a trait a
 // *character* can have more or less of, in "anime" mode it's a dimension a
@@ -68,7 +69,11 @@ export const THEMES_BY_MODE: Record<Mode, string[]> = {
   anime: ANIME_THEMES,
 };
 
-export function pickRandomTheme(mode: Mode): string {
+// Thèmes dont le salon se souvient. Les deux modes partagent la liste sans se
+// gêner : leurs textes diffèrent, un thème « anime » ne masque aucun « perso ».
+export const RECENT_THEMES = 15;
+
+export function pickRandomTheme(mode: Mode, recent: readonly string[] = []): string {
   const themes = THEMES_BY_MODE[mode] ?? CHARACTER_THEMES;
-  return themes[Math.floor(Math.random() * themes.length)];
+  return pickFresh(themes, recent, (theme) => theme);
 }

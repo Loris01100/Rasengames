@@ -32,6 +32,9 @@ export interface RoomState {
   // Joueur parti trop longtemps en pleine manche : il perd par forfait.
   forfeitById: string | null;
   round: number;
+  // Identifiants des personnages des dernières grilles, du plus ancien au plus
+  // récent : le tirage les évite (lib/recent.ts).
+  recentDraws: string[];
 }
 
 export function createEmptyRoom(code: string): RoomState {
@@ -52,5 +55,6 @@ export function createEmptyRoom(code: string): RoomState {
     winnerId: null,
     forfeitById: null,
     round: 0,
+    recentDraws: [],
   };
 }

@@ -131,6 +131,7 @@ export class UndercoverRoom {
       this.room.settings.excludedSources ??= [];
       this.room.currentPairId ??= null;
       this.room.feedbackVotes ??= {};
+      this.room.recentDraws ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
