@@ -416,6 +416,7 @@
   Suggest.attach(el.wordInput, () => "character");
 
   Room.init({
+    stepTimer: true,
     slug: "whoami",
     minPlayers: 2,
     maxPlayers: 5,

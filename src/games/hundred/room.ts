@@ -4,7 +4,8 @@ import { assignNumbers, computeScore, allProposed, shuffle } from "./logic";
 import { RECENT_THEMES, pickRandomTheme } from "./themes";
 import { remember } from "../../lib/recent";
 import { reportRoom } from "../../lib/registry";
-import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
+import { checkStepTimer, emptyStepTimer, parseStepTimer, stepEndsIn, syncStepTimer } from "../../lib/stepTimer";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -103,12 +104,40 @@ export class HundredRoom {
     });
   }
 
-  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon chrono par action.
   async alarm(): Promise<void> {
     if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
       this.room = null;
       this.lastReport = "";
+      return;
     }
+    await this.onStepAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  private async onStepAlarm(): Promise<void> {
+    const room = await this.loadRoom("");
+    const result = await checkStepTimer(this.state.storage, room, this.stepKey(room));
+    if (result === "none") return;
+    if (result === "timeout") this.onStepTimeout(room);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Chrono par action (lib/stepTimer.ts) : seule la proposition attend tout le
+  // monde ; le rangement et la révélation sont à la main de l'hôte.
+  private stepKey(room: RoomState): string | null {
+    return room.phase === "propose" ? "propose" : null;
+  }
+  
+  // Qui n'a rien proposé à temps ne pose pas de carte : la ligne se fait avec
+  // celles déjà données.
+  private onStepTimeout(room: RoomState) {
+    if (room.phase !== "propose") return;
+    room.order = shuffle(
+      room.playerOrder.filter((id) => room.players[id]?.connected && room.players[id]?.proposal !== null),
+    );
+    room.phase = "arrange";
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -124,12 +153,14 @@ export class HundredRoom {
       // Rooms persisted before the anime mode existed have no `mode` field.
       this.room.mode = VALID_MODES.includes(this.room.mode) ? this.room.mode : "perso";
       this.room.recentDraws ??= [];
+      this.room.stepTimer ??= emptyStepTimer();
     }
     return this.room;
   }
 
   private async saveRoom(): Promise<void> {
     if (this.room) {
+      await syncStepTimer(this.state.storage, this.room, this.stepKey(this.room));
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
     }
@@ -362,6 +393,7 @@ export class HundredRoom {
       room.theme = pickRandomTheme(room.mode, room.recentDraws);
       room.recentDraws = remember(room.recentDraws, [room.theme], RECENT_THEMES);
     }
+    room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     room.order = [];
     room.score = null;
     assignNumbers(room);
@@ -545,6 +577,8 @@ export class HundredRoom {
       proposalsSubmitted: connectedIds.filter((id) => room.players[id]?.proposal !== null).length,
       proposalsNeeded: connectedIds.length,
       score: room.score,
+      stepTimer: room.stepTimer.seconds,
+      stepEndsIn: stepEndsIn(room),
     };
   }
 }

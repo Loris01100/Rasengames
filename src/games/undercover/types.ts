@@ -1,3 +1,4 @@
+import { type StepTimer, emptyStepTimer } from "../../lib/stepTimer";
 import type { WordCategory, PairCategory } from "./words";
 
 export type Role = "civilian" | "undercover" | "mrwhite";
@@ -58,6 +59,8 @@ export interface RoomState {
   // Arrivés en cours de partie : hors de players/playerOrder, donc invisibles
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
+  // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
+  stepTimer: StepTimer;
   turnOrder: string[]; // clue order for the current round (alive players only)
   currentTurnIndex: number;
   clues: Clue[]; // manche en cours seulement
@@ -91,6 +94,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    stepTimer: emptyStepTimer(),
     turnOrder: [],
     currentTurnIndex: 0,
     clues: [],

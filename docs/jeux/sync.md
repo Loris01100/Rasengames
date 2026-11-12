@@ -39,6 +39,9 @@ sont deux réponses différentes.
 | Réglage | Valeurs |
 | --- | --- |
 | Arbitre | Un joueur connecté choisi par l'hôte, ou tirage au sort |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono : un arbitre qui n'a pas envoyé ses questions arrête la manche (`endReason`) ; en `answering`, le chrono repart à chaque réponse validée par n'importe qui, et à l'échéance les réponses manquantes comptent comme vides (0 point) et la révélation s'ouvre. La révélation, menée par l'arbitre au clic, n'est pas chronométrée.
 
 ## Score
 
@@ -64,7 +67,7 @@ il ne contient que la manche qui vient de se jouer.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Lance la manche. Payload : `refereeId` (facultatif, sinon tirage). |
+| `start` | hôte | Lance la manche. Payload : `refereeId` (facultatif, sinon tirage), `stepTimer`. |
 | `submitQuestions` | arbitre | Envoie `questions`, un tableau de trois chaînes non vides. |
 | `submitAnswer` | répondant | Valide `answer` pour `question` (0, 1 ou 2, dans l'ordre). |
 | `revealNext` | arbitre | Révèle la réponse suivante, puis passe à la question suivante, puis termine. |

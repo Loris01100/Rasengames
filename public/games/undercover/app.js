@@ -491,6 +491,7 @@
   }
 
   Room.init({
+    stepTimer: true,
     slug: "undercover",
     minPlayers: 3,
     onStart: () => ({

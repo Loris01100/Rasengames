@@ -7,12 +7,13 @@
 
 Le global `Room`, chargé avant l'`app.js` de chaque jeu. Il possède le WebSocket et sa reconnexion, l'écran rejoindre/créer, l'identité en localStorage (dix derniers codes par jeu), le badge de salon, le toast, l'entête « changer de jeu », les lignes de joueurs et le lobby : `Room.init({ slug, minPlayers, maxPlayers, onState })`, puis `Room.send/toast/showScreen/playerRow/renderLobby/showSwitchGame`, plus `Room.playerId` / `Room.state` vivants. **Tout ce qui est identique d'un jeu à l'autre va ici**, pas copié dans un neuvième `app.js`.
 
-Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnexion immédiate sur `visibilitychange`/`online` (le backoff monte à 30 s et ne doit pas faire attendre celui qui revient — cas mobile classique), et six choses qu'aucun jeu ne connaît :
+Il possède aussi la sonde d'existence du salon sur « Rejoindre », la reconnexion immédiate sur `visibilitychange`/`online` (le backoff monte à 30 s et ne doit pas faire attendre celui qui revient — cas mobile classique), et sept choses qu'aucun jeu ne connaît :
 - le bouton « Règles » du header — contenu pris dans le `<template id="rules">` de la page et déplacé dans un `<dialog>` natif (la top layer passe au-dessus des `.card` sans le contournement de `suggest.js` ; Échap et le fond assombri sont gratuits). `npm test` vérifie que chaque page en porte un.
 - le bouton « Revenir au lobby » de l'hôte (envoie `restart`, hors lobby seulement).
 - le bouton « copier le lien », construit en JS à côté de `#lobby-code` (`?room=CODE` était déjà géré au chargement).
 - l'étiquette de score cumulé (`state.scores`) sur chaque ligne de joueur.
 - les deux boutons d'hôte sur les lignes des *autres* joueurs au lobby (`.row-actions`) : « Passer hôte » (envoie `transferHost`, seulement si la cible est connectée) et « Exclure » (`kick`).
+- le chrono par action, pour les jeux qui passent `stepTimer: true` à `Room.init` : un `<select>` inséré avant `#start-btn` (sa valeur part avec `start`, initialisée une fois depuis `state.stepTimer`) et un compte à rebours `#step-timer` fixe en bas d'écran, piloté par `state.stepEndsIn` (durée restante, ancrée sur l'horloge locale). Les valeurs du select doivent suivre `STEP_TIMER_CHOICES` de `src/lib/stepTimer.ts`.
 - le mode spectateur : une arrivée sans ancien token pendant une partie devient automatiquement spectatrice ; elle voit l'état courant sans entrer dans `players` ni pouvoir envoyer d'action.
 
 ## Icônes

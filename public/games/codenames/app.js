@@ -592,6 +592,7 @@
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
 
   Room.init({
+    stepTimer: true,
     slug: "codenames",
     minPlayers: 2,
     maxPlayers: 4,

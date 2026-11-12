@@ -1,3 +1,4 @@
+import { type StepTimer, emptyStepTimer } from "../../lib/stepTimer";
 export type Phase = "lobby" | "play" | "ended";
 export type Step = "character" | "anime" | "lastChance";
 export type LastChanceKind = "arc" | "lieu" | "pouvoir" | "groupe" | "arme";
@@ -28,6 +29,8 @@ export interface RoomState {
   // Arrivés en cours de partie : hors de players/playerOrder, donc invisibles
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
+  // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
+  stepTimer: StepTimer;
   guesserId: string | null; // the one player who never sees `number`
   number: number | null; // the shared secret rating, 1-10
   step: Step | "guessing" | null; // current stage within "play"
@@ -44,6 +47,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    stepTimer: emptyStepTimer(),
     guesserId: null,
     number: null,
     step: null,

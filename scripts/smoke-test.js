@@ -15,13 +15,13 @@ const GAMES = ["bac", "bomb", "codenames", "detective", "guesswho", "hundred", "
 const START_KEYS = {
   bac: ["type", "categories", "customCategories", "duration", "letters"],
   bomb: ["type", "mode", "rule", "lives", "fuse", "letters"],
-  detective: ["type"],
-  hundred: ["type", "mode", "theme"],
-  note: ["type", "guesserId"],
-  sync: ["type", "refereeId"],
-  undercover: ["type", "settings"],
-  whoami: ["type", "submitMode"],
-  codenames: ["type"],
+  detective: ["type", "stepTimer"],
+  hundred: ["type", "stepTimer", "mode", "theme"],
+  note: ["type", "stepTimer", "guesserId"],
+  sync: ["type", "stepTimer", "refereeId"],
+  undercover: ["type", "stepTimer", "settings"],
+  whoami: ["type", "stepTimer", "submitMode"],
+  codenames: ["type", "stepTimer"],
   guesswho: ["type", "guesserId"],
 };
 

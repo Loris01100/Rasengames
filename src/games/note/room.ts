@@ -2,7 +2,8 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, type LastChanceKind, createEmptyRoom } from "./types";
 import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, informedIds, pickGuesser, nextStep } from "./logic";
 import { reportRoom } from "../../lib/registry";
-import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
+import { checkStepTimer, emptyStepTimer, parseStepTimer, stepEndsIn, syncStepTimer } from "../../lib/stepTimer";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -90,12 +91,44 @@ export class NoteRoom {
     });
   }
 
-  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon chrono par action.
   async alarm(): Promise<void> {
     if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
       this.room = null;
       this.lastReport = "";
+      return;
     }
+    await this.onStepAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  private async onStepAlarm(): Promise<void> {
+    const room = await this.loadRoom("");
+    const result = await checkStepTimer(this.state.storage, room, this.stepKey(room));
+    if (result === "none") return;
+    if (result === "timeout") this.onStepTimeout(room);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Chrono par action (lib/stepTimer.ts) : une attente par étape, tout le monde
+  // répond en même temps ; puis la réponse du devineur.
+  private stepKey(room: RoomState): string | null {
+    if (room.phase !== "play" || !room.step) return null;
+    return `step:${room.step}`;
+  }
+  
+  // Un exemple manquant est sauté : l'étape suivante s'ouvre avec ceux déjà
+  // donnés. Le devineur muet clôt la manche sans réponse, donc sans point.
+  private onStepTimeout(room: RoomState) {
+    if (room.phase !== "play" || !room.step) return;
+    if (room.step === "guessing") {
+      room.guess = null;
+      room.phase = "ended";
+      return;
+    }
+    for (const id of informedIds(room)) room.players[id].submitted = true;
+    this.maybeAdvanceStep(room);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -106,6 +139,7 @@ export class NoteRoom {
       // persistés : sans ça, le premier push dans waiting casse la manche.
       this.room.scores ??= {};
       this.room.waiting ??= [];
+      this.room.stepTimer ??= emptyStepTimer();
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -114,6 +148,7 @@ export class NoteRoom {
 
   private async saveRoom(): Promise<void> {
     if (this.room) {
+      await syncStepTimer(this.state.storage, this.room, this.stepKey(this.room));
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
     }
@@ -330,6 +365,7 @@ export class NoteRoom {
 
     const requestedGuesserId = typeof msg.guesserId === "string" ? msg.guesserId : null;
     room.guesserId = pickGuesser(room, requestedGuesserId);
+    room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     room.number = 1 + Math.floor(Math.random() * 10);
     room.clues = [];
     room.guess = null;
@@ -471,6 +507,8 @@ export class NoteRoom {
       number: seesNumber ? room.number : null,
       clues: room.clues,
       guess: room.guess,
+      stepTimer: room.stepTimer.seconds,
+      stepEndsIn: stepEndsIn(room),
     };
   }
 }

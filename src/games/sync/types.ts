@@ -1,3 +1,4 @@
+import { type StepTimer, emptyStepTimer } from "../../lib/stepTimer";
 export type Phase = "lobby" | "questions" | "answering" | "reveal" | "ended";
 
 export interface Player {
@@ -16,6 +17,8 @@ export interface RoomState {
   playerOrder: string[];
   scores: Record<string, number>;
   waiting: Player[];
+  // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
+  stepTimer: StepTimer;
   refereeId: string | null;
   questions: string[];
   answers: Record<string, string[]>;
@@ -33,6 +36,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    stepTimer: emptyStepTimer(),
     refereeId: null,
     questions: [],
     answers: {},

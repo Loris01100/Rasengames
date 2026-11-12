@@ -293,6 +293,7 @@
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
 
   Room.init({
+    stepTimer: true,
     slug: "sync",
     minPlayers: 3,
     maxPlayers: 10,

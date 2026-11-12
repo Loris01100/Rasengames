@@ -314,6 +314,7 @@
   Suggest.attach(el.proposeInput, () => "character");
 
   Room.init({
+    stepTimer: true,
     slug: "detective",
     minPlayers: 2,
     maxPlayers: 3,

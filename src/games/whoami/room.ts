@@ -9,7 +9,8 @@ import {
   nextTurn,
 } from "./logic";
 import { reportRoom } from "../../lib/registry";
-import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
+import { checkStepTimer, emptyStepTimer, parseStepTimer, stepEndsIn, syncStepTimer } from "../../lib/stepTimer";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -108,12 +109,39 @@ export class WhoamiRoom {
     });
   }
 
-  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon chrono par action.
   async alarm(): Promise<void> {
     if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
       this.room = null;
       this.lastReport = "";
+      return;
     }
+    await this.onStepAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  private async onStepAlarm(): Promise<void> {
+    const room = await this.loadRoom("");
+    const result = await checkStepTimer(this.state.storage, room, this.stepKey(room));
+    if (result === "none") return;
+    if (result === "timeout") this.onStepTimeout(room);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Chrono par action (lib/stepTimer.ts) : le tour de question. Le total des
+  // questions posées change à chaque tour joué ; un tour sauté change turnId.
+  // La saisie des personnages n'est pas chronométrée : sans le mot d'un joueur,
+  // le dérangement laisserait quelqu'un sans personnage à deviner.
+  private stepKey(room: RoomState): string | null {
+    if (room.phase !== "play" || !room.turnId) return null;
+    const asked = Object.values(room.players).reduce((sum, p) => sum + p.questionsAsked, 0);
+    return `turn:${room.turnId}:${asked}`;
+  }
+  
+  // Le tour passe sans compter de question.
+  private onStepTimeout(room: RoomState) {
+    if (room.phase === "play" && room.turnId) room.turnId = nextTurn(room, room.turnId);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -124,6 +152,7 @@ export class WhoamiRoom {
       // persistés : sans ça, le premier push dans waiting casse la manche.
       this.room.scores ??= {};
       this.room.waiting ??= [];
+      this.room.stepTimer ??= emptyStepTimer();
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
       this.room.submitMode = VALID_SUBMIT_MODES.includes(this.room.submitMode)
@@ -136,6 +165,7 @@ export class WhoamiRoom {
 
   private async saveRoom(): Promise<void> {
     if (this.room) {
+      await syncStepTimer(this.state.storage, this.room, this.stepKey(this.room));
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
     }
@@ -376,6 +406,7 @@ export class WhoamiRoom {
         return;
       }
     }
+    room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     room.submitMode = submitMode;
     room.category = category;
 
@@ -614,6 +645,8 @@ export class WhoamiRoom {
       turnName: room.turnId ? room.players[room.turnId]?.name ?? null : null,
       submitMode: room.submitMode,
       category: room.category,
+      stepTimer: room.stepTimer.seconds,
+      stepEndsIn: stepEndsIn(room),
     };
   }
 }

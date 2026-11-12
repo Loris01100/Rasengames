@@ -47,6 +47,9 @@ gagnent dès qu'ils sont aussi nombreux que les civils.
 | Nombre d'Undercover | ≥ 0 |
 | Nombre de Mr. White | ≥ 0 |
 | Catégorie de mots | Titres d'anime, Personnages, Pouvoirs, Lieux, Arcs, Groupes, Objets, ou Aléatoire |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono : l'indice du joueur au tour est sauté, le vote se résout avec les bulletins déjà déposés (aucun bulletin : égalité, nouveau tour d'indices), et Mr. White qui tarde est tranché comme une mauvaise réponse.
 
 La combinaison doit laisser **au moins 2 civils**, sinon le démarrage est
 refusé avec un message. Les valeurs par défaut suivent l'effectif : 1
@@ -75,7 +78,7 @@ civils gagne seul (les Undercover marquent avec lui lorsque la victoire est
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Distribue rôles et mots, ouvre `clue`. Payload : `settings`. |
+| `start` | hôte | Distribue rôles et mots, ouvre `clue`. Payload : `settings`, `stepTimer`. |
 | `clue` | joueur dont c'est le tour | Ajoute l'indice, passe la main. |
 | `vote` | joueur vivant | Enregistre le vote ; résolution quand tous ont voté. |
 | `whiteGuess` | Mr. White éliminé | Tente le mot des civils. |

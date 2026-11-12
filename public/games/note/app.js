@@ -185,9 +185,13 @@
     const who = iAmGuesser ? "Tu as" : `${guesserName} a`;
     const exact = state.guess === state.number;
 
-    el.endTitle.textContent = exact
-      ? `${who} deviné pile le bon chiffre : ${state.number} !`
-      : `${who} dit ${state.guess}, c'était ${state.number}`;
+    // guess null : le chrono par action a sonné avant que le devineur réponde.
+    const late = iAmGuesser ? "Tu n'as" : `${guesserName} n'a`;
+    el.endTitle.textContent = state.guess == null
+      ? `${late} pas répondu à temps, c'était ${state.number}`
+      : exact
+        ? `${who} deviné pile le bon chiffre : ${state.number} !`
+        : `${who} dit ${state.guess}, c'était ${state.number}`;
 
     const diff = state.guess != null && state.number != null ? Math.abs(state.guess - state.number) : null;
     el.endDetail.textContent = exact || diff == null ? "" : `Écart de ${diff}.`;
@@ -220,6 +224,7 @@
   el.restartBtn.addEventListener("click", () => Room.send({ type: "restart" }));
 
   Room.init({
+    stepTimer: true,
     slug: "note",
     minPlayers: 3,
     maxPlayers: 8,

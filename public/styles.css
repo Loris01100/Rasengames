@@ -676,6 +676,46 @@ body.spectator-mode main select:disabled {
   animation: toastIn 0.2s ease both;
 }
 
+/* Chrono par action (room-client.js) : réglage au lobby de l'hôte, puis un
+   compte à rebours fixe en bas d'écran, visible quel que soit l'écran du jeu. */
+.step-timer-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 12px 0;
+}
+
+.step-timer-option select {
+  width: 100%;
+}
+
+.step-timer-option p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.step-timer {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 90;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  background: var(--surface);
+  color: var(--text);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.step-timer.urgent {
+  background: var(--accent);
+  color: #fff;
+}
+
 #room-badge {
   font-size: 0.9rem;
   letter-spacing: 0.12em;

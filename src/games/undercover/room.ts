@@ -11,7 +11,8 @@ import {
 import { normalizeWord } from "../../lib/words";
 import { CATEGORY_LABELS, UNDERCOVER_SOURCES, availablePairCount, type WordCategory } from "./words";
 import { reportRoom } from "../../lib/registry";
-import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
+import { checkStepTimer, emptyStepTimer, parseStepTimer, stepEndsIn, syncStepTimer } from "../../lib/stepTimer";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -111,12 +112,48 @@ export class UndercoverRoom {
     });
   }
 
-  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon chrono par action.
   async alarm(): Promise<void> {
     if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
       this.room = null;
       this.lastReport = "";
+      return;
     }
+    await this.onStepAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  // Chrono par action (lib/stepTimer.ts) : l'étape que le salon attend.
+  // Le numéro de manche change à chaque tour d'indices, l'index à chaque indice.
+  private stepKey(room: RoomState): string | null {
+    if (room.phase === "clue") return `clue:${room.round}:${room.currentTurnIndex}`;
+    if (room.phase === "vote") return `vote:${room.round}`;
+    if (room.phase === "whiteguess") return `white:${room.round}`;
+    return null;
+  }
+
+  private async onStepAlarm(): Promise<void> {
+    const room = await this.loadRoom("");
+    const result = await checkStepTimer(this.state.storage, room, this.stepKey(room));
+    if (result === "none") return;
+    if (result === "timeout") this.onStepTimeout(room);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Le retardataire est traité comme absent pour cette étape : son tour
+  // d'indice est sauté, le vote se résout avec les bulletins déjà déposés
+  // (aucun bulletin : égalité, nouveau tour), Mr. White qui ne répond pas a
+  // donné une mauvaise réponse.
+  private onStepTimeout(room: RoomState) {
+    if (room.phase === "clue") {
+      room.currentTurnIndex += 1;
+    } else if (room.phase === "vote") {
+      this.resolveVote(room);
+    } else if (room.phase === "whiteguess") {
+      this.resolveWhiteGuess(room, "");
+    }
+    this.maybeAdvancePhase(room);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -132,6 +169,7 @@ export class UndercoverRoom {
       this.room.currentPairId ??= null;
       this.room.feedbackVotes ??= {};
       this.room.recentDraws ??= [];
+      this.room.stepTimer ??= emptyStepTimer();
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -140,6 +178,7 @@ export class UndercoverRoom {
 
   private async saveRoom(): Promise<void> {
     if (this.room) {
+      await syncStepTimer(this.state.storage, this.room, this.stepKey(this.room));
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
     }
@@ -383,6 +422,7 @@ export class UndercoverRoom {
       }
     }
 
+    room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     assignRoles(room);
     startNewRound(room);
 
@@ -687,6 +727,8 @@ export class UndercoverRoom {
       civilianWordHint: revealAll ? room.civilianWordHint : undefined,
       undercoverWordHint: revealAll ? room.undercoverWordHint : undefined,
       settings: room.settings,
+      stepTimer: room.stepTimer.seconds,
+      stepEndsIn: stepEndsIn(room),
       wordCategory: room.wordCategory,
       myPairFeedback: room.feedbackVotes[forPlayerId] ?? null,
       pairFeedbackCount: Object.keys(room.feedbackVotes).length,

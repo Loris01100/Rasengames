@@ -34,6 +34,9 @@ un chiffre entre 1 et 10.
 | Réglage | Valeurs |
 | --- | --- |
 | Devineur | Un joueur précis, ou tiré au sort |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono : à chaque étape d'exemples, ceux qui n'ont pas répondu sont sautés et l'étape suivante s'ouvre ; en `guessing`, le devineur qui tarde clôt la manche sans réponse (`guess` nul), donc sans point.
 
 Le chiffre (1 à 10) est toujours tiré par le serveur.
 
@@ -56,7 +59,7 @@ sont soumis : c'est le matériau du devineur.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Tire le chiffre et désigne le devineur. Payload : `guesserId` (optionnel). |
+| `start` | hôte | Tire le chiffre et désigne le devineur. Payload : `guesserId` (optionnel), `stepTimer`. |
 | `submitClue` | joueur informé | Soumet son exemple pour l'étape en cours. Payload : `text`, plus `kind` en `lastChance`. |
 | `submitGuess` | devineur | Annonce un chiffre entre 1 et 10, clôt la manche. |
 

@@ -40,6 +40,9 @@ contre les autres.
 | --- | --- |
 | Mode | `perso` (chacun propose un personnage) ou `anime` (chacun propose un anime) |
 | Thème | Choisi dans la liste du mode, ou tapé à la main (60 caractères max) |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono, seule la phase `propose` est chronométrée : qui n'a rien proposé ne pose pas de carte, et la ligne se fait avec les autres. Le rangement et la révélation restent à la main de l'hôte.
 
 Les deux modes ont exactement la même mécanique ; seules la liste de thèmes et
 les formulations changent. En mode `perso` le thème est un trait qu'un
@@ -63,7 +66,7 @@ vaut donc au maximum 4 points par joueur.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Tire les chiffres, fixe le thème. Payload : `mode`, `theme`. |
+| `start` | hôte | Tire les chiffres, fixe le thème. Payload : `mode`, `theme`, `stepTimer`. |
 | `propose` | joueur | Enregistre la proposition (+ `anilistRef` éventuelle). |
 | `move` | hôte | Déplace une carte à un index de la ligne. |
 | `reveal` | hôte | Passe en phase de révélation. |

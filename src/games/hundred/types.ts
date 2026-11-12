@@ -1,3 +1,4 @@
+import { type StepTimer, emptyStepTimer } from "../../lib/stepTimer";
 export type Phase = "lobby" | "propose" | "arrange" | "reveal" | "ended";
 
 // "perso": chacun propose un personnage. "anime": chacun propose un anime.
@@ -33,6 +34,8 @@ export interface RoomState {
   // Arrivés en cours de partie : hors de players/playerOrder, donc invisibles
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
+  // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
+  stepTimer: StepTimer;
   theme: string | null;
   order: string[];
   revealedCount: number;
@@ -52,6 +55,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    stepTimer: emptyStepTimer(),
     theme: null,
     order: [],
     revealedCount: 0,

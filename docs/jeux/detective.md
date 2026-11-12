@@ -36,7 +36,15 @@ on tente sa chance à la place d'une proposition.
 
 ## Réglages de l'hôte (lobby)
 
-Aucun : le jeu se lance tel quel, tout le contenu vient des joueurs.
+Tout le contenu vient des joueurs ; un seul réglage, facultatif.
+
+| Réglage | Valeurs |
+| --- | --- |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono, le tour passe au suivant sans proposition. Ni la
+saisie des catégories ni les réponses oui/non ne sont chronométrées : personne
+ne peut juger à la place du propriétaire d'une catégorie.
 
 ## Score
 
@@ -54,7 +62,7 @@ joueur ne voit dans sa file (`incoming`) que les questions qu'il doit juger.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Ouvre la saisie des catégories. |
+| `start` | hôte | Ouvre la saisie des catégories. Payload : `stepTimer`. |
 | `setCategory` | joueur | Enregistre sa catégorie secrète. |
 | `proposeCharacter` | joueur dont c'est le tour | Envoie un personnage à tous les adversaires encore en jeu. |
 | `guessCategory` | joueur dont c'est le tour | Tente la catégorie d'une cible précise. Payload : `target`, `text`. |

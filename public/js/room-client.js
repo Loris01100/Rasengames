@@ -8,7 +8,9 @@
 // Usage, at the bottom of a game's app.js:
 //   Room.init({ slug: "whoami", minPlayers: 2, maxPlayers: 5, onState: render });
 // Games with lobby settings also pass onStart() -> extra fields for the "start"
-// message, or a falsy value to refuse (see bac).
+// message, or a falsy value to refuse (see bac). `stepTimer: true` adds the
+// optional per-action timer: a lobby select sent with "start", and a floating
+// countdown whenever the state carries `stepEndsIn`.
 const Room = (() => {
   const $ = (id) => document.getElementById(id);
 
@@ -247,6 +249,7 @@ const Room = (() => {
       renderWaitingBadge(msg.state);
       renderSpectators(msg.state);
       renderBackToLobby(msg.state);
+      renderStepTimer(msg.state);
       if (api.spectator && !wantSpectator && !promoting && msg.state.phase === "lobby") {
         promoting = true;
         send({ type: "join", name: localStorage.getItem(storageKey(api.code, "name")) || "Joueur" });
@@ -308,6 +311,80 @@ const Room = (() => {
   function renderBackToLobby(state) {
     const show = state.phase !== "lobby" && state.hostId === api.playerId;
     el.backToLobbyBtn.classList.toggle("hidden", !show);
+  }
+
+  // ---- chrono par action (src/lib/stepTimer.ts) ----
+  // Gardé en phase avec STEP_TIMER_CHOICES côté serveur.
+  const STEP_TIMER_CHOICES = [
+    [0, "Désactivé"],
+    [30, "30 s"],
+    [45, "45 s"],
+    [60, "1 min"],
+    [90, "1 min 30"],
+    [120, "2 min"],
+  ];
+  let stepTimerSynced = false;
+  let stepTicker = null;
+
+  // Sélecteur du lobby, construit une fois (renderLobby est rejoué à chaque
+  // state) juste avant le bouton Démarrer. Seulement pour les jeux qui passent
+  // `stepTimer: true` à init().
+  function buildStepTimerSetting() {
+    const row = document.createElement("div");
+    row.className = "step-timer-option";
+    const label = document.createElement("label");
+    label.htmlFor = "step-timer-select";
+    label.textContent = "Chrono par action";
+    const select = document.createElement("select");
+    select.id = "step-timer-select";
+    for (const [seconds, text] of STEP_TIMER_CHOICES) {
+      const opt = document.createElement("option");
+      opt.value = String(seconds);
+      opt.textContent = text;
+      select.appendChild(opt);
+    }
+    const hint = document.createElement("p");
+    hint.className = "muted small";
+    hint.textContent = "À l'échéance, le jeu passe le tour de qui traîne.";
+    row.appendChild(label);
+    row.appendChild(select);
+    row.appendChild(hint);
+    el.startBtn.parentNode.insertBefore(row, el.startBtn);
+    el.stepTimerSelect = select;
+
+    el.stepTimer = document.createElement("div");
+    el.stepTimer.className = "step-timer hidden";
+    el.stepTimer.id = "step-timer";
+    el.stepTimer.setAttribute("role", "timer");
+    document.body.appendChild(el.stepTimer);
+  }
+
+  // Le serveur envoie une durée restante, ancrée ici sur l'horloge locale
+  // (même raison que le chrono du Petit Bac : téléphones désynchronisés).
+  function renderStepTimer(state) {
+    if (!el.stepTimer) return;
+    // Le dernier réglage du salon, une fois : ensuite c'est le choix local de
+    // l'hôte qui compte, sans être écrasé à chaque state.
+    if (!stepTimerSynced && typeof state.stepTimer === "number") {
+      el.stepTimerSelect.value = String(state.stepTimer);
+      stepTimerSynced = true;
+    }
+    clearInterval(stepTicker);
+    stepTicker = null;
+    if (state.stepEndsIn == null) {
+      el.stepTimer.classList.add("hidden");
+      return;
+    }
+    const deadline = Date.now() + state.stepEndsIn;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      el.stepTimer.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+      el.stepTimer.classList.toggle("urgent", left <= 10);
+      if (left === 0) clearInterval(stepTicker);
+    };
+    tick();
+    el.stepTimer.classList.remove("hidden");
+    stepTicker = setInterval(tick, 250);
   }
 
   // Sinon l'hôte n'a aucune raison de relancer une manche : il ne sait pas
@@ -659,6 +736,7 @@ const Room = (() => {
     el.joinBtn.parentNode.parentNode.appendChild(el.spectateBtn);
 
     initRules();
+    if (cfg.stepTimer) buildStepTimerSetting();
 
     for (const g of GAMES) {
       if (g.slug === cfg.slug) continue;
@@ -721,7 +799,8 @@ const Room = (() => {
     el.startBtn.addEventListener("click", () => {
       const extra = cfg.onStart ? cfg.onStart() : {};
       if (!extra) return;
-      send({ type: "start", ...extra });
+      const timer = el.stepTimerSelect ? { stepTimer: Number(el.stepTimerSelect.value) } : {};
+      send({ type: "start", ...timer, ...extra });
     });
 
     el.switchGameBtn.addEventListener("click", () => {

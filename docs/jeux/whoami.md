@@ -40,6 +40,9 @@ affiché à côté de chaque joueur.
 | --- | --- |
 | Mode de saisie | `libre` (chacun écrit ce qu'il veut) ou `categorie` |
 | Catégorie | Texte libre imposé à tous en mode `categorie` (« que des méchants », « personnages de shōnen ») |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono : le tour de question passe au suivant, sans compter de question. Ni la saisie des personnages (sans le mot d'un joueur, le dérangement laisserait quelqu'un sans personnage) ni la validation des propositions par l'hôte ne sont chronométrées.
 
 La catégorie est une **consigne affichée**, pas une contrainte vérifiée : le
 serveur ne juge pas si un mot la respecte.
@@ -60,7 +63,7 @@ l'intéressé.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Ouvre la saisie. Payload : `submitMode`, `category`. |
+| `start` | hôte | Ouvre la saisie. Payload : `submitMode`, `category`, `stepTimer`. |
 | `submitWord` | joueur | Enregistre le personnage qu'il fait deviner. |
 | `askedQuestion` | joueur dont c'est le tour | Incrémente son compteur et passe la main. |
 | `guess` | joueur | Propose un nom, mis en attente de validation. |

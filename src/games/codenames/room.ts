@@ -24,7 +24,8 @@ import {
 import { WORDS } from "./words";
 import { normalizeWord } from "../../lib/words";
 import { reportRoom } from "../../lib/registry";
-import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
+import { checkStepTimer, emptyStepTimer, parseStepTimer, stepEndsIn, syncStepTimer } from "../../lib/stepTimer";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -106,12 +107,48 @@ export class CodenamesRoom {
     });
   }
 
-  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon chrono par action.
   async alarm(): Promise<void> {
     if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
       this.room = null;
       this.lastReport = "";
+      return;
     }
+    await this.onStepAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  private async onStepAlarm(): Promise<void> {
+    const room = await this.loadRoom("");
+    const result = await checkStepTimer(this.state.storage, room, this.stepKey(room));
+    if (result === "none") return;
+    if (result === "timeout") this.onStepTimeout(room);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Chrono par action (lib/stepTimer.ts) : l'indice du chiffreur, puis chaque
+  // pioche de l'agent (le nombre de cases retournées change à chacune ; les
+  // erreurs aussi, pour une case "témoin" rejouée en duet).
+  private stepKey(room: RoomState): string | null {
+    if (room.phase !== "playing") return null;
+    const turn = room.mode === "duet" ? room.duetTurnSeat : room.turnTeam;
+    const revealed = room.revealed.filter(Boolean).length;
+    return `${turn}:${room.currentClue ? "guess" : "clue"}:${revealed}:${room.duetErrors}`;
+  }
+  
+  // Comme pour un joueur parti : le chiffreur muet laisse passer son tour,
+  // l'agent qui hésite rend la main sans retourner de case.
+  private onStepTimeout(room: RoomState) {
+    if (room.phase !== "playing") return;
+    if (room.mode === "duet") {
+      if (room.currentClue) passDuetTurn(room);
+      else switchDuetTurn(room);
+    } else if (room.mode === "teams") {
+      if (room.currentClue) passTeamTurn(room);
+      else switchTeamTurn(room);
+    }
+    this.maybeAutoPass(room);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -124,6 +161,7 @@ export class CodenamesRoom {
       this.room.wordHints ??= [];
       this.room.excludedWords ??= [];
       this.room.recentDraws ??= [];
+      this.room.stepTimer ??= emptyStepTimer();
       this.visibility = (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
     return this.room;
@@ -131,6 +169,7 @@ export class CodenamesRoom {
 
   private async saveRoom(): Promise<void> {
     if (this.room) {
+      await syncStepTimer(this.state.storage, this.room, this.stepKey(this.room));
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
     }
@@ -396,6 +435,7 @@ export class CodenamesRoom {
       room.keyB = null;
     }
 
+    room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     room.phase = "playing";
     await this.saveRoom();
     this.broadcast();
@@ -661,6 +701,8 @@ export class CodenamesRoom {
       winner: room.winner,
       endKeyA: ended && room.mode === "duet" ? room.keyA : undefined,
       endKeyB: ended && room.mode === "duet" ? room.keyB : undefined,
+      stepTimer: room.stepTimer.seconds,
+      stepEndsIn: stepEndsIn(room),
     };
   }
 }

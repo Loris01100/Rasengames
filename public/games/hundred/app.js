@@ -449,6 +449,7 @@
   Suggest.attach(el.proposalInput, () => (Room.state?.mode === "anime" ? "anime" : "any"));
 
   Room.init({
+    stepTimer: true,
     slug: "hundred",
     minPlayers: 3,
     onStart: () => ({ mode: el.modeSelect.value, theme: el.themeSelect.value }),

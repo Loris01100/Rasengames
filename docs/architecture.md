@@ -65,7 +65,8 @@ namespace de son jeu (`UNDERCOVER_ROOM`, `BOMB_ROOM`, …). Il détient :
   la mémoire sans couper les connexions, et chaque socket garde son `playerId`
   dans son « attachment » pour le réveil ;
 - éventuellement **une alarme** de jeu (Petit Bac, Alphabombe, Qui est-ce,
-  soirée) pour les fins de tour au chrono ou les délais de grâce ;
+  soirée) pour les fins de tour au chrono ou les délais de grâce, ou celle du
+  [chrono par action](salon.md#chrono-par-action) facultatif des sept autres ;
 - dans tous les cas **une alarme de purge** : 24 h sans aucune connexion, le
   stockage est effacé (`deleteAll`) — voir [salon.md](salon.md) et
   [src/lib/idle.ts](../src/lib/idle.ts).

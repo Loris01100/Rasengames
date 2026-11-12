@@ -56,6 +56,9 @@ La première équipe à avoir fait deviner tous ses mots gagne.
 | --- | --- |
 | Répartition (mode `teams`) | L'hôte place les 4 joueurs sur les 4 places : chiffreur A, agent A, chiffreur B, agent B |
 | Gérer les mots | Retire des mots du pool (filtre par série, par exemple pour écarter un anime que personne n'a vu) |
+| Chrono par action | Désactivé (défaut), 30 s, 45 s, 1 min, 1 min 30 ou 2 min — voir [le salon](../salon.md#chrono-par-action) |
+
+À l'échéance du chrono, comme pour un joueur parti : un chiffreur sans indice passe son tour, un agent rend la main sans retourner de case. En phase de pioche, le chrono repart à chaque case retournée.
 
 La répartition est validée strictement côté serveur : exactement les quatre
 joueurs du salon, une place chacun. Sinon l'hôte est prévenu plutôt que de
@@ -87,7 +90,7 @@ En fin de partie, les clés complètes sont envoyées pour la révélation.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Tire le plateau et les clés. Payload : répartition en mode `teams`. |
+| `start` | hôte | Tire le plateau et les clés. Payload : répartition en mode `teams`, `stepTimer`. |
 | `setWordFilter` | hôte | Met à jour la liste des mots exclus du pool. |
 | `clue` | celui dont c'est le tour de chiffrer | Publie un indice (mot + nombre). |
 | `guess` | celui dont c'est le tour de deviner | Retourne une case. |

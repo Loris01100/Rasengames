@@ -29,6 +29,7 @@ import { rejoinName, switchGame } from "../src/lib/session.ts";
 import { awardPartyPoints } from "../src/party/logic.ts";
 import { drawFresh, pickFresh, remember } from "../src/lib/recent.ts";
 import { drawLetter, pickLetter } from "../src/lib/letters.ts";
+import { emptyStepTimer, parseStepTimer, updateStepTimer } from "../src/lib/stepTimer.ts";
 import { RECENT_THEMES, pickRandomTheme } from "../src/games/hundred/themes.ts";
 import { UNDERCOVER_SOURCES, availablePairCount, pickRandomPair } from "../src/games/undercover/words.ts";
 
@@ -801,6 +802,29 @@ const duplicates = codenamesWords
     previous = letter;
   }
   assert.equal(pickLetter(["Q"], ["Q"]), "Q", "une seule lettre cochée sort toujours");
+}
+
+
+{
+  // Chrono par action : désactivé par défaut, valeurs hors liste refusées.
+  assert.equal(emptyStepTimer().seconds, 0);
+  assert.equal(parseStepTimer("60"), 60);
+  assert.equal(parseStepTimer(7), 0, "une durée hors liste vaut désactivé");
+  assert.equal(parseStepTimer(undefined), 0);
+
+  const room = { players: { a: { connected: true } }, stepTimer: { ...emptyStepTimer(), seconds: 30 } };
+  assert.equal(updateStepTimer(room, "clue:1:0", 1000), 31000, "une étape nouvelle arme le chrono");
+  assert.equal(updateStepTimer(room, "clue:1:0", 5000), null, "la même étape laisse le chrono courir");
+  assert.equal(room.stepTimer.deadline, 31000);
+  assert.equal(updateStepTimer(room, "clue:1:1", 6000), 36000, "l'étape suivante repart à plein");
+  assert.equal(updateStepTimer(room, null, 7000), null);
+  assert.equal(room.stepTimer.deadline, null, "plus personne d'attendu : chrono tombé");
+
+  room.players.a.connected = false;
+  assert.equal(updateStepTimer(room, "vote:1", 8000), null, "jamais armé sans joueur connecté");
+  room.players.a.connected = true;
+  room.stepTimer.seconds = 0;
+  assert.equal(updateStepTimer(room, "vote:1", 9000), null, "désactivé : rien à armer");
 }
 
 console.log("logic: ok");

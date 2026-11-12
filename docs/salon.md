@@ -34,7 +34,7 @@ fois ici plutôt que répétée dans chaque fiche. Le code correspondant vit dan
   socket (spectateurs compris), sans retour entre-temps, une alarme vide tout
   son stockage. Le code ne répond plus à la sonde `exists` et les tokens gardés
   par les clients ne rattachent plus rien. Une alarme de jeu en cours (mèche,
-  chrono, forfait, délai de l'hôte soirée) passe d'abord ; la purge est
+  chrono, chrono par action, forfait, délai de l'hôte soirée) passe d'abord ; la purge est
   reprogrammée derrière. Vaut aussi pour la soirée.
 
 ## L'hôte
@@ -86,6 +86,36 @@ sur un autre jeu. Certains jeux lui confient en plus un rôle d'arbitre
   simplement son WebSocket vers le salon d'un autre jeu, sans avoir à
   repartager un nouveau code.
 - **`setVisibility`** : privé par défaut, public pour apparaître sur l'accueil.
+
+## Chrono par action
+
+Un joueur parti ne bloque rien (section suivante), mais un joueur *présent* qui
+traîne le pouvait : la table attendait son indice, son vote ou sa réponse sans
+autre recours que « Revenir au lobby ». Sept jeux proposent donc à l'hôte, au
+lobby, un **chrono par action** : désactivé par défaut, ou 30 s, 45 s, 1 min,
+1 min 30, 2 min. Le réglage part avec `start` (`stepTimer`, en secondes ; une
+valeur hors liste vaut désactivé) et reste celui du salon d'une manche à
+l'autre.
+
+- Chaque fois que le salon attend quelqu'un — un tour, un vote, une étape —
+  le chrono repart à plein. Un compte à rebours fixe s'affiche en bas d'écran
+  chez tout le monde, rouge dans les dix dernières secondes.
+- À l'échéance, le jeu tranche **comme si le retardataire était parti** pour
+  cette étape : tour sauté, vote clos avec les bulletins déposés, réponse
+  vide. Le détail est dans chaque fiche, section « Réglages de l'hôte ».
+- Ce qui demande un jugement ou un contenu sans équivalent vide n'est pas
+  chronométré : la validation d'une proposition par l'hôte, les réponses
+  oui/non de Détective, la saisie des personnages de Qui suis-je ou des
+  catégories de Détective, le rangement et les révélations menés à la main.
+- Petit Bac, Alphabombe et Qui est-ce ? n'en ont pas : ils ont déjà leur
+  propre chrono, mèche ou forfait.
+- Le chrono ne court que si un joueur est connecté. Quand le salon se vide,
+  il tombe ; le premier joueur qui revient le relance à plein.
+
+Côté code : [src/lib/stepTimer.ts](../src/lib/stepTimer.ts), et dans chaque
+salon `stepKey` (l'étape attendue) et `onStepTimeout` (que faire à
+l'échéance). La vue envoie `stepTimer` (le réglage) et `stepEndsIn` (le temps
+restant en ms, ou `null`).
 
 ## Un joueur qui part ne doit jamais figer un salon
 

@@ -1,3 +1,4 @@
+import { type StepTimer, emptyStepTimer } from "../../lib/stepTimer";
 export type Mode = "duet" | "teams";
 export type Phase = "lobby" | "playing" | "ended";
 export type DuetColor = "agent" | "bystander" | "assassin";
@@ -37,6 +38,8 @@ export interface RoomState {
   scores: Record<string, number>;
   // Arrivés en cours de partie : hors de players/playerOrder, entrent au retour au lobby.
   waiting: Player[];
+  // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
+  stepTimer: StepTimer;
   // Mots retirés du pool par l'hôte (lobby "Gérer les mots") — persiste
   // d'une manche à l'autre dans le salon, contrairement au reste qui se
   // réinitialise à chaque restart.
@@ -90,6 +93,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    stepTimer: emptyStepTimer(),
     excludedWords: [],
     words: [],
     wordHints: [],

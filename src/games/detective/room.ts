@@ -2,7 +2,8 @@ import type { Env } from "../../env";
 import { type RoomState, type Player, createEmptyRoom } from "./types";
 import { MIN_PLAYERS, MAX_PLAYERS, connectedIds, othersOf, nextTurn, rankInvestigators } from "./logic";
 import { reportRoom } from "../../lib/registry";
-import { armIdlePurge, cancelIdlePurge, purgeIfIdle } from "../../lib/idle";
+import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../../lib/idle";
+import { checkStepTimer, emptyStepTimer, parseStepTimer, stepEndsIn, syncStepTimer } from "../../lib/stepTimer";
 import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
@@ -90,12 +91,42 @@ export class DetectiveRoom {
     });
   }
 
-  // Seule alarme de ce salon : la purge après 24 h sans connexion (lib/idle.ts).
+  // Purge du salon après 24 h sans connexion (lib/idle.ts), sinon chrono par action.
   async alarm(): Promise<void> {
     if (await purgeIfIdle(this.state.storage, this.sessions.length)) {
       this.room = null;
       this.lastReport = "";
+      return;
     }
+    await this.onStepAlarm();
+    await rearmIdlePurge(this.state.storage);
+  }
+
+  private async onStepAlarm(): Promise<void> {
+    const room = await this.loadRoom("");
+    const result = await checkStepTimer(this.state.storage, room, this.stepKey(room));
+    if (result === "none") return;
+    if (result === "timeout") this.onStepTimeout(room);
+    await this.saveRoom();
+    this.broadcast();
+  }
+
+  // Chrono par action (lib/stepTimer.ts) : le tour de celui qui propose ou
+  // devine. Chaque proposition ou tentative grossit file + journal, ce qui
+  // distingue deux tours successifs du même joueur. Ni la saisie des catégories
+  // ni les réponses oui/non ne sont chronométrées : personne ne peut juger à la
+  // place du propriétaire d'une catégorie.
+  private stepKey(room: RoomState): string | null {
+    if (room.phase !== "play" || !room.turnId) return null;
+    const asked = room.log.length + Object.values(room.players).reduce((sum, p) => sum + p.incoming.length, 0);
+    return `turn:${room.turnId}:${asked}`;
+  }
+  
+  // Le tour passe au suivant, sans proposition.
+  private onStepTimeout(room: RoomState) {
+    if (room.phase !== "play" || !room.turnId) return;
+    room.turnId = this.advanceTurn(room, room.turnId);
+    this.maybeAdvancePhase(room);
   }
 
   private async loadRoom(code: string): Promise<RoomState> {
@@ -110,12 +141,14 @@ export class DetectiveRoom {
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
       // rooms stored before multi-solve shipped have no `solved` array
       this.room.solved ??= [];
+      this.room.stepTimer ??= emptyStepTimer();
     }
     return this.room;
   }
 
   private async saveRoom(): Promise<void> {
     if (this.room) {
+      await syncStepTimer(this.state.storage, this.room, this.stepKey(this.room));
       await this.state.storage.put("room", this.room);
       await this.reportToRegistry();
     }
@@ -207,7 +240,7 @@ export class DetectiveRoom {
         await this.onJoin(session, room, msg);
         break;
       case "start":
-        await this.onStart(session, room);
+        await this.onStart(session, room, msg);
         break;
       case "setCategory":
         await this.onSetCategory(session, room, msg);
@@ -323,7 +356,7 @@ export class DetectiveRoom {
     this.broadcast();
   }
 
-  private async onStart(session: Session, room: RoomState) {
+  private async onStart(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (session.playerId !== room.hostId) {
       sendError(session.ws, "Seul l'hôte peut démarrer la partie.");
       return;
@@ -341,6 +374,7 @@ export class DetectiveRoom {
       player.ready = false;
       player.incoming = [];
     }
+    room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     room.log = [];
     room.solved = [];
     room.turnId = null;
@@ -569,6 +603,8 @@ export class DetectiveRoom {
         byName: nameOf(s.by),
       })),
       investigatorRanking: revealAll ? rankInvestigators(room) : [],
+      stepTimer: room.stepTimer.seconds,
+      stepEndsIn: stepEndsIn(room),
     };
   }
 }

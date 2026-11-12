@@ -1,3 +1,4 @@
+import { type StepTimer, emptyStepTimer } from "../../lib/stepTimer";
 export type Phase = "lobby" | "submit" | "play" | "ended";
 
 // "libre": chacun écrit ce qu'il veut. "categorie": l'hôte impose un thème
@@ -33,6 +34,8 @@ export interface RoomState {
   // Arrivés en cours de partie : hors de players/playerOrder, donc invisibles
   // pour la manche en cours, ils entrent au retour au lobby (promoteWaiting).
   waiting: Player[];
+  // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
+  stepTimer: StepTimer;
   turnId: string | null; // whose turn it is to ask a question during "play"
   submitMode: SubmitMode;
   category: string | null; // set only when submitMode === "categorie"
@@ -47,6 +50,7 @@ export function createEmptyRoom(code: string): RoomState {
     playerOrder: [],
     scores: {},
     waiting: [],
+    stepTimer: emptyStepTimer(),
     turnId: null,
     submitMode: "libre",
     category: null,
