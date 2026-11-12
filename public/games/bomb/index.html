@@ -38,7 +38,7 @@
     <!-- Join / create screen -->
     <section id="screen-join" class="card narrow">
       <h1>Alphabombe</h1>
-      <p class="muted">Une bombe à la mèche invisible circule entre vous. Reçois-la, tape un personnage (ou un anime, selon la variante) qui commence par la lettre imposée — vérifié sur AniList, pas de nom inventé — puis elle passe au suivant avec une nouvelle lettre. Si elle t'explose entre les mains, tu perds une vie — 2 vies, la 3e explosion t'élimine. Le dernier en vie gagne. 2 joueurs minimum.</p>
+      <p class="muted">Une bombe à la mèche invisible circule entre vous. Reçois-la, tape un personnage (ou un anime, selon la variante) qui commence par la lettre imposée (ou la contient, selon le réglage) — vérifié sur AniList, pas de nom inventé — puis elle passe au suivant avec une nouvelle lettre. Si elle t'explose entre les mains, tu perds une vie ; sans vie restante, l'explosion suivante t'élimine. Le dernier en vie gagne. 2 joueurs minimum.</p>
 
       <label for="name-input">Ton pseudo</label>
       <input id="name-input" type="text" minlength="4" maxlength="20" placeholder="Ex: Loris (4 caractères min.)" autocomplete="off" />
@@ -74,6 +74,27 @@
         <select id="mode-select">
           <option value="perso">Personnages — dites un perso</option>
           <option value="anime">Animes — dites un anime</option>
+        </select>
+        <label for="rule-select">Lettre</label>
+        <select id="rule-select">
+          <option value="start" selected>Commence par la lettre</option>
+          <option value="contains">Contient la lettre, n'importe où</option>
+        </select>
+        <label for="lives-select">Vies</label>
+        <select id="lives-select">
+          <option value="0">Mort subite — la 1re explosion élimine</option>
+          <option value="1">1 vie</option>
+          <option value="2" selected>2 vies</option>
+          <option value="3">3 vies</option>
+          <option value="4">4 vies</option>
+          <option value="5">5 vies</option>
+        </select>
+        <label for="fuse-select">Mèche</label>
+        <select id="fuse-select">
+          <option value="short">Courte — 10 à 25 secondes</option>
+          <option value="normal" selected>Normale — 20 à 50 secondes</option>
+          <option value="long">Longue — 40 à 80 secondes</option>
+          <option value="wild">Imprévisible — 5 à 70 secondes</option>
         </select>
         <label>Lettres autorisées</label>
         <div id="letter-checkboxes" class="letter-checkboxes"></div>
@@ -138,11 +159,11 @@
     <h2>Alphabombe</h2>
     <p class="muted">Une mèche invisible qui court de main en main.</p>
     <ol class="rules-steps">
-      <li>Le joueur qui tient la bombe voit une lettre et doit taper un personnage (ou un anime) qui commence par elle.</li>
+      <li>Le joueur qui tient la bombe voit une lettre et doit taper un personnage (ou un anime) qui commence par elle — ou, si l'hôte a choisi « contient la lettre », qui la contient n'importe où.</li>
       <li>Une réponse déjà donnée dans la manche ne compte pas. Dès que la tienne passe, la bombe file au suivant avec une nouvelle lettre.</li>
-      <li>La mèche est tirée au sort une seule fois par bombe (entre 20 et 50 secondes), n'est jamais affichée et continue de courir d'un tour à l'autre : passer la bombe vite est la seule défense.</li>
+      <li>La mèche est tirée au sort une seule fois par bombe, dans la plage choisie par l'hôte (20 à 50 secondes par défaut), n'est jamais affichée et continue de courir d'un tour à l'autre : passer la bombe vite est la seule défense.</li>
       <li>Quand tu reçois la bombe, tu as toujours au moins 3 secondes avant qu'elle puisse exploser.</li>
-      <li>Si elle explose entre tes mains, tu perds une vie. Chacun en a deux, donc la troisième explosion élimine.</li>
+      <li>Si elle explose entre tes mains, tu perds une vie. Sans vie restante, l'explosion suivante t'élimine (2 vies par défaut, donc la troisième explosion élimine ; en mort subite, la première).</li>
     </ol>
     <p class="muted small">Le dernier joueur en vie remporte la manche.</p>
   </template>

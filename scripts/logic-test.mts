@@ -142,6 +142,29 @@ function addPlayers<R extends { players: Record<string, any>; playerOrder: strin
 
   const delay = bomb.randomBombDelay();
   assert.ok(delay >= 20_000 && delay < 50_000, `mèche hors bornes : ${delay}`);
+  for (const fuse of Object.keys(bomb.FUSES) as (keyof typeof bomb.FUSES)[]) {
+    const { minMs, maxMs } = bomb.FUSES[fuse];
+    const d = bomb.randomBombDelay(fuse);
+    assert.ok(d >= minMs && d < maxMs, `mèche ${fuse} hors bornes : ${d}`);
+  }
+  assert.equal(bomb.parseFuse("nimporte"), "normal");
+  assert.equal(bomb.parseFuse("short"), "short");
+
+  assert.equal(bomb.parseLives(0), 0, "mort subite");
+  assert.equal(bomb.parseLives("3"), 3);
+  assert.equal(bomb.parseLives(99), bomb.MAX_LIVES, "borné en haut");
+  assert.equal(bomb.parseLives(-1), 0, "borné en bas");
+  assert.equal(bomb.parseLives(undefined), bomb.DEFAULT_LIVES);
+  assert.equal(bomb.parseLives(1.5), bomb.DEFAULT_LIVES);
+
+  assert.equal(bomb.parseLetterRule("contains"), "contains");
+  assert.equal(bomb.parseLetterRule("autre"), "start");
+  assert.ok(bomb.matchesLetter("Naruto", "R", "contains"), "lettre au milieu");
+  assert.ok(!bomb.matchesLetter("Luffy", "E", "contains"), "lettre absente");
+  assert.ok(bomb.matchesLetter("Ichigo Kurosaki", "o", "contains"), "casse ignorée");
+  assert.ok(bomb.matchesLetter("Asuna Yūki", "U", "contains"), "accents ignorés");
+  assert.ok(!bomb.matchesLetter("Naruto", "R", "start"), "« commence par » reste strict");
+  assert.ok(bomb.matchesLetter("Naruto", "N", "start"));
 }
 
 // --- Qui suis-je : rotation et attribution des mots --------------------------

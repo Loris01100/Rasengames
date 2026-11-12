@@ -12,16 +12,18 @@
 ## Règles
 
 Le joueur qui tient la bombe voit une lettre et doit taper un personnage — ou
-un anime — qui commence par elle. Une réponse déjà donnée dans la manche ne
+un anime — qui commence par elle (ou, selon le réglage de l'hôte, qui la
+contient n'importe où). Une réponse déjà donnée dans la manche ne
 compte pas. Dès que la sienne passe, la bombe file au suivant avec une nouvelle
-lettre. **La mèche est tirée au sort une seule fois par bombe (entre 20 et 50
-secondes), n'est jamais affichée, et continue de courir d'un tour à l'autre** :
+lettre. **La mèche est tirée au sort une seule fois par bombe (dans la plage choisie
+par l'hôte, 20 à 50 secondes par défaut), n'est jamais affichée, et continue de courir d'un tour à l'autre** :
 passer la bombe vite est la seule défense. Seule exception : celui qui reçoit
 la bombe a toujours au moins **3 secondes** devant lui — si la mèche devait
 finir plus tôt, sa fin est repoussée à cette limite (pas de « spawn kill »).
 
-Si elle explose entre ses mains, on perd une vie. Chacun en a deux, donc la
-troisième explosion élimine. Le dernier joueur en vie remporte la manche.
+Si elle explose entre ses mains, on perd une vie ; sans vie restante,
+l'explosion suivante élimine. Le nombre de vies est réglé par l'hôte (2 par
+défaut, donc la troisième explosion élimine ; 0 = mort subite). Le dernier joueur en vie remporte la manche.
 
 ## Déroulé d'une manche
 
@@ -38,6 +40,9 @@ troisième explosion élimine. Le dernier joueur en vie remporte la manche.
 | Réglage | Valeurs |
 | --- | --- |
 | Mode | `perso` (un personnage) ou `anime` (un anime) |
+| Lettre (`rule`) | `start` (la réponse commence par la lettre, défaut) ou `contains` (elle la contient n'importe où) — accents et casse ignorés |
+| Vies (`lives`) | 0 (mort subite) à 5, défaut 2 : explosions encaissées avant que la suivante élimine |
+| Mèche (`fuse`) | `short` 10–25 s, `normal` 20–50 s (défaut), `long` 40–80 s, `wild` 5–70 s |
 | Lettres autorisées | L'hôte décoche les lettres qu'il ne veut pas voir sortir |
 
 ## Score
@@ -50,7 +55,8 @@ aucun : fin sans vainqueur).
 
 ## Ce que le serveur cache
 
-**La mèche.** C'est la seule information cachée du jeu, et elle ne figure dans
+**La mèche.** Sa plage est publique (réglage du lobby), mais le tirage est la
+seule information cachée du jeu, et elle ne figure dans
 aucune vue : personne — pas même le porteur — ne sait combien de temps il
 reste. Tout le reste (réponses données, vies, lettre en cours) est public et
 reste affiché : c'est un jeu écrit, le journal fait partie du plaisir.
@@ -59,10 +65,11 @@ reste affiché : c'est un jeu écrit, le journal fait partie du plaisir.
 
 | Message | Émetteur | Effet |
 | --- | --- | --- |
-| `start` | hôte | Lance la manche. Payload : `mode`, `letters`. |
+| `start` | hôte | Lance la manche. Payload : `mode`, `rule`, `lives`, `fuse`, `letters` (toute valeur invalide retombe sur le défaut). |
 | `submitWord` | porteur de la bombe | Propose sa réponse ; si elle passe, la bombe file au suivant. |
 
-Une réponse est refusée si elle ne commence pas par la lettre affichée, ou si
+Une réponse est refusée si elle ne respecte pas la lettre affichée (selon la
+règle `start` ou `contains`), ou si
 elle a déjà été donnée dans la manche (comparaison souple : « Naruto » et
 « Naruto Uzumaki » comptent pour la même réponse). Quand le mot ne vient pas du
 menu de suggestions, le client vérifie son existence chez AniList — et **échoue

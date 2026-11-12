@@ -3,6 +3,9 @@
 
   const el = {
     modeSelect: $("mode-select"),
+    ruleSelect: $("rule-select"),
+    livesSelect: $("lives-select"),
+    fuseSelect: $("fuse-select"),
     letterCheckboxes: $("letter-checkboxes"),
 
     playInstructions: $("play-instructions"),
@@ -64,15 +67,18 @@
 
   // ---- rendering ----
 
-  // Un cœur plein par vie restante, un vide par vie perdue : un éliminé
-  // affiche donc deux cœurs vides, sa ligne étant déjà barrée par « .dead ».
+  // Un cœur plein par vie restante, un vide par vie perdue, sur le nombre de
+  // vies de départ choisi par l'hôte : un éliminé n'a que des cœurs vides, sa
+  // ligne étant déjà barrée par « .dead ». Mort subite (0 vie) : aucun cœur.
   function appendLives(node, p) {
-    for (let i = 0; i < 2; i++) node.appendChild(Room.icon(i < p.lives ? "coeur" : "coeur-vide"));
+    const max = Room.state?.lives ?? 2;
+    for (let i = 0; i < max; i++) node.appendChild(Room.icon(i < p.lives ? "coeur" : "coeur-vide"));
   }
 
   // Les vies en tag ;
   // un mort passe en tag distinct et hérite du style ".dead" via `alive`.
   function decorateLives(row, p) {
+    if (!p.eliminated && (Room.state?.lives ?? 2) === 0) return;
     const tag = document.createElement("span");
     tag.className = "tag lives-tag";
     if (p.eliminated) tag.textContent = "Éliminé";
@@ -98,10 +104,9 @@
   function renderPlay(state, previous) {
     const myTurn = state.turnId === Room.playerId;
 
-    el.playInstructions.textContent =
-      state.mode === "anime"
-        ? "Tape un anime qui commence par cette lettre, puis envoie."
-        : "Tape un personnage qui commence par cette lettre, puis envoie.";
+    const what = state.mode === "anime" ? "un anime" : "un personnage";
+    const how = state.rule === "contains" ? "qui contient" : "qui commence par";
+    el.playInstructions.textContent = `Tape ${what} ${how} cette lettre, puis envoie.`;
     el.letterDisplay.textContent = state.letter ?? "—";
 
     el.turnBanner.textContent = !state.turnId
@@ -300,11 +305,13 @@
 
   // ---- events ----
 
-  // Insensible aux accents/majuscules, comme la vérification côté serveur —
-  // pas la peine d'attendre AniList pour rejeter une lettre déjà fausse.
-  function startsWithLetter(text, letter) {
-    const first = text.trim().normalize("NFD").replace(/\p{Diacritic}/gu, "").charAt(0).toUpperCase();
-    return first === (letter || "").toUpperCase();
+  // Insensible aux accents/majuscules, comme la vérification côté serveur
+  // (matchesLetter de logic.ts) — pas la peine d'attendre AniList pour
+  // rejeter une lettre déjà fausse.
+  function matchesLetter(text, letter, rule) {
+    const norm = text.trim().normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
+    const l = (letter || "").toUpperCase();
+    return rule === "contains" ? norm.includes(l) : norm.charAt(0) === l;
   }
 
   el.wordSubmit.addEventListener("click", submitWord);
@@ -316,8 +323,10 @@
     const text = el.wordInput.value.trim();
     if (!text) return;
     const letter = Room.state?.letter;
-    if (letter && !startsWithLetter(text, letter)) {
-      Room.toast(`Ta réponse doit commencer par la lettre ${letter}.`);
+    const rule = Room.state?.rule;
+    if (letter && !matchesLetter(text, letter, rule)) {
+      const verb = rule === "contains" ? "contenir" : "commencer par";
+      Room.toast(`Ta réponse doit ${verb} la lettre ${letter}.`);
       return;
     }
 
@@ -360,7 +369,13 @@
         Room.toast("Laisse au moins une lettre.");
         return null;
       }
-      return { mode: el.modeSelect.value, letters };
+      return {
+        mode: el.modeSelect.value,
+        rule: el.ruleSelect.value,
+        lives: Number(el.livesSelect.value),
+        fuse: el.fuseSelect.value,
+        letters,
+      };
     },
     onState: (s, prev) => {
       playSounds(prev, s);

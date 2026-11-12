@@ -5,9 +5,12 @@ import {
   MAX_PLAYERS,
   connectedIds,
   connectedAliveIds,
+  matchesLetter,
   nextTurn,
+  parseFuse,
+  parseLetterRule,
+  parseLives,
   randomBombDelay,
-  startsWithLetter,
 } from "./logic";
 import { sameWord } from "../../lib/words";
 import { ALPHABET, drawLetter, parseLetters } from "../../lib/letters";
@@ -132,6 +135,9 @@ export class BombRoom {
       this.room.letters ??= [...ALPHABET];
       this.room.turnSafeUntil ??= 0;
       this.room.recentDraws ??= [];
+      this.room.rule = parseLetterRule(this.room.rule);
+      this.room.fuse = parseFuse(this.room.fuse);
+      this.room.lives = parseLives(this.room.lives);
     }
     return this.room;
   }
@@ -265,7 +271,7 @@ export class BombRoom {
 
   // Un joueur neuf ; `waiting` ne contient plus que d'anciens retardataires persistés.
   private makePlayer(id: string, token: string, name: string): Player {
-    return { id, token, name, connected: true, lives: 2, eliminated: false };
+    return { id, token, name, connected: true, lives: this.room?.lives ?? 2, eliminated: false };
   }
 
   private async onJoin(session: Session, room: RoomState, msg: Record<string, unknown>) {
@@ -354,9 +360,12 @@ export class BombRoom {
 
     const requestedMode = msg.mode as Mode;
     room.mode = VALID_MODES.includes(requestedMode) ? requestedMode : "perso";
+    room.rule = parseLetterRule(msg.rule);
+    room.fuse = parseFuse(msg.fuse);
+    room.lives = parseLives(msg.lives);
 
     for (const player of Object.values(room.players)) {
-      player.lives = 2;
+      player.lives = room.lives;
       player.eliminated = false;
     }
     room.answers = [];
@@ -376,7 +385,7 @@ export class BombRoom {
   }
 
   // Le joueur dont c'est le tour tape son mot : validé contre la lettre
-  // imposée (pas plus — le jeu ne peut pas vérifier qu'un perso/anime existe
+  // imposée selon la règle du salon (pas plus — le jeu ne peut pas vérifier qu'un perso/anime existe
   // vraiment), il rejoint le journal et la bombe passe au suivant avec une
   // nouvelle lettre. La mèche, elle, continue de courir sans être touchée —
   // ce n'est pas elle qu'on relance ici.
@@ -393,8 +402,9 @@ export class BombRoom {
       sendError(session.ws, "Réponse vide.");
       return;
     }
-    if (!room.letter || !startsWithLetter(text, room.letter)) {
-      sendError(session.ws, `Ta réponse doit commencer par la lettre ${room.letter ?? "?"}.`);
+    if (!room.letter || !matchesLetter(text, room.letter, room.rule)) {
+      const verb = room.rule === "contains" ? "contenir" : "commencer par";
+      sendError(session.ws, `Ta réponse doit ${verb} la lettre ${room.letter ?? "?"}.`);
       return;
     }
 
@@ -421,7 +431,7 @@ export class BombRoom {
   }
 
   private async scheduleBomb(): Promise<void> {
-    await this.state.storage.setAlarm(Date.now() + randomBombDelay());
+    await this.state.storage.setAlarm(Date.now() + randomBombDelay(this.room?.fuse));
   }
 
   // La mèche globale continue de courir, mais si elle devait finir moins de
@@ -495,7 +505,7 @@ export class BombRoom {
     if (session.playerId !== room.hostId || room.phase === "lobby") return;
 
     for (const player of Object.values(room.players)) {
-      player.lives = 2;
+      player.lives = room.lives;
       player.eliminated = false;
     }
     room.answers = [];
@@ -539,6 +549,9 @@ export class BombRoom {
       scores: room.scores,
       waiting: room.waiting.map((p) => ({ id: p.id, name: p.name })),
       mode: room.mode,
+      rule: room.rule,
+      fuse: room.fuse,
+      lives: room.lives,
       hostId: room.hostId,
       players,
       turnId: room.turnId,

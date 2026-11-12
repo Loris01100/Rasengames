@@ -6,13 +6,20 @@ export type Phase = "lobby" | "play" | "ended";
 // Seule la formulation change, la mécanique est identique.
 export type Mode = "perso" | "anime";
 
+// "start": la réponse commence par la lettre. "contains": elle la contient
+// n'importe où (accents et casse ignorés dans les deux cas).
+export type LetterRule = "start" | "contains";
+
+// Plage de la mèche choisie par l'hôte (bornes dans logic.ts, FUSES).
+export type FuseKey = "short" | "normal" | "long" | "wild";
+
 export interface Player {
   id: string;
   token: string;
   name: string;
   connected: boolean;
-  // 2 au départ. La bombe qui explose sur son tour en retire une ; à 0, la
-  // fois suivante élimine (donc 3 explosions au total avant élimination).
+  // room.lives au départ. La bombe qui explose sur son tour en retire une ;
+  // à 0, la fois suivante élimine (2 vies = 3 explosions avant élimination).
   lives: number;
   eliminated: boolean;
 }
@@ -30,6 +37,10 @@ export interface RoomState {
   hostId: string | null;
   phase: Phase;
   mode: Mode;
+  rule: LetterRule;
+  fuse: FuseKey;
+  // Vies de départ de chaque joueur, choisies par l'hôte (0 = mort subite).
+  lives: number;
   players: Record<string, Player>;
   playerOrder: string[];
   // Points cumulés sur les manches jouées dans ce salon (playerId -> points).
@@ -60,6 +71,9 @@ export function createEmptyRoom(code: string): RoomState {
     hostId: null,
     phase: "lobby",
     mode: "perso",
+    rule: "start",
+    fuse: "normal",
+    lives: 2,
     players: {},
     playerOrder: [],
     scores: {},
