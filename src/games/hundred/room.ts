@@ -419,11 +419,14 @@ export class HundredRoom {
     }
     // Deux cartes identiques sur la ligne, c'est un débat sans réponse : on
     // refuse le doublon (et les quasi-doublons, cf. sameWord).
-    const taken = Object.values(room.players).find(
+    // Le message ne cite que le texte du demandeur : recopier la proposition
+    // de l'autre joueur la dévoilerait avant l'arrangement (un mot proche
+    // suffisait à la faire sortir en entier).
+    const taken = Object.values(room.players).some(
       (p) => p.id !== player.id && p.connected && p.proposal && sameWord(p.proposal, text)
     );
     if (taken) {
-      sendError(session.ws, `"${taken.proposal}" est déjà pris, trouve autre chose.`);
+      sendError(session.ws, `"${text}" est trop proche d'une autre proposition, trouve autre chose.`);
       return;
     }
 

@@ -26,7 +26,8 @@ contre les autres.
 
 1. **`propose`** — chacun voit son chiffre et le thème, et tape sa
    proposition. Les doublons (et quasi-doublons) sont refusés : deux cartes
-   identiques sur la ligne, c'est un débat sans réponse. Un champ de
+   identiques sur la ligne, c'est un débat sans réponse. Le refus ne cite
+   jamais la proposition déjà prise, seulement celle du demandeur. Un champ de
    suggestions AniList aide à trouver l'orthographe exacte.
 2. **`arrange`** — dès que tout le monde a proposé, les cartes apparaissent
    mélangées. L'hôte les glisse-dépose pour former la ligne du plus petit au
