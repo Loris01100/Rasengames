@@ -180,6 +180,14 @@ export function handleSpectatorMessage(
   msg: Record<string, unknown>,
   gameInProgress: boolean,
 ): "continue" | "joined" | "blocked" {
+  // Une socket = un joueur. Sans ce garde, chaque `join` répété sur la même
+  // connexion créait un nouveau joueur (ou détachait l'ancien via un autre
+  // token) : l'orphelin restait `connected: true` à jamais, puisque seule la
+  // fermeture de *sa* socket le marque absent, et remplissait les salons plafonnés.
+  if (msg.type === "join" && session.playerId && !session.spectator) {
+    sendError(session.ws, "Tu as déjà rejoint ce salon.");
+    return "blocked";
+  }
   // Spectateur d'office (arrivé sans token en pleine partie) : de retour au
   // lobby, son join sans `spectator` le fait repasser par onJoin comme joueur.
   if (session.spectator && msg.type === "join" && msg.spectator !== true && !gameInProgress) {

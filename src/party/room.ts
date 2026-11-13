@@ -157,6 +157,11 @@ export class PartyRoom {
 
   private async onJoin(session: PartySession, msg: Record<string, unknown>): Promise<void> {
     const room = this.room!;
+    // Une socket = un joueur, cf. handleSpectatorMessage (lib/session.ts).
+    if (session.playerId) {
+      this.sendError(session, "Tu as déjà rejoint cette soirée.");
+      return;
+    }
     const name = String(msg.name ?? "").trim().slice(0, MAX_NAME_LENGTH);
     if (name.length < MIN_NAME_LENGTH) {
       this.sendError(session, `Le pseudo doit faire au moins ${MIN_NAME_LENGTH} caractères.`);
