@@ -8,6 +8,7 @@ import {
   answererIdsForQuestion,
   calculateScores,
   connectedIds,
+  isBenched,
   pickReferee,
   respondentIds,
 } from "./logic";
@@ -152,6 +153,7 @@ export class SyncRoom {
       this.room.scores ??= {};
       this.room.waiting ??= [];
       this.room.stepTimer ??= emptyStepTimer();
+      this.room.formerReferees ??= [];
       this.visibility =
         (await this.state.storage.get<"public" | "private">("visibility")) ?? "private";
     }
@@ -319,6 +321,7 @@ export class SyncRoom {
 
     room.stepTimer.seconds = parseStepTimer(msg.stepTimer);
     room.refereeId = pickReferee(room, requestedRefereeId);
+    room.formerReferees = [];
     room.questions = [];
     room.answers = {};
     room.revealQuestion = 0;
@@ -353,6 +356,10 @@ export class SyncRoom {
 
   private async onSubmitAnswer(session: Session, room: RoomState, msg: Record<string, unknown>) {
     if (room.phase !== "answering" || !session.playerId || session.playerId === room.refereeId) return;
+    if (isBenched(room, session.playerId)) {
+      sendError(session.ws, "Tu as été arbitre pendant cette manche : tu as vu les réponses, tu ne peux plus répondre.");
+      return;
+    }
     const player = room.players[session.playerId];
     if (!player?.connected || player.submitted) return;
     const previous = room.answers[player.id] ?? [];
@@ -405,6 +412,7 @@ export class SyncRoom {
   private async onRestart(session: Session, room: RoomState) {
     if (session.playerId !== room.hostId || room.phase === "lobby") return;
     room.refereeId = null;
+    room.formerReferees = [];
     room.questions = [];
     room.answers = {};
     room.revealQuestion = 0;
@@ -443,6 +451,12 @@ export class SyncRoom {
       // L'arbitre est le seul à pouvoir envoyer les questions et révéler. En
       // cas de départ, l'hôte (ou le premier joueur encore là) prend le rôle
       // immédiatement afin que la partie ne reste jamais bloquée.
+      // Parti pendant les réponses, il les a vues passer en clair : à son
+      // retour (même jeton) il reste sur la touche jusqu'à la manche suivante.
+      // En phase de questions il n'a rien vu, il redevient simple répondant.
+      if (this.room.phase === "answering" && !this.room.formerReferees.includes(player.id)) {
+        this.room.formerReferees.push(player.id);
+      }
       const nextReferee =
         (this.room.hostId && this.room.players[this.room.hostId]?.connected ? this.room.hostId : null) ??
         connectedIds(this.room)[0] ??
@@ -513,6 +527,7 @@ export class SyncRoom {
           connected: player.connected,
           isHost: player.id === room.hostId,
           isReferee: player.id === room.refereeId,
+          benched: isBenched(room, player.id),
           submitted: player.submitted,
           answerCount: room.answers[player.id]?.length ?? 0,
         })),

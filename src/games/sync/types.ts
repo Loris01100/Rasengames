@@ -20,6 +20,11 @@ export interface RoomState {
   // Chrono par action, réglé par l'hôte au lancement (lib/stepTimer.ts).
   stepTimer: StepTimer;
   refereeId: string | null;
+  // Joueurs qui ont tenu le rôle d'arbitre pendant la phase de réponses de la
+  // manche en cours : ils ont vu les réponses en clair, ils ne répondent plus
+  // jusqu'à la manche suivante (sinon il suffit de quitter puis revenir avec
+  // son jeton pour recopier).
+  formerReferees: string[];
   questions: string[];
   answers: Record<string, string[]>;
   revealQuestion: number;
@@ -38,6 +43,7 @@ export function createEmptyRoom(code: string): RoomState {
     waiting: [],
     stepTimer: emptyStepTimer(),
     refereeId: null,
+    formerReferees: [],
     questions: [],
     answers: {},
     revealQuestion: 0,

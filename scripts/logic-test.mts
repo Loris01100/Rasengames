@@ -740,6 +740,17 @@ const duplicates = codenamesWords
   assert.deepEqual(sync.answererIdsForQuestion(room, 1), ["a", "b"], "une réponse partielle ne crée pas de révélation vide");
   room.answers.c = ["Pain", "One Piece", "Bleach"];
   assert.deepEqual(sync.calculateScores(room), { a: 2, b: 3, c: 1 });
+
+  // Un arbitre parti pendant les réponses revient avec son jeton : il a vu les
+  // réponses, il ne compte ni comme répondant attendu ni au score.
+  room.refereeId = "a";
+  room.formerReferees = ["ref"];
+  room.answers = { b: ["Itachi"], c: ["Itachi"], ref: ["Itachi"] };
+  assert.equal(sync.isBenched(room, "ref"), true);
+  assert.ok(!sync.respondentIds(room).includes("ref"), "un ancien arbitre n'est pas attendu");
+  assert.deepEqual(sync.answererIds(room), ["b", "c"], "un ancien arbitre ne marque rien");
+  room.refereeId = "ref";
+  assert.equal(sync.isBenched(room, "ref"), false, "redevenu arbitre, il n'est plus sur la touche");
 }
 
 // lobbyFull : au lobby, un absent (hors hôte) cède sa place au nouveau venu.

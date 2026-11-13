@@ -79,6 +79,12 @@ il ne contient que la manche qui vient de se jouer.
   joueur connecté) reprend le rôle sur-le-champ, et ses éventuelles réponses
   sont effacées puisqu'un arbitre ne répond pas. S'il ne reste personne, la
   manche se termine avec un `endReason`.
+- Un arbitre parti **pendant `answering`** a vu les réponses arriver en clair :
+  il est noté dans `formerReferees` et, s'il revient avec son jeton, il reste
+  sur la touche jusqu'à la manche suivante (pas de réponse, pas attendu, pas
+  de score ; vue `benched`). Sans ça, quitter puis revenir permettait de
+  recopier. Parti pendant `questions`, il n'a rien vu et redevient répondant.
+  Il peut en revanche reprendre le rôle d'arbitre si on le lui rend.
 - La bascule vers `reveal` (`maybeStartReveal`) est évaluée à chaque réponse
   **et** à chaque déconnexion : le départ du dernier répondant attendu
   débloque la révélation.

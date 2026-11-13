@@ -8,8 +8,13 @@ export function connectedIds(room: RoomState): string[] {
   return room.playerOrder.filter((id) => room.players[id]?.connected);
 }
 
+// Un ancien arbitre de la manche a vu les réponses : il est mis sur la touche.
+export function isBenched(room: RoomState, id: string): boolean {
+  return id !== room.refereeId && room.formerReferees.includes(id);
+}
+
 export function respondentIds(room: RoomState): string[] {
-  return connectedIds(room).filter((id) => id !== room.refereeId);
+  return connectedIds(room).filter((id) => id !== room.refereeId && !isBenched(room, id));
 }
 
 export function pickReferee(room: RoomState, requestedId?: string | null): string | null {
@@ -20,7 +25,7 @@ export function pickReferee(room: RoomState, requestedId?: string | null): strin
 }
 
 export function answererIds(room: RoomState): string[] {
-  return room.playerOrder.filter((id) => id !== room.refereeId && room.answers[id]);
+  return room.playerOrder.filter((id) => id !== room.refereeId && !isBenched(room, id) && room.answers[id]);
 }
 
 export function answererIdsForQuestion(room: RoomState, question: number): string[] {

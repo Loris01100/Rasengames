@@ -92,7 +92,9 @@
     const isReferee = state.refereeId === Room.playerId;
     const me = state.players.find((player) => player.id === Room.playerId);
     const answerCount = me?.answerCount ?? 0;
-    const canAnswer = !isReferee && answerCount < 3;
+    // Ancien arbitre revenu en cours de manche : il a vu les réponses, il attend.
+    const benched = !!me?.benched;
+    const canAnswer = !isReferee && !benched && answerCount < 3;
     if (sentAnswerCount != null && answerCount > sentAnswerCount) {
       sentAnswerCount = null;
       el.answersSubmit.disabled = false;
@@ -103,13 +105,16 @@
     el.answerRole.textContent = "À toi de jouer";
     el.answerForm.classList.toggle("hidden", !canAnswer);
     el.answerWait.classList.toggle("hidden", isReferee || canAnswer);
-    el.answerStep.textContent = canAnswer ? `Question ${answerCount + 1} sur 3` : "3 réponses sur 3";
-    el.currentQuestion.textContent = canAnswer ? state.questions[answerCount] ?? "" : "C'est envoyé !";
+    el.answerWait.textContent = benched
+      ? "Tu as été arbitre pendant cette manche : tu as vu les réponses, tu ne réponds pas cette fois."
+      : "Tes trois réponses sont verrouillées. En attente des autres…";
+    el.answerStep.textContent = benched ? "Hors jeu cette manche" : canAnswer ? `Question ${answerCount + 1} sur 3` : "3 réponses sur 3";
+    el.currentQuestion.textContent = benched ? "En attente des autres…" : canAnswer ? state.questions[answerCount] ?? "" : "C'est envoyé !";
     renderAnswerDots(answerCount);
 
     el.refereeLive.classList.toggle("hidden", !isReferee);
     if (!isReferee) return;
-    const respondents = state.players.filter((player) => player.connected && player.id !== state.refereeId);
+    const respondents = state.players.filter((player) => player.connected && player.id !== state.refereeId && !player.benched);
     const received = respondents.reduce((sum, player) => sum + (player.answerCount ?? 0), 0);
     const total = respondents.length * 3;
     el.answerProgress.textContent = `${received}/${total} réponses reçues`;
@@ -235,7 +240,7 @@
 
     el.scoreList.innerHTML = "";
     const ranked = state.players
-      .filter((player) => player.id !== state.refereeId)
+      .filter((player) => player.id !== state.refereeId && !player.benched)
       .sort((left, right) => (state.scores?.[right.id] ?? 0) - (state.scores?.[left.id] ?? 0));
     for (const player of ranked) {
       const row = document.createElement("div");
