@@ -469,29 +469,45 @@ export class UndercoverRoom {
   }
 
   private async onPairFeedback(session: Session, room: RoomState, msg: Record<string, unknown>) {
+    // Seul un joueur de la manche vote : une socket qui n'a jamais rejoint a un
+    // playerId vide, et chaque nouvelle connexion en aurait ajouté un.
+    if (!room.players[session.playerId]) return;
     if (room.phase !== "ended" || !room.currentPairId || room.feedbackVotes[session.playerId]) return;
     const vote = String(msg.vote ?? "") as "good" | "easy" | "far";
     if (!(["good", "easy", "far"] as string[]).includes(vote)) return;
-    const response = await this.env.UNDERCOVER_FEEDBACK
-      .get(this.env.UNDERCOVER_FEEDBACK.idFromName("global"))
-      .fetch("https://feedback/vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: room.currentPairId,
-          category: room.wordCategory,
-          a: room.civilianWord,
-          b: room.undercoverWord,
-          hintA: room.civilianWordHint,
-          hintB: room.undercoverWordHint,
-          vote,
-        }),
-      });
-    if (!response.ok) {
+    // Vote réservé avant l'await : le fetch vers le DO de feedback ne bloque pas
+    // les messages entrants, et des votes envoyés en rafale passaient tous le
+    // garde ci-dessus avant que le premier ne soit inscrit. On garde l'objet de
+    // la manche : un `restart` pendant l'attente le remplace, la réservation
+    // reste alors sur l'ancien et ne déborde pas sur la manche suivante.
+    const votes = room.feedbackVotes;
+    votes[session.playerId] = vote;
+    let ok = false;
+    try {
+      const response = await this.env.UNDERCOVER_FEEDBACK
+        .get(this.env.UNDERCOVER_FEEDBACK.idFromName("global"))
+        .fetch("https://feedback/vote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: room.currentPairId,
+            category: room.wordCategory,
+            a: room.civilianWord,
+            b: room.undercoverWord,
+            hintA: room.civilianWordHint,
+            hintB: room.undercoverWordHint,
+            vote,
+          }),
+        });
+      ok = response.ok;
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      if (votes[session.playerId] === vote) delete votes[session.playerId];
       sendError(session.ws, "Le vote n'a pas pu être enregistré. Réessaie.");
       return;
     }
-    room.feedbackVotes[session.playerId] = vote;
     await this.saveRoom();
     this.broadcast();
   }
