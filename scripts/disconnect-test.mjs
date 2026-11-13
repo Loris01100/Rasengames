@@ -9,7 +9,7 @@
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
 const GAMES = ["undercover", "hundred", "bac", "whoami", "detective", "note", "bomb", "codenames", "sync", "guesswho"];
 
-function join(slug, code, name, spectator = false, preserveHost = false) {
+function join(slug, code, name, spectator = false, hostKey = undefined) {
   const ws = new WebSocket(`${BASE.replace("http", "ws")}/ws/${slug}/${code}`);
   const states = [];
   const waiters = [];
@@ -27,7 +27,7 @@ function join(slug, code, name, spectator = false, preserveHost = false) {
     states.push(msg.state);
     for (const resolve of waiters.splice(0)) resolve(msg.state);
   });
-  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "join", name, spectator, preserveHost })));
+  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "join", name, spectator, hostKey })));
   return {
     ws,
     last: () => states[states.length - 1],
@@ -108,13 +108,24 @@ console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length
   if (hostRedirect.code === oldCode || hostRedirect.code !== guestRedirect.code) {
     throw new Error("switchGame: le jeu cible n'a pas reçu un salon neuf commun");
   }
-  if (!hostRedirect.preserveHost || guestRedirect.preserveHost) {
-    throw new Error("switchGame: le marqueur d'hôte est incorrect");
+  if (!hostRedirect.hostKey || guestRedirect.hostKey) {
+    throw new Error("switchGame: la clé d'hôte est mal distribuée");
   }
 
   const guest = join("sync", guestRedirect.code, "Invite1");
   await guest.next();
-  const host = join("sync", hostRedirect.code, "Hote1", false, hostRedirect.preserveHost);
+  // L'ancien `preserveHost: true` suffisait à n'importe qui pour prendre l'hôte.
+  const intruder = new WebSocket(`${BASE.replace("http", "ws")}/ws/sync/${guestRedirect.code}`);
+  await new Promise((resolve) => intruder.addEventListener("open", resolve, { once: true }));
+  intruder.send(JSON.stringify({ type: "join", name: "Intrus1", preserveHost: true, hostKey: crypto.randomUUID() }));
+  const afterIntruder = await waitUntil(
+    guest,
+    (current) => current?.players.some((player) => player.name === "Intrus1"),
+    "arrivée de l'intrus",
+  );
+  const usurper = afterIntruder.players.find((player) => player.id === afterIntruder.hostId)?.name;
+  if (usurper !== "Invite1") throw new Error(`switchGame: l'intrus a pris l'hôte (${usurper ?? "inconnu"})`);
+  const host = join("sync", hostRedirect.code, "Hote1", false, hostRedirect.hostKey);
   await host.next();
   const state = await waitUntil(
     guest,
@@ -127,7 +138,8 @@ console.log(`l'hôte est réattribué à sa déconnexion dans les ${GAMES.length
   sourceHost.ws.close();
   guest.ws.close();
   host.ws.close();
-  console.log("switchGame: l'ancien hôte garde son rôle même s'il arrive après un invité");
+  intruder.close();
+  console.log("switchGame: l'ancien hôte garde son rôle même s'il arrive après un invité, sans qu'un intrus puisse le prendre");
 }
 
 // Un clic normal sur « Rejoindre » pendant une manche regarde la partie au

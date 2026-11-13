@@ -1,5 +1,6 @@
 import { GAME_NAMESPACES, isGameSlug } from "./gameSlugs";
 import type { Env } from "../env";
+import { armIdlePurge } from "./idle";
 import { createRoomCode } from "./rooms";
 
 // La plomberie de session strictement identique dans les `room.ts` :
@@ -248,16 +249,53 @@ export function rejoinName(
   }
 }
 
-// Lors d'un changement de jeu, tous les navigateurs ouvrent un nouveau
-// Durable Object. L'ancien hôte peut arriver après un autre
-// joueur : ce marqueur lui rend alors la main au lieu de dépendre de la course
-// entre connexions WebSocket.
-export function assignHostAfterSwitch(
+// Lors d'un changement de jeu (ou d'un lancement en soirée), tous les
+// navigateurs ouvrent un nouveau Durable Object et l'ancien hôte peut arriver
+// après un autre joueur. Pour lui rendre la main sans dépendre de la course
+// entre connexions, le salon d'origine dépose une clé à usage unique dans le
+// salon cible (`issueHostKey`) et ne la transmet qu'à l'hôte. Un drapeau
+// fourni par le client ne suffit pas : n'importe qui pourrait l'envoyer et
+// prendre l'hôte d'un salon en cours.
+const HOST_KEY = "hostKey";
+const HOST_KEY_PATTERN = /^[0-9a-f-]{36}$/;
+
+// Route interne, joignable seulement depuis le Worker : index.ts ne relaie
+// vers un salon que `/ws/<slug>/<code>` (WebSocket) et `/exists/`.
+export function isHostKeyRequest(request: Request, parts: string[]): boolean {
+  return request.method === "POST" && parts[parts.length - 2] === "host-key";
+}
+
+export async function storeHostKey(storage: DurableObjectStorage, request: Request): Promise<Response> {
+  const key = (await request.text()).trim();
+  if (!HOST_KEY_PATTERN.test(key)) return new Response("Clé invalide", { status: 400 });
+  await storage.put(HOST_KEY, key);
+  // Personne n'est encore connecté : si le groupe ne vient jamais, la purge
+  // habituelle efface la clé avec le reste.
+  await armIdlePurge(storage, 0);
+  return new Response(null, { status: 204 });
+}
+
+export async function issueHostKey(slug: string, namespace: DurableObjectNamespace, code: string): Promise<string> {
+  const key = crypto.randomUUID();
+  await namespace
+    .get(namespace.idFromName(code))
+    .fetch(new Request(`https://room/${slug}/host-key/${code}`, { method: "POST", body: key }));
+  return key;
+}
+
+export async function assignHostAfterSwitch(
+  storage: DurableObjectStorage,
   room: { hostId: string | null },
   playerId: string,
   msg: Record<string, unknown>,
-): void {
-  if (!room.hostId || msg.preserveHost === true) room.hostId = playerId;
+): Promise<void> {
+  if (!room.hostId) room.hostId = playerId;
+  if (typeof msg.hostKey !== "string" || !msg.hostKey) return;
+  const expected = await storage.get<string>(HOST_KEY);
+  if (!expected || expected !== msg.hostKey) return;
+  // Consommée au premier usage : un lien recopié ne resservira pas.
+  await storage.delete(HOST_KEY);
+  room.hostId = playerId;
 }
 
 // Les joueurs arrivés en cours de partie rejoignent la table au retour au
@@ -343,14 +381,17 @@ export async function switchGame(
     sendError(session.ws, "Jeu invalide.");
     return;
   }
-  const code = await createRoomCode(slug, GAME_NAMESPACES[slug](env));
+  const namespace = GAME_NAMESPACES[slug](env);
+  const code = await createRoomCode(slug, namespace);
+  const hostKey = await issueHostKey(slug, namespace, code);
   for (const s of sessions) {
     try {
       s.ws.send(JSON.stringify({
         type: "switchGame",
         slug,
         code,
-        preserveHost: s.playerId === room.hostId,
+        // Seul l'hôte reçoit la clé : c'est elle, pas un drapeau, qui l'identifie.
+        hostKey: s.playerId === room.hostId ? hostKey : undefined,
       }));
     } catch {
       // socket already gone

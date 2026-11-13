@@ -25,7 +25,7 @@ import * as guesswho from "../src/games/guesswho/logic.ts";
 import { createEmptyRoom as emptyGuessWho } from "../src/games/guesswho/types.ts";
 import { recomputeScores } from "../src/games/bac/logic.ts";
 import { reassignHost, transferHost } from "../src/lib/host.ts";
-import { rejoinName, switchGame } from "../src/lib/session.ts";
+import { assignHostAfterSwitch, rejoinName, storeHostKey, switchGame } from "../src/lib/session.ts";
 import { awardPartyPoints } from "../src/party/logic.ts";
 import { drawFresh, pickFresh, remember } from "../src/lib/recent.ts";
 import { drawLetter, pickLetter } from "../src/lib/letters.ts";
@@ -685,10 +685,38 @@ const duplicates = codenamesWords
     GUESSWHO_ROOM: namespace,
   } as any;
   await switchGame(sessions, sessions[0], { code: "TEST", hostId: "a" }, { slug: "bomb" }, env);
-  assert.equal(messagesA[0].preserveHost, true, "l'ancien hôte doit être désigné dans le nouveau jeu");
-  assert.equal(messagesB[0].preserveHost, false, "un invité ne doit pas récupérer le rôle d'hôte");
+  assert.match(messagesA[0].hostKey ?? "", /^[0-9a-f-]{36}$/, "l'ancien hôte doit recevoir la clé d'hôte du nouveau jeu");
+  assert.equal(messagesB[0].hostKey, undefined, "un invité ne doit pas recevoir la clé d'hôte");
   assert.notEqual(messagesA[0].code, "TEST", "le jeu cible doit recevoir un salon neuf");
   assert.equal(messagesA[0].code, messagesB[0].code, "tout le groupe doit recevoir le même nouveau code");
+}
+
+// --- Clé d'hôte : seule la clé déposée par le salon d'origine rend la main ---
+
+{
+  const store = new Map<string, unknown>();
+  const storage = {
+    get: async (k: string) => store.get(k),
+    put: async (k: string, v: unknown) => { store.set(k, v); },
+    delete: async (k: string) => store.delete(k),
+    getAlarm: async () => null,
+    setAlarm: async () => {},
+  } as any;
+  const key = crypto.randomUUID();
+  const res = await storeHostKey(storage, new Request("https://room/bomb/host-key/ABCDE", { method: "POST", body: key }));
+  assert.equal(res.status, 204);
+  const room = { hostId: "guest" as string | null };
+  await assignHostAfterSwitch(storage, room, "intrus", { preserveHost: true, hostKey: "faux" });
+  assert.equal(room.hostId, "guest", "un drapeau ou une clé forgée ne doit pas donner l'hôte");
+  await assignHostAfterSwitch(storage, room, "intrus", { hostKey: true });
+  assert.equal(room.hostId, "guest", "une clé non textuelle doit être ignorée");
+  await assignHostAfterSwitch(storage, room, "hote", { hostKey: key });
+  assert.equal(room.hostId, "hote", "la clé déposée doit rendre la main à l'ancien hôte");
+  await assignHostAfterSwitch(storage, room, "copieur", { hostKey: key });
+  assert.equal(room.hostId, "hote", "la clé ne doit servir qu'une fois");
+  const empty = { hostId: null as string | null };
+  await assignHostAfterSwitch(storage, empty, "premier", {});
+  assert.equal(empty.hostId, "premier", "un salon sans hôte revient au premier arrivé");
 }
 
 // --- Même longueur d'onde : normalisation et groupes de réponses -----------

@@ -2,7 +2,7 @@ import type { Env } from "../env";
 import { GAME_NAMESPACES, GAME_SLUGS, type GameSlug } from "../lib/gameSlugs";
 import { armIdlePurge, cancelIdlePurge, purgeIfIdle, rearmIdlePurge } from "../lib/idle";
 import { createRoomCode } from "../lib/rooms";
-import { type Session, acceptSession, dispatchClose, dispatchMessage, restoreSessions } from "../lib/session";
+import { type Session, acceptSession, dispatchClose, dispatchMessage, issueHostKey, restoreSessions } from "../lib/session";
 import { MAX_MESSAGE_BYTES, tooManyMessages } from "../lib/throttle";
 import { PARTY_GAMES, gameSupportsPlayers } from "./games";
 import { awardPartyPoints } from "./logic";
@@ -241,7 +241,9 @@ export class PartyRoom {
       this.sendError(session, `${game?.label ?? slug} n'accepte pas ${count} joueurs.`);
       return;
     }
-    const code = await createRoomCode(slug, GAME_NAMESPACES[slug](this.env));
+    const namespace = GAME_NAMESPACES[slug](this.env);
+    const code = await createRoomCode(slug, namespace);
+    const hostKey = await issueHostKey(slug, namespace, code);
     room.currentGame = { slug, code };
     room.phase = "playing";
     room.lastResult = [];
@@ -254,7 +256,7 @@ export class PartyRoom {
           type: "launchGame",
           slug,
           code,
-          preserveHost: current.playerId === room.hostId,
+          hostKey: current.playerId === room.hostId ? hostKey : undefined,
         }));
       } catch { /* socket fermé */ }
     }

@@ -30,6 +30,8 @@ import { claimHost, reassignHost, transferHost } from "../../lib/host";
 import {
   type Session,
   assignHostAfterSwitch,
+  isHostKeyRequest,
+  storeHostKey,
   acceptSession,
   dispatchClose,
   dispatchMessage,
@@ -69,6 +71,8 @@ export class CodenamesRoom {
     const url = new URL(request.url);
     const parts = url.pathname.split("/").filter(Boolean);
     const code = parts[parts.length - 1] ?? "";
+
+    if (isHostKeyRequest(request, parts)) return storeHostKey(this.state.storage, request);
 
     if (parts[parts.length - 2] === "exists") {
       const room = await this.loadRoom(code);
@@ -347,7 +351,7 @@ export class CodenamesRoom {
     room.players[id] = player;
     room.playerOrder.push(id);
     claimHost(room, id);
-    assignHostAfterSwitch(room, id, msg);
+    await assignHostAfterSwitch(this.state.storage, room, id, msg);
     session.playerId = id;
 
     session.ws.send(JSON.stringify({ type: "joined", playerId: id, token }));

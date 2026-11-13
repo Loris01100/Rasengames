@@ -85,7 +85,8 @@ lien avec la soirée.
 | `restart` | hôte | Depuis `ended` : scores à zéro, retour au lobby. |
 | `kick` | hôte | Exclut `playerId`. |
 
-Le serveur envoie en plus `launchGame` (`slug`, `code`, `preserveHost`) et
+Le serveur envoie en plus `launchGame` (`slug`, `code`, et pour l'hôte seul
+`hostKey`, la clé à usage unique qui lui rend la main dans le salon du jeu) et
 `returnToParty` (redirection collective vers `/party/`).
 
 ## La passerelle dans les pages de jeu

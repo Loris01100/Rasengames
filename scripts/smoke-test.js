@@ -575,8 +575,8 @@ function run(slug) {
       byId("switch-game-btn").dispatch("click");
       const switched = socket.sent.find((m) => m.type === "switchGame");
       assert.strictEqual(switched?.slug, options[2], `${slug}: switched to the wrong game`);
-      send({ type: "switchGame", slug: options[2], code: "ABCD", preserveHost: true });
-      assert.match(sandbox.location.href, /[?&]host=1(?:&|$)/, `${slug}: statut d'hôte perdu pendant la redirection`);
+      send({ type: "switchGame", slug: options[2], code: "ABCD", hostKey: "cle-hote" });
+      assert.match(sandbox.location.href, /[?&]host=cle-hote(?:&|$)/, `${slug}: clé d'hôte perdue pendant la redirection`);
 
       // Start must carry the game's lobby settings, not a bare {type:"start"}.
       if (byId("guesser-select")) byId("guesser-select").value = "p2"; // note: optional field

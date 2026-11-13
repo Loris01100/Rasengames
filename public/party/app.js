@@ -60,7 +60,11 @@
         state = msg.state;
         render();
       } else if (msg.type === "launchGame") {
-        const host = msg.preserveHost ? "&host=1" : "";
+        // Gardée pour « Rejoindre la partie » : l'hôte qui revient sur la soirée
+        // avant d'avoir rejoint le jeu en a encore besoin pour reprendre la main.
+        if (msg.hostKey) localStorage.setItem(storageKey("hostKey"), msg.hostKey);
+        else localStorage.removeItem(storageKey("hostKey"));
+        const host = msg.hostKey ? `&host=${encodeURIComponent(msg.hostKey)}` : "";
         location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${host}&party=${code}`;
       } else if (msg.type === "kicked") {
         // Sans token, le rechargement de la page ne nous ramène pas dans la
@@ -233,7 +237,8 @@
   $("rejoin-btn").addEventListener("click", () => {
     if (!state.currentGame) return;
     const name = localStorage.getItem(storageKey("name")) || "Joueur";
-    const host = state.hostId === playerId ? "&host=1" : "";
+    const hostKey = state.hostId === playerId ? localStorage.getItem(storageKey("hostKey")) : null;
+    const host = hostKey ? `&host=${encodeURIComponent(hostKey)}` : "";
     location.href = `/games/${state.currentGame.slug}/?room=${state.currentGame.code}&autojoin=${encodeURIComponent(name)}${host}&party=${code}`;
   });
 

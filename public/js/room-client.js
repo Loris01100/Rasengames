@@ -146,8 +146,14 @@ const Room = (() => {
     }
   }
 
-  function connect(code, name, token, spectator = false, preserveHost = false) {
+  // hostKey : clé à usage unique remise par le serveur au seul hôte lors d'un
+  // changement de jeu ; c'est elle qui lui rend la main dans le nouveau salon.
+  // Gardée jusqu'au « joined » : une coupure avant la réponse ne doit pas la
+  // perdre, les reconnexions rappellent connect() sans elle.
+  let pendingHostKey = null;
+  function connect(code, name, token, spectator = false, hostKey = null) {
     api.code = code.toUpperCase();
+    if (hostKey) pendingHostKey = hostKey;
     wantSpectator = spectator;
     const proto = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${proto}://${location.host}/ws/${cfg.slug}/${api.code}`);
@@ -158,7 +164,7 @@ const Room = (() => {
         name,
         token: token || undefined,
         spectator: spectator || undefined,
-        preserveHost: preserveHost || undefined,
+        hostKey: pendingHostKey || undefined,
       });
     });
 
@@ -214,6 +220,7 @@ const Room = (() => {
 
   function handleServerMessage(msg) {
     if (msg.type === "joined") {
+      pendingHostKey = null;
       api.playerId = msg.playerId;
       api.spectator = msg.spectator === true;
       promoting = false;
@@ -266,8 +273,8 @@ const Room = (() => {
     } else if (msg.type === "switchGame") {
       const name = localStorage.getItem(storageKey(api.code, "name")) || "Joueur";
       const spectator = wantSpectator ? "&spectator=1" : "";
-      const preserveHost = msg.preserveHost ? "&host=1" : "";
-      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}${preserveHost}`;
+      const host = msg.hostKey ? `&host=${encodeURIComponent(msg.hostKey)}` : "";
+      location.href = `/games/${msg.slug}/?room=${msg.code}&autojoin=${encodeURIComponent(name)}${spectator}${host}`;
     } else if (msg.type === "kicked") {
       // Token dropped so the auto-reconnect on the next page load doesn't
       // silently walk back into the salon we were just thrown out of.
@@ -847,7 +854,7 @@ const Room = (() => {
     const autojoinName = params.get("autojoin");
     if (autojoinName) {
       el.nameInput.value = autojoinName;
-      connect(code, autojoinName, undefined, spectatorFromUrl, params.get("host") === "1");
+      connect(code, autojoinName, undefined, spectatorFromUrl, params.get("host"));
     }
   }
 

@@ -81,10 +81,12 @@ sur un autre jeu. Certains jeux lui confient en plus un rôle d'arbitre
   de choix que l'historique, ce sont les tirages les plus anciens qui
   reviennent en premier. L'historique vit dans le salon d'un jeu : il survit
   aux manches et aux `restart`, pas à un `switchGame` (autre salon).
-- **`switchGame`** : l'hôte emmène tout le groupe sur un autre jeu. C'est un
-  simple signal de redirection — le groupe garde son code de salon et pointe
-  simplement son WebSocket vers le salon d'un autre jeu, sans avoir à
-  repartager un nouveau code.
+- **`switchGame`** : l'hôte emmène tout le groupe sur un autre jeu. Le serveur
+  tire un code neuf dans le jeu cible et redirige tout le monde, sans rien à
+  repartager. Pour que l'hôte le reste quel que soit l'ordre d'arrivée, le
+  salon d'origine dépose dans le salon cible une clé à usage unique qu'il ne
+  transmet qu'à l'hôte (`hostKey`, reprise dans son `join`). Le rôle ne se
+  réclame jamais sur simple déclaration du client.
 - **`setVisibility`** : privé par défaut, public pour apparaître sur l'accueil.
 
 ## Chrono par action
