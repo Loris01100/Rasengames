@@ -11,6 +11,33 @@
   color: var(--accent);
 }
 
+/* Catégorie floutée façon spoiler Discord : on joue souvent à côté des autres
+   ou en partage d'écran, elle ne s'affiche qu'au clic. */
+.spoiler {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  cursor: pointer;
+  user-select: none;
+  transition: filter 0.15s ease;
+}
+
+.spoiler:not(.revealed) {
+  filter: blur(8px);
+}
+
+.spoiler:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.spoiler-hint {
+  opacity: 0.8;
+}
+
 #incoming-panel {
   border-color: var(--accent);
 }

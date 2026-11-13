@@ -148,7 +148,10 @@
   }
 
   function renderPlay(state) {
-    el.myCategory.textContent = state.you?.category ?? "";
+    const category = state.you?.category ?? "";
+    // Nouvelle catégorie (nouvelle manche) : on la refloute.
+    if (el.myCategory.textContent !== category) setCategoryRevealed(false);
+    el.myCategory.textContent = category;
 
     const myTurn = state.turnId === Room.playerId;
     el.turnBanner.textContent = myTurn
@@ -246,6 +249,19 @@
   }
 
   // ---- events ----
+
+  // Spoiler : un clic (ou Entrée/Espace) affiche ou refloute sa propre catégorie.
+  function setCategoryRevealed(revealed) {
+    el.myCategory.classList.toggle("revealed", revealed);
+    el.myCategory.setAttribute("aria-pressed", String(revealed));
+  }
+  el.myCategory.addEventListener("click", () =>
+    setCategoryRevealed(!el.myCategory.classList.contains("revealed")));
+  el.myCategory.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    setCategoryRevealed(!el.myCategory.classList.contains("revealed"));
+  });
 
   el.categorySubmit.addEventListener("click", submitCategory);
   el.categoryInput.addEventListener("keydown", (e) => {

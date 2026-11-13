@@ -21,7 +21,9 @@ on tente sa chance à la place d'une proposition.
 ## Déroulé d'une manche
 
 1. **`setup`** — chacun écrit sa catégorie (60 caractères max). On passe en jeu
-   quand tout le monde est prêt.
+   quand tout le monde est prêt. En jeu, sa propre catégorie s'affiche floutée
+   comme un spoiler Discord (pour qui joue côte à côte ou en partage d'écran) :
+   un clic la révèle, un autre la refloute, et elle se refloute à chaque manche.
 2. **`play`** — à son tour, on choisit entre :
    - **proposer un personnage** : il part chez *tous* les adversaires dont la
      catégorie n'est pas encore trouvée, qui répondent chacun oui/non ;
