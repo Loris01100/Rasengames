@@ -614,6 +614,10 @@ export class WhoamiRoom {
 
   private buildView(room: RoomState, forPlayerId: string) {
     const revealAll = room.phase === "ended";
+    // Un spectateur ne voit aucun mot avant la fin : sinon un joueur n'aurait
+    // qu'à ouvrir un second onglet en spectateur pour lire le sien (même garde
+    // que Note).
+    const isPlayer = !!room.players[forPlayerId];
 
     const players = room.playerOrder
       .map((id) => room.players[id])
@@ -627,8 +631,8 @@ export class WhoamiRoom {
         found: p.found,
         // Hidden from the assignee while the round is live — everyone else
         // can already see it, that's the whole game — revealed once ended.
-        word: p.id !== forPlayerId || revealAll ? p.word : null,
-        wordRef: p.id !== forPlayerId || revealAll ? p.wordRef : null,
+        word: revealAll || (isPlayer && p.id !== forPlayerId) ? p.word : null,
+        wordRef: revealAll || (isPlayer && p.id !== forPlayerId) ? p.wordRef : null,
         // Attempts never reveal the word themselves (they're just what was
         // typed), so they're always visible to everyone, self included.
         guesses: p.guesses,

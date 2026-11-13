@@ -55,7 +55,9 @@ manche.
 ## Ce que le serveur cache
 
 Le mot attribué à un joueur lui est masqué tant que la manche tourne — tous les
-autres le voient, c'est tout le jeu — et est révélé en `ended`. Les tentatives
+autres joueurs le voient, c'est tout le jeu — et est révélé en `ended`. Les
+spectateurs, eux, ne voient aucun mot avant `ended` : sinon un joueur n'aurait
+qu'à ouvrir un second onglet en spectateur pour lire le sien. Les tentatives
 déjà faites sont publiques (ce sont juste des noms tapés), y compris pour
 l'intéressé.
 
